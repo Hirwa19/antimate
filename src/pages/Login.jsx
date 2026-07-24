@@ -1,130 +1,179 @@
 import { useState } from "react";
-import { X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { loginUser } from "../services/authService";
 
-import api from "../api/axios";
-import { useAuth } from "../context/AuthContext";
+import {
+  Cpu,
+  Wifi,
+  Radio,
+  Activity,
+  Database,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 
-
-export default function Login() {
-
-  const navigate = useNavigate();
-  const { login } = useAuth();
-
-
-  const [showModal, setShowModal] = useState(false);
-  const [authType, setAuthType] = useState("login");
-
-
-  const [email,setEmail] = useState("");
-  const [password,setPassword] = useState("");
-  const [name,setName] = useState("");
+import "./Login.css";
 
 
+function Login(){
 
-  const openModal=(type)=>{
-
-    setAuthType(type);
-    setShowModal(true);
-
-  }
+const navigate = useNavigate();
 
 
-
-  const handleSubmit = async(e)=>{
-
-    e.preventDefault();
+const [showLogin,setShowLogin] = useState(false);
 
 
-    try{
+const [identifier,setIdentifier]=useState("");
+const [password,setPassword]=useState("");
+
+const [showPassword,setShowPassword]=useState(false);
+
+const [loading,setLoading]=useState(false);
+
+const [message,setMessage]=useState("");
 
 
-      if(authType==="login"){
-
-        const res = await api.post("/auth/login",{
-          email,
-          password
-        });
 
 
-        login(res.data);
 
-        navigate("/");
+async function handleLogin(e){
 
-
-      }
-      else{
-
-        await api.post("/auth/register",{
-          name,
-          email,
-          password
-        });
+e.preventDefault();
 
 
-        alert("Account created successfully");
+try{
 
-        setAuthType("login");
+setLoading(true);
 
-      }
-
-
-    }
-    catch(error){
-
-      console.log(error);
-      alert("Something went wrong");
-
-    }
+setMessage("");
 
 
-  }
+
+const res =
+await loginUser({
+
+identifier,
+
+password
+
+});
+
+
+
+localStorage.setItem(
+"token",
+res.data.token
+);
+
+
+localStorage.setItem(
+"user",
+JSON.stringify(res.data.user)
+);
+
+
+
+navigate("/home");
+
+
+
+}
+
+catch(err){
+
+setMessage(
+err.response?.data?.message ||
+"Login failed"
+);
+
+}
+
+
+finally{
+
+setLoading(false);
+
+}
+
+
+}
+
+
+
 
 
 
 return (
 
-<div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+<div className="landing-page">
+
+
+
 
 
 {/* NAVBAR */}
 
-<header className="flex justify-between items-center px-8 py-5 bg-white shadow">
+<header className="navbar">
 
 
-<div className="text-2xl font-bold text-green-700">
+<div className="brand">
 
+
+<div className="brand-icon">
+
+<Cpu size={30}/>
+
+</div>
+
+
+<h1>
 ANTIMATE
+</h1>
 
-<span className="text-blue-600">
- Smart Brooder
-</span>
 
 </div>
 
 
 
-<div className="flex gap-4">
+
+<nav>
+
+<a href="#vision">
+Vision
+</a>
+
+<a href="#mission">
+Mission
+</a>
+
+<a href="#services">
+Services
+</a>
+
+
+</nav>
+
+
+
+
+<div className="nav-buttons">
 
 
 <button
-onClick={()=>openModal("login")}
-className="border border-green-600 text-green-700 px-5 py-2 rounded-lg"
+onClick={()=>setShowLogin(true)}
+className="login-btn"
 >
-
 Login
-
 </button>
 
 
-<button
-onClick={()=>openModal("signup")}
-className="bg-green-600 text-white px-5 py-2 rounded-lg"
+
+<Link
+to="/signup"
+className="signup-btn"
 >
-
 Signup
-
-</button>
+</Link>
 
 
 </div>
@@ -136,33 +185,39 @@ Signup
 
 
 
-{/* HERO */}
-
-<section className="grid md:grid-cols-2 gap-10 items-center px-10 py-20">
 
 
-<div>
 
 
-<h1 className="text-5xl font-bold text-gray-800">
+{/* HERO SECTION */}
 
-Smart Poultry Farming
-with
 
-<span className="text-green-600">
- AI & IoT
+<section className="hero">
+
+
+
+<div className="hero-content">
+
+
+<h1>
+
+Smart Farming
+Powered by
+
+<span>
+AI + IoT
 </span>
 
 </h1>
 
 
 
-<p className="mt-6 text-gray-600 text-lg">
+<p>
 
 ANTIMATE Smart Brooder is an intelligent
-system that helps farmers monitor,
-control and improve poultry production
-using connected IoT technology.
+poultry management platform that combines
+IoT devices, cloud technology and Artificial
+Intelligence to improve farming productivity.
 
 </p>
 
@@ -170,13 +225,13 @@ using connected IoT technology.
 
 <button
 
-onClick={()=>openModal("signup")}
+onClick={()=>setShowLogin(true)}
 
-className="mt-8 bg-green-600 text-white px-8 py-3 rounded-xl"
+className="primary-btn"
 
 >
 
-Start Smart Farming
+Access Platform
 
 </button>
 
@@ -187,16 +242,40 @@ Start Smart Farming
 
 
 
-{/* 3D PLACEHOLDER */}
-
-<div className="h-96 rounded-3xl bg-gradient-to-br from-green-200 to-blue-200 flex items-center justify-center">
+{/* IoT Animation Area */}
 
 
-<h2 className="text-3xl font-bold text-gray-700">
+<div className="iot-circle">
 
-3D Smart Brooder Animation
 
-</h2>
+<div className="iot-node node1">
+<Cpu/>
+</div>
+
+
+<div className="iot-node node2">
+<Wifi/>
+</div>
+
+
+<div className="iot-node node3">
+<Radio/>
+</div>
+
+
+<div className="iot-node node4">
+<Activity/>
+</div>
+
+
+<div className="iot-node node5">
+<Database/>
+</div>
+
+
+<div className="iot-node node6">
+<ShieldCheck/>
+</div>
 
 
 </div>
@@ -211,26 +290,24 @@ Start Smart Farming
 
 
 
+
+
 {/* VISION */}
 
-<section className="py-16 px-10 bg-white">
+<section id="vision" className="info-section">
 
 
-<h2 className="text-3xl font-bold text-center">
-
+<h2>
 Our Vision
-
 </h2>
 
 
+<p>
 
-<p className="max-w-3xl mx-auto text-center mt-5 text-gray-600">
-
-
-To transform poultry farming through
-accessible Artificial Intelligence and
-IoT technology, creating smarter,
-healthier and more productive farms.
+To transform agriculture through intelligent
+technology where farmers can access
+real-time information, automation and AI
+solutions for better production.
 
 </p>
 
@@ -244,25 +321,22 @@ healthier and more productive farms.
 
 
 
+
 {/* MISSION */}
 
-<section className="py-16 px-10">
+<section id="mission" className="info-section">
 
 
-<h2 className="text-3xl font-bold text-center">
-
+<h2>
 Our Mission
-
 </h2>
 
 
+<p>
 
-<p className="max-w-3xl mx-auto text-center mt-5 text-gray-600">
-
-
-To provide farmers with intelligent tools
-for monitoring, automation and decision
-making using real-time data.
+To provide affordable AI-powered IoT systems
+that help farmers monitor, manage and improve
+animal production.
 
 </p>
 
@@ -279,39 +353,68 @@ making using real-time data.
 
 {/* SERVICES */}
 
+<section id="services" className="services">
 
-<section className="py-16 px-10 bg-white">
 
-
-<h2 className="text-3xl font-bold text-center mb-10">
-
+<h2>
 Our Services
-
 </h2>
 
 
 
-<div className="grid md:grid-cols-3 gap-8">
+<div className="service-grid">
 
 
-<Service
-title="Smart Monitoring"
-text="Real-time temperature and humidity monitoring"
-/>
+<div className="service-card">
+
+<Cpu/>
+
+<h3>
+Smart Monitoring
+</h3>
+
+<p>
+Temperature, humidity and farm environment tracking.
+</p>
+
+</div>
 
 
 
-<Service
-title="AI Analysis"
-text="Artificial intelligence insights for better farming"
-/>
+
+
+<div className="service-card">
+
+<Activity/>
+
+<h3>
+AI Analysis
+</h3>
+
+<p>
+Data analysis and smart recommendations.
+</p>
+
+</div>
 
 
 
-<Service
-title="Automation"
-text="Automatic climate control using IoT devices"
-/>
+
+
+<div className="service-card">
+
+<Wifi/>
+
+<h3>
+IoT Connectivity
+</h3>
+
+<p>
+Wireless communication between devices and cloud.
+</p>
+
+</div>
+
 
 
 
@@ -328,55 +431,9 @@ text="Automatic climate control using IoT devices"
 
 
 
-{/* CTA */}
+<footer>
 
-
-<section className="py-20 text-center">
-
-
-<h2 className="text-4xl font-bold">
-
-Build the Future of Farming
-
-</h2>
-
-
-
-<p className="mt-4 text-gray-600">
-
-Join ANTIMATE Smart Brooder today.
-
-</p>
-
-
-
-<button
-
-onClick={()=>openModal("signup")}
-
-className="mt-8 bg-green-600 text-white px-10 py-3 rounded-xl"
-
->
-
-Create Account
-
-</button>
-
-
-</section>
-
-
-
-
-
-
-
-
-<footer className="bg-gray-900 text-white text-center py-6">
-
-
-ANTIMATE Inc © {new Date().getFullYear()}
-
+ANTIMATE EDGE AI © 2026
 
 </footer>
 
@@ -388,25 +445,25 @@ ANTIMATE Inc © {new Date().getFullYear()}
 
 
 
-{/* AUTH POPUP */}
-
+{/* LOGIN POPUP */}
 
 
 {
 
-showModal &&
-
-<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+showLogin &&
 
 
-<div className="bg-white rounded-2xl p-8 w-full max-w-md relative">
+<div className="modal-overlay">
+
+
+<div className="login-card">
 
 
 <button
 
-onClick={()=>setShowModal(false)}
+className="close-modal"
 
-className="absolute right-4 top-4"
+onClick={()=>setShowLogin(false)}
 
 >
 
@@ -417,61 +474,58 @@ className="absolute right-4 top-4"
 
 
 
-<h2 className="text-2xl font-bold mb-6">
+
+<div className="brand">
 
 
-{
-authType==="login"
-?
-"Login"
-:
-"Create Account"
-}
+<div className="brand-icon">
+
+<Cpu size={34}/>
+
+</div>
 
 
+<h1>
+ANTIMATE
+</h1>
+
+
+</div>
+
+
+
+
+
+<h2>
+Welcome Back
 </h2>
 
 
+<p className="subtitle">
+IoT Management Platform
+</p>
 
 
 
-<form onSubmit={handleSubmit}>
 
 
-{
 
-authType==="signup" &&
+
+<form onSubmit={handleLogin}>
+
 
 <input
 
-className="w-full border p-3 rounded-lg mb-4"
+className="login-input"
 
-placeholder="Full Name"
+placeholder="Email / Username / Phone"
 
-value={name}
+value={identifier}
 
-onChange={(e)=>setName(e.target.value)}
-
-/>
-
+onChange={
+e=>setIdentifier(e.target.value)
 }
 
-
-
-
-
-<input
-
-className="w-full border p-3 rounded-lg mb-4"
-
-placeholder="Email"
-
-type="email"
-
-value={email}
-
-onChange={(e)=>setEmail(e.target.value)}
-
 />
 
 
@@ -479,20 +533,74 @@ onChange={(e)=>setEmail(e.target.value)}
 
 
 
+<div className="password-box">
+
+
 <input
 
-className="w-full border p-3 rounded-lg mb-6"
+className="login-input"
+
+type={
+showPassword
+?
+"text"
+:
+"password"
+}
 
 placeholder="Password"
 
-type="password"
-
 value={password}
 
-onChange={(e)=>setPassword(e.target.value)}
+onChange={
+e=>setPassword(e.target.value)
+}
 
 />
 
+
+
+<button
+
+type="button"
+
+className="show-password"
+
+onClick={()=>
+setShowPassword(!showPassword)
+}
+
+>
+
+{
+showPassword
+?
+"Hide"
+:
+"Show"
+}
+
+</button>
+
+
+</div>
+
+
+
+
+
+
+
+{
+message &&
+
+<p className="error">
+
+{message}
+
+</p>
+
+}
 
 
 
@@ -500,17 +608,23 @@ onChange={(e)=>setPassword(e.target.value)}
 
 <button
 
-className="w-full bg-green-600 text-white py-3 rounded-lg"
+className="login-button"
+
+disabled={loading}
 
 >
 
+
 {
-authType==="login"
+
+loading
 ?
-"Login"
+"Connecting..."
 :
-"Signup"
+"Sign In"
+
 }
+
 
 </button>
 
@@ -520,50 +634,38 @@ authType==="login"
 
 
 
+
+
+
+<Link
+className="forgot"
+to="/forgot-password"
+>
+
+Forgot Password?
+
+</Link>
+
+
+
 </div>
 
 
 </div>
+
 
 }
 
 
+
 </div>
 
 
-)
+);
+
 
 }
 
 
 
-
-
-function Service({title,text}){
-
-
-return (
-
-<div className="p-8 rounded-xl shadow bg-gray-50">
-
-
-<h3 className="text-xl font-bold text-green-700">
-
-{title}
-
-</h3>
-
-
-<p className="mt-3 text-gray-600">
-
-{text}
-
-</p>
-
-
-</div>
-
-)
-
-
-}
+export default Login;

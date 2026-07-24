@@ -1,40 +1,254 @@
-.login-page{
+/* ===============================
+ GLOBAL
+================================ */
 
-min-height:100vh;
+*{
+box-sizing:border-box;
+}
 
-display:flex;
 
-align-items:center;
+body{
 
-justify-content:center;
-
-overflow:hidden;
-
-position:relative;
-
-background:
-radial-gradient(circle at top,#0f766e,#020617 55%);
+margin:0;
 
 font-family:Inter,Arial,sans-serif;
 
+}
+
+
+.landing-page{
+
+min-height:100vh;
+
+background:
+radial-gradient(circle at top,#0f766e,#020617 60%);
+
 color:white;
+
+overflow:hidden;
 
 }
 
 
 
 /* ===============================
-   IoT ANIMATION
+ NAVBAR
+================================ */
+
+
+.navbar{
+
+height:80px;
+
+display:flex;
+
+align-items:center;
+
+justify-content:space-between;
+
+padding:0 50px;
+
+background:
+
+rgba(15,23,42,.65);
+
+backdrop-filter:blur(20px);
+
+border-bottom:
+
+1px solid rgba(255,255,255,.1);
+
+}
+
+
+
+.navbar nav{
+
+display:flex;
+
+gap:30px;
+
+}
+
+
+
+.navbar nav a{
+
+color:#cbd5e1;
+
+text-decoration:none;
+
+font-weight:600;
+
+}
+
+
+
+.navbar nav a:hover{
+
+color:#2dd4bf;
+
+}
+
+
+
+.nav-buttons{
+
+display:flex;
+
+gap:15px;
+
+}
+
+
+
+.login-btn,
+.signup-btn{
+
+padding:12px 25px;
+
+border-radius:12px;
+
+cursor:pointer;
+
+font-weight:700;
+
+text-decoration:none;
+
+}
+
+
+
+.login-btn{
+
+background:transparent;
+
+border:1px solid #2dd4bf;
+
+color:#2dd4bf;
+
+}
+
+
+
+.signup-btn{
+
+background:
+
+linear-gradient(
+135deg,
+#22c55e,
+#2dd4bf
+);
+
+color:#022c22;
+
+}
+
+
+
+
+
+
+/* ===============================
+ HERO
+================================ */
+
+
+.hero{
+
+min-height:700px;
+
+display:grid;
+
+grid-template-columns:1fr 1fr;
+
+align-items:center;
+
+padding:60px 80px;
+
+gap:40px;
+
+}
+
+
+
+.hero-content h1{
+
+font-size:60px;
+
+line-height:1.1;
+
+}
+
+
+
+.hero-content h1 span{
+
+color:#2dd4bf;
+
+}
+
+
+
+.hero-content p{
+
+font-size:20px;
+
+color:#cbd5e1;
+
+line-height:1.7;
+
+max-width:600px;
+
+}
+
+
+
+.primary-btn{
+
+margin-top:30px;
+
+padding:16px 40px;
+
+border:none;
+
+border-radius:15px;
+
+background:
+
+linear-gradient(
+135deg,
+#22c55e,
+#2dd4bf
+);
+
+font-weight:900;
+
+cursor:pointer;
+
+color:#022c22;
+
+}
+
+
+
+
+
+/* ===============================
+ IOT ANIMATION
 ================================ */
 
 
 .iot-circle{
 
-position:absolute;
+position:relative;
 
-width:600px;
+width:500px;
 
-height:600px;
+height:500px;
+
+margin:auto;
 
 border-radius:50%;
 
@@ -47,15 +261,18 @@ animation:rotate 25s linear infinite;
 @keyframes rotate{
 
 from{
+
 transform:rotate(0deg);
+
 }
 
 to{
+
 transform:rotate(360deg);
-}
 
 }
 
+}
 
 
 
@@ -63,23 +280,21 @@ transform:rotate(360deg);
 
 position:absolute;
 
-width:65px;
+width:70px;
 
-height:65px;
+height:70px;
 
 border-radius:50%;
 
+
 background:
 
-rgba(45,212,191,0.15);
+rgba(45,212,191,.15);
 
 
 border:
 
 1px solid rgba(255,255,255,.25);
-
-
-backdrop-filter:blur(10px);
 
 
 display:flex;
@@ -105,27 +320,13 @@ animation:pulse 3s infinite;
 
 @keyframes pulse{
 
-
-0%,100%{
-
-transform:scale(1);
-
-opacity:.7;
-
-}
-
-
 50%{
 
 transform:scale(1.15);
 
-opacity:1;
-
 }
 
 }
-
-
 
 
 
@@ -133,7 +334,7 @@ opacity:1;
 
 top:0;
 
-left:260px;
+left:215px;
 
 }
 
@@ -142,46 +343,43 @@ left:260px;
 
 right:0;
 
-top:220px;
+top:200px;
 
 }
-
 
 
 .node3{
 
 bottom:0;
 
-left:260px;
+left:215px;
 
 }
-
 
 
 .node4{
 
 left:0;
 
-top:220px;
+top:200px;
 
 }
 
 
-
 .node5{
 
-top:90px;
+top:80px;
 
-right:80px;
+right:70px;
 
 }
 
 
 .node6{
 
-bottom:90px;
+bottom:80px;
 
-left:80px;
+left:70px;
 
 }
 
@@ -191,8 +389,158 @@ left:80px;
 
 
 /* ===============================
- LOGIN CARD
+ INFORMATION
 ================================ */
+
+
+.info-section{
+
+padding:80px 15%;
+
+text-align:center;
+
+background:
+
+rgba(255,255,255,.03);
+
+}
+
+
+
+.info-section h2,
+.services h2{
+
+font-size:40px;
+
+margin-bottom:20px;
+
+}
+
+
+
+.info-section p{
+
+font-size:20px;
+
+color:#cbd5e1;
+
+line-height:1.8;
+
+}
+
+
+
+
+
+/* ===============================
+ SERVICES
+================================ */
+
+
+.services{
+
+padding:80px;
+
+}
+
+
+
+.service-grid{
+
+display:grid;
+
+grid-template-columns:repeat(3,1fr);
+
+gap:30px;
+
+}
+
+
+
+.service-card{
+
+padding:35px;
+
+border-radius:25px;
+
+
+background:
+
+rgba(15,23,42,.7);
+
+
+border:
+
+1px solid rgba(255,255,255,.15);
+
+
+backdrop-filter:blur(20px);
+
+
+}
+
+
+
+.service-card svg{
+
+color:#2dd4bf;
+
+width:40px;
+
+height:40px;
+
+}
+
+
+
+.service-card h3{
+
+font-size:25px;
+
+}
+
+
+
+
+.service-card p{
+
+color:#cbd5e1;
+
+}
+
+
+
+
+/* ===============================
+ LOGIN MODAL
+================================ */
+
+
+.modal-overlay{
+
+
+position:fixed;
+
+inset:0;
+
+background:
+
+rgba(0,0,0,.65);
+
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+
+z-index:100;
+
+
+}
+
+
 
 
 .login-card{
@@ -202,12 +550,13 @@ width:420px;
 
 padding:40px;
 
+
 border-radius:30px;
 
 
 background:
 
-rgba(15,23,42,.65);
+rgba(15,23,42,.9);
 
 
 border:
@@ -215,18 +564,43 @@ border:
 1px solid rgba(255,255,255,.15);
 
 
-backdrop-filter:
-
-blur(25px);
+backdrop-filter:blur(25px);
 
 
 box-shadow:
 
-0 30px 80px rgba(0,0,0,.5);
+0 30px 80px rgba(0,0,0,.6);
 
 
-z-index:2;
+position:relative;
 
+
+}
+
+
+
+
+
+.close-modal{
+
+
+position:absolute;
+
+
+right:20px;
+
+top:20px;
+
+
+background:none;
+
+border:none;
+
+
+color:white;
+
+
+cursor:pointer;
 
 }
 
@@ -238,9 +612,9 @@ z-index:2;
 
 display:flex;
 
-align-items:center;
-
 justify-content:center;
+
+align-items:center;
 
 gap:15px;
 
@@ -250,11 +624,11 @@ gap:15px;
 
 .brand h1{
 
-font-size:28px;
-
 letter-spacing:3px;
 
 }
+
+
 
 
 
@@ -285,6 +659,7 @@ align-items:center;
 
 justify-content:center;
 
+
 }
 
 
@@ -295,11 +670,11 @@ justify-content:center;
 
 text-align:center;
 
-margin-top:30px;
-
 font-size:32px;
 
 }
+
+
 
 
 
@@ -316,37 +691,22 @@ margin-bottom:30px;
 
 
 
-.login-input{
 
+.login-input{
 
 width:100%;
 
-box-sizing:border-box;
-
 padding:15px;
-
 
 border-radius:15px;
 
-
 background:#020617;
 
-
-border:
-
-1px solid #334155;
-
+border:1px solid #334155;
 
 color:white;
 
-
-font-size:15px;
-
-
 margin-bottom:15px;
-
-
-outline:none;
 
 }
 
@@ -362,35 +722,25 @@ position:relative;
 
 
 
-.show-password{
 
+
+.show-password{
 
 position:absolute;
 
-
 right:10px;
 
-top:12px;
+top:10px;
 
-
-background:
-
-rgba(45,212,191,.15);
-
-
-border:none;
-
+background:#134e4a;
 
 color:#2dd4bf;
 
+border:none;
 
-padding:8px 12px;
-
+padding:8px;
 
 border-radius:10px;
-
-
-cursor:pointer;
 
 }
 
@@ -400,18 +750,13 @@ cursor:pointer;
 
 .login-button{
 
-
 width:100%;
-
 
 padding:16px;
 
-
-border-radius:16px;
-
-
 border:none;
 
+border-radius:16px;
 
 background:
 
@@ -424,18 +769,7 @@ linear-gradient(
 
 font-weight:900;
 
-
-font-size:16px;
-
-
 cursor:pointer;
-
-
-margin-top:10px;
-
-
-color:#022c22;
-
 
 }
 
@@ -449,31 +783,19 @@ color:#fca5a5;
 
 text-align:center;
 
-font-size:14px;
-
 }
-
-
 
 
 
 .forgot{
 
-
 display:block;
-
 
 text-align:center;
 
-
 margin-top:20px;
 
-
 color:#2dd4bf;
-
-
-font-weight:800;
-
 
 text-decoration:none;
 
@@ -482,66 +804,36 @@ text-decoration:none;
 
 
 
-.signup{
-
-
-text-align:center;
-
-color:#94a3b8;
-
-
-margin-top:25px;
-
-
-}
-
-
-
-.signup a{
-
-
-color:#38bdf8;
-
-font-weight:800;
-
-margin-left:5px;
-
-}
-
-
-
-
-
-.footer{
-
+footer{
 
 text-align:center;
 
-
-margin-top:30px;
-
+padding:30px;
 
 color:#64748b;
 
-
-font-weight:700;
-
-
-font-size:13px;
-
 }
 
 
 
 
-@media(max-width:600px){
+
+@media(max-width:900px){
 
 
-.login-card{
+.hero{
 
-width:90%;
+grid-template-columns:1fr;
 
-padding:30px;
+padding:40px;
+
+}
+
+
+
+.hero-content h1{
+
+font-size:40px;
 
 }
 
@@ -549,9 +841,33 @@ padding:30px;
 
 .iot-circle{
 
-width:400px;
+width:350px;
 
-height:400px;
+height:350px;
+
+}
+
+
+
+.service-grid{
+
+grid-template-columns:1fr;
+
+}
+
+
+
+.navbar{
+
+padding:0 20px;
+
+}
+
+
+
+.navbar nav{
+
+display:none;
 
 }
 

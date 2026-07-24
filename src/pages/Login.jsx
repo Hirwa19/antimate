@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/authService";
+import SmartFarmScene from "../components/3d/SmartFarmScene";
 
 import {
   Cpu,
@@ -245,40 +246,7 @@ Access Platform
 {/* IoT Animation Area */}
 
 
-<div className="iot-circle">
-
-
-<div className="iot-node node1">
-<Cpu/>
-</div>
-
-
-<div className="iot-node node2">
-<Wifi/>
-</div>
-
-
-<div className="iot-node node3">
-<Radio/>
-</div>
-
-
-<div className="iot-node node4">
-<Activity/>
-</div>
-
-
-<div className="iot-node node5">
-<Database/>
-</div>
-
-
-<div className="iot-node node6">
-<ShieldCheck/>
-</div>
-
-
-</div>
+<SmartFarmScene />
 
 
 

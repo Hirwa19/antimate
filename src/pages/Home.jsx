@@ -67,29 +67,36 @@ const POULTRY_TIPS = [
   }
 ];
 
+// Video z'ubworozi bw'inkoko mu Kinyarwanda zikora neza muri Embedded iframe
 const YOUTUBE_VIDEOS = [
   {
     id: "yt-1",
-    embedId: "Qp48s2U2B04",
-    title: "Inyigisho ku kumenya korora no kurinda impfu z'imishwi",
-    description: "Ikurikirane uburyo bwiza bwo gutunganya ikiraro n'isuku y'inkoko.",
-    youtubeUrl: "https://www.youtube.com/watch?v=Qp48s2U2B04",
+    embedId: "htbmHQnTdb4",
+    title: "Uko warinda Inkoko zawe Indwara y'Umuraramo (Newcastle Disease)",
+    description: "Inyigisho irambuye mu Kinyarwanda igufasha kurinda inkoko zawe icyorezo cy'umuraramo no kuzirinda gupfa.",
+    youtubeUrl: "https://www.youtube.com/watch?v=htbmHQnTdb4",
   },
   {
     id: "yt-2",
-    embedId: "d13B090aT5U",
-    title: "Smart Agriculture & AI Integration Showcase",
-    description: "Uko ikoranabuhanga riri guhindura ubuhinzi mu bihugu biterimbere.",
-    youtubeUrl: "https://www.youtube.com/watch?v=d13B090aT5U",
+    embedId: "-qEs9hWjXy4",
+    title: "Yavuye kuri Zero ageze kure mu Bworozi bw'Inkoko mu Rwanda",
+    description: "Urugero rw'umworozi w'inkoko mu Rwanda usobanura uburyo yatejemo imbere ubworozi bwe n'inyungu abukuramo.",
+    youtubeUrl: "https://www.youtube.com/watch?v=-qEs9hWjXy4",
+  },
+  {
+    id: "yt-3",
+    embedId: "DOk8HBq3kWU",
+    title: "Ubworozi bw'Inkoko bugezweho n'Umusaruro wazo mu Rwanda",
+    description: "Uko gukoresha uburyo bugezweho mu korora inkoko byongera umusaruro w'amagi n'inyama.",
+    youtubeUrl: "https://www.youtube.com/watch?v=DOk8HBq3kWU",
   }
 ];
 
 function Home() {
   const user = JSON.parse(localStorage.getItem("user"));
   const { isDark, text } = useAppSettings();
-  const [hoveredCard, setHoveredCard] = useState(null);
 
-  // Mappings y'amabara
+  // Dynamic Theme Styling
   const bgMain = isDark ? "#0f172a" : "#f8fafc";
   const bgCard = isDark ? "#1e293b" : "#ffffff";
   const textPrimary = isDark ? "#ffffff" : "#0f172a";
@@ -111,7 +118,7 @@ function Home() {
 
       <main style={{ maxWidth: "700px", margin: "0 auto", padding: "16px", display: "flex", flexDirection: "column", gap: "24px" }}>
         
-        {/* Mwaramutse / Muraho User */}
+        {/* User Greeting Header */}
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: "bold" }}>
             {text?.home || "Home"}, {user?.name || "User"} 👋
@@ -121,14 +128,14 @@ function Home() {
           </p>
         </div>
 
-        {/* HERO ARTICLE */}
+        {/* HERO FEATURED ARTICLE */}
         <div
           style={{
             backgroundColor: bgCard,
             borderRadius: "20px",
             border: `1px solid ${borderColor}`,
             overflow: "hidden",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
+            boxShadow: isDark ? "none" : "0 10px 25px rgba(0,0,0,0.05)",
           }}
         >
           <img
@@ -183,7 +190,7 @@ function Home() {
           </div>
         </div>
 
-        {/* AGRICULTURE NEWS */}
+        {/* AGRICULTURE & TECH NEWS */}
         <div>
           <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🌱 Amakuru Mashya y'Ubuhinzi & AI</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -211,23 +218,39 @@ function Home() {
           </div>
         </div>
 
-        {/* YOUTUBE VIDEOS */}
+        {/* YOUTUBE VIDEOS SECTION (KINYARWANDA) */}
         <div>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🎥 Amashusho y'Inyigisho</h2>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🎥 Amashusho y'Inyigisho mu Kinyarwanda</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {YOUTUBE_VIDEOS.map((vid) => (
               <div key={vid.id} style={{ backgroundColor: bgCard, borderRadius: "16px", border: `1px solid ${borderColor}`, overflow: "hidden" }}>
                 <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
                   <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${vid.embedId}`}
+                    src={`https://www.youtube.com/embed/${vid.embedId}`}
                     title={vid.title}
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
                 <div style={{ padding: "12px" }}>
                   <h3 style={{ fontSize: "14px", color: textPrimary }}>{vid.title}</h3>
                   <p style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>{vid.description}</p>
+                  <a
+                    href={vid.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block",
+                      marginTop: "8px",
+                      color: accentGreen,
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      textDecoration: "none"
+                    }}
+                  >
+                    Watch on YouTube ↗
+                  </a>
                 </div>
               </div>
             ))}

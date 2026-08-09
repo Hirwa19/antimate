@@ -88,12 +88,159 @@ export default function DeviceManager() {
   return (
     <>
       <style>{`
+        /* ================= THEME VARIABLES ================= */
+        :root {
+          --dm-bg: #f8fafc;
+          --dm-text-primary: #0f172a;
+          --dm-text-secondary: #64748b;
+          --dm-text-muted: #94a3b8;
+          
+          --dm-card-bg: #ffffff;
+          --dm-card-border: #e2e8f0;
+          --dm-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+
+          --dm-input-bg: #f8fafc;
+          --dm-input-border: #cbd5e1;
+          --dm-input-focus-bg: #ffffff;
+          
+          --dm-tab-container-bg: #f1f5f9;
+          --dm-tab-text: #475569;
+          --dm-tab-active-bg: #ffffff;
+          --dm-tab-active-text: #2563eb;
+
+          --dm-btn-sec-bg: #ffffff;
+          --dm-btn-sec-text: #334155;
+          --dm-btn-sec-border: #cbd5e1;
+          --dm-btn-sec-hover: #f8fafc;
+
+          --dm-btn-dark-bg: #0f172a;
+          --dm-btn-dark-text: #ffffff;
+          --dm-btn-dark-hover: #1e293b;
+
+          --dm-btn-primary-bg: #2563eb;
+          --dm-btn-primary-text: #ffffff;
+          --dm-btn-primary-hover: #1d4ed8;
+          --dm-btn-primary-disabled-bg: #e2e8f0;
+          --dm-btn-primary-disabled-text: #94a3b8;
+
+          --dm-badge-active-bg: #ecfdf5;
+          --dm-badge-active-text: #047857;
+          --dm-badge-active-border: #a7f3d0;
+
+          --dm-badge-inactive-bg: #f1f5f9;
+          --dm-badge-inactive-text: #475569;
+          --dm-badge-inactive-border: #e2e8f0;
+
+          --dm-btn-danger-bg: #fff1f2;
+          --dm-btn-danger-text: #e11d48;
+          --dm-btn-danger-hover: #ffe4e6;
+        }
+
+        /* Dark Theme Overrides (class or data attribute driven, plus media query fallback) */
+        .dark, [data-theme="dark"] {
+          --dm-bg: #0f172a;
+          --dm-text-primary: #f8fafc;
+          --dm-text-secondary: #94a3b8;
+          --dm-text-muted: #64748b;
+
+          --dm-card-bg: #1e293b;
+          --dm-card-border: #334155;
+          --dm-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+          --dm-input-bg: #0f172a;
+          --dm-input-border: #334155;
+          --dm-input-focus-bg: #1e293b;
+
+          --dm-tab-container-bg: #0f172a;
+          --dm-tab-text: #94a3b8;
+          --dm-tab-active-bg: #1e293b;
+          --dm-tab-active-text: #60a5fa;
+
+          --dm-btn-sec-bg: #1e293b;
+          --dm-btn-sec-text: #e2e8f0;
+          --dm-btn-sec-border: #334155;
+          --dm-btn-sec-hover: #334155;
+
+          --dm-btn-dark-bg: #334155;
+          --dm-btn-dark-text: #f8fafc;
+          --dm-btn-dark-hover: #475569;
+
+          --dm-btn-primary-bg: #2563eb;
+          --dm-btn-primary-text: #ffffff;
+          --dm-btn-primary-hover: #3b82f6;
+          --dm-btn-primary-disabled-bg: #334155;
+          --dm-btn-primary-disabled-text: #64748b;
+
+          --dm-badge-active-bg: rgba(6, 78, 59, 0.4);
+          --dm-badge-active-text: #34d399;
+          --dm-badge-active-border: #065f46;
+
+          --dm-badge-inactive-bg: #334155;
+          --dm-badge-inactive-text: #cbd5e1;
+          --dm-badge-inactive-border: #475569;
+
+          --dm-btn-danger-bg: rgba(136, 19, 55, 0.3);
+          --dm-btn-danger-text: #fb7185;
+          --dm-btn-danger-hover: rgba(136, 19, 55, 0.5);
+        }
+
+        @media (prefers-color-scheme: dark) {
+          :root:not(.light):not([data-theme="light"]) {
+            --dm-bg: #0f172a;
+            --dm-text-primary: #f8fafc;
+            --dm-text-secondary: #94a3b8;
+            --dm-text-muted: #64748b;
+
+            --dm-card-bg: #1e293b;
+            --dm-card-border: #334155;
+            --dm-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+            --dm-input-bg: #0f172a;
+            --dm-input-border: #334155;
+            --dm-input-focus-bg: #1e293b;
+
+            --dm-tab-container-bg: #0f172a;
+            --dm-tab-text: #94a3b8;
+            --dm-tab-active-bg: #1e293b;
+            --dm-tab-active-text: #60a5fa;
+
+            --dm-btn-sec-bg: #1e293b;
+            --dm-btn-sec-text: #e2e8f0;
+            --dm-btn-sec-border: #334155;
+            --dm-btn-sec-hover: #334155;
+
+            --dm-btn-dark-bg: #334155;
+            --dm-btn-dark-text: #f8fafc;
+            --dm-btn-dark-hover: #475569;
+
+            --dm-btn-primary-bg: #2563eb;
+            --dm-btn-primary-text: #ffffff;
+            --dm-btn-primary-hover: #3b82f6;
+            --dm-btn-primary-disabled-bg: #334155;
+            --dm-btn-primary-disabled-text: #64748b;
+
+            --dm-badge-active-bg: rgba(6, 78, 59, 0.4);
+            --dm-badge-active-text: #34d399;
+            --dm-badge-active-border: #065f46;
+
+            --dm-badge-inactive-bg: #334155;
+            --dm-badge-inactive-text: #cbd5e1;
+            --dm-badge-inactive-border: #475569;
+
+            --dm-btn-danger-bg: rgba(136, 19, 55, 0.3);
+            --dm-btn-danger-text: #fb7185;
+            --dm-btn-danger-hover: rgba(136, 19, 55, 0.5);
+          }
+        }
+
+        /* ================= COMPONENT STYLES ================= */
         .dm-container {
           min-height: 100vh;
-          background-color: #f8fafc;
-          color: #1e293b;
+          background-color: var(--dm-bg);
+          color: var(--dm-text-primary);
           padding: 2rem 1rem;
           font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          transition: background-color 0.2s, color 0.2s;
         }
         .dm-wrapper {
           max-width: 64rem;
@@ -108,18 +255,18 @@ export default function DeviceManager() {
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid var(--dm-card-border);
           padding-bottom: 1.25rem;
         }
         .dm-title {
           font-size: 1.875rem;
           font-weight: 700;
-          color: #0f172a;
+          color: var(--dm-text-primary);
           margin: 0;
         }
         .dm-subtitle {
           font-size: 0.875rem;
-          color: #64748b;
+          color: var(--dm-text-secondary);
           margin-top: 0.25rem;
         }
         .dm-btn-secondary {
@@ -129,37 +276,46 @@ export default function DeviceManager() {
           padding: 0.5rem 1rem;
           font-size: 0.875rem;
           font-weight: 500;
-          color: #334155;
-          background-color: #ffffff;
-          border: 1px solid #cbd5e1;
+          color: var(--dm-btn-sec-text);
+          background-color: var(--dm-btn-sec-bg);
+          border: 1px solid var(--dm-btn-sec-border);
           border-radius: 0.75rem;
           cursor: pointer;
           transition: all 0.2s;
           box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
         .dm-btn-secondary:hover {
-          background-color: #f8fafc;
+          background-color: var(--dm-btn-sec-hover);
+        }
+        .dm-btn-dark {
+          background-color: var(--dm-btn-dark-bg);
+          color: var(--dm-btn-dark-text);
+          border: 1px solid transparent;
+        }
+        .dm-btn-dark:hover {
+          background-color: var(--dm-btn-dark-hover);
         }
         .dm-card {
-          background: #ffffff;
+          background: var(--dm-card-bg);
           border-radius: 1rem;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+          border: 1px solid var(--dm-card-border);
+          box-shadow: var(--dm-card-shadow);
           overflow: hidden;
+          transition: background-color 0.2s, border-color 0.2s;
         }
         .dm-card-header {
           padding: 1.5rem;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid var(--dm-card-border);
         }
         .dm-card-title {
           font-size: 1.125rem;
           font-weight: 600;
-          color: #0f172a;
+          color: var(--dm-text-primary);
           margin: 0;
         }
         .dm-card-subtitle {
           font-size: 0.75rem;
-          color: #64748b;
+          color: var(--dm-text-secondary);
           margin-top: 0.25rem;
         }
         .dm-card-body {
@@ -171,7 +327,7 @@ export default function DeviceManager() {
         .dm-tabs {
           display: inline-flex;
           padding: 0.25rem;
-          background-color: #f1f5f9;
+          background-color: var(--dm-tab-container-bg);
           border-radius: 0.75rem;
           gap: 0.25rem;
           align-self: flex-start;
@@ -186,13 +342,13 @@ export default function DeviceManager() {
           font-weight: 500;
           border: none;
           background: transparent;
-          color: #475569;
+          color: var(--dm-tab-text);
           cursor: pointer;
           transition: all 0.2s;
         }
         .dm-tab.active {
-          background-color: #ffffff;
-          color: #2563eb;
+          background-color: var(--dm-tab-active-bg);
+          color: var(--dm-tab-active-text);
           box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
         .dm-grid-2 {
@@ -204,15 +360,16 @@ export default function DeviceManager() {
           display: block;
           font-size: 0.75rem;
           font-weight: 600;
-          color: #475569;
+          color: var(--dm-text-secondary);
           margin-bottom: 0.375rem;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .dm-input {
           width: 100%;
-          background-color: #f8fafc;
-          border: 1px solid #e2e8f0;
+          background-color: var(--dm-input-bg);
+          color: var(--dm-text-primary);
+          border: 1px solid var(--dm-input-border);
           border-radius: 0.75rem;
           padding: 0.625rem 1rem;
           font-size: 0.875rem;
@@ -221,7 +378,7 @@ export default function DeviceManager() {
           transition: all 0.2s;
         }
         .dm-input:focus {
-          background-color: #ffffff;
+          background-color: var(--dm-input-focus-bg);
           border-color: #2563eb;
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
@@ -231,8 +388,8 @@ export default function DeviceManager() {
           align-items: center;
           justify-content: center;
           gap: 0.5rem;
-          background-color: #2563eb;
-          color: #ffffff;
+          background-color: var(--dm-btn-primary-bg);
+          color: var(--dm-btn-primary-text);
           font-weight: 500;
           padding: 0.75rem 1rem;
           border-radius: 0.75rem;
@@ -241,27 +398,27 @@ export default function DeviceManager() {
           transition: all 0.2s;
         }
         .dm-btn-primary:hover:not(:disabled) {
-          background-color: #1d4ed8;
+          background-color: var(--dm-btn-primary-hover);
         }
         .dm-btn-primary:disabled {
-          background-color: #e2e8f0;
-          color: #94a3b8;
+          background-color: var(--dm-btn-primary-disabled-bg);
+          color: var(--dm-btn-primary-disabled-text);
           cursor: not-allowed;
         }
         .dm-preview {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background-color: #ecfdf5;
-          border: 1px solid #a7f3d0;
+          background-color: var(--dm-badge-active-bg);
+          border: 1px solid var(--dm-badge-active-border);
           border-radius: 0.75rem;
           padding: 1rem;
-          color: #065f46;
+          color: var(--dm-badge-active-text);
         }
         .dm-badge-active {
-          background-color: #ecfdf5;
-          color: #047857;
-          border: 1px solid #a7f3d0;
+          background-color: var(--dm-badge-active-bg);
+          color: var(--dm-badge-active-text);
+          border: 1px solid var(--dm-badge-active-border);
           padding: 0.25rem 0.625rem;
           border-radius: 9999px;
           font-size: 0.75rem;
@@ -269,9 +426,9 @@ export default function DeviceManager() {
           text-transform: uppercase;
         }
         .dm-badge-inactive {
-          background-color: #f1f5f9;
-          color: #475569;
-          border: 1px solid #e2e8f0;
+          background-color: var(--dm-badge-inactive-bg);
+          color: var(--dm-badge-inactive-text);
+          border: 1px solid var(--dm-badge-inactive-border);
           padding: 0.25rem 0.625rem;
           border-radius: 9999px;
           font-size: 0.75rem;
@@ -279,8 +436,8 @@ export default function DeviceManager() {
           text-transform: uppercase;
         }
         .dm-btn-danger {
-          background-color: #fff1f2;
-          color: #e11d48;
+          background-color: var(--dm-btn-danger-bg);
+          color: var(--dm-btn-danger-text);
           border: none;
           padding: 0.5rem 0.875rem;
           border-radius: 0.75rem;
@@ -290,7 +447,7 @@ export default function DeviceManager() {
           transition: all 0.2s;
         }
         .dm-btn-danger:hover {
-          background-color: #ffe4e6;
+          background-color: var(--dm-btn-danger-hover);
         }
         .spin {
           animation: spin 1s linear infinite;
@@ -361,14 +518,13 @@ export default function DeviceManager() {
                   <button
                     type="button"
                     onClick={() => setShowScanner(!showScanner)}
-                    className="dm-btn-secondary"
-                    style={{ backgroundColor: "#0f172a", color: "#ffffff" }}
+                    className="dm-btn-secondary dm-btn-dark"
                   >
                     {showScanner ? "Close Camera Scanner" : "Open Camera Scanner"}
                   </button>
 
                   {showScanner && (
-                    <div style={{ marginTop: "1rem", padding: "1rem", border: "2px dashed #cbd5e1", borderRadius: "1rem", background: "#f8fafc" }}>
+                    <div style={{ marginTop: "1rem", padding: "1rem", border: "2px dashed var(--dm-card-border)", borderRadius: "1rem", background: "var(--dm-input-bg)" }}>
                       <div style={{ maxWidth: "400px", margin: "0 auto", overflow: "hidden", borderRadius: "0.75rem", background: "#000" }}>
                         <QRScanner onScan={handleQR} />
                       </div>
@@ -430,10 +586,10 @@ export default function DeviceManager() {
             </h2>
 
             {loadingDevices ? (
-              <p style={{ color: "#64748b" }}>Loading devices...</p>
+              <p style={{ color: "var(--dm-text-secondary)" }}>Loading devices...</p>
             ) : devices.length === 0 ? (
               <div className="dm-card" style={{ padding: "2.5rem", textAlign: "center", borderStyle: "dashed" }}>
-                <p style={{ color: "#64748b", margin: 0 }}>No devices connected yet.</p>
+                <p style={{ color: "var(--dm-text-secondary)", margin: 0 }}>No devices connected yet.</p>
               </div>
             ) : (
               <div className="dm-grid-2">
@@ -442,14 +598,14 @@ export default function DeviceManager() {
                   return (
                     <div key={device._id} className="dm-card" style={{ padding: "1.25rem" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                        <span style={{ fontFamily: "monospace", fontWeight: "700", fontSize: "1.125rem" }}>
+                        <span style={{ fontFamily: "monospace", fontWeight: "700", fontSize: "1.125rem", color: "var(--dm-text-primary)" }}>
                           {device.deviceId}
                         </span>
                         <span className={isActive ? "dm-badge-active" : "dm-badge-inactive"}>
                           {device.activationStatus || "Unknown"}
                         </span>
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: "1rem" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--dm-text-secondary)", marginBottom: "1rem" }}>
                         Last seen: {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : "Never"}
                       </div>
                       <div style={{ textAlign: "right" }}>

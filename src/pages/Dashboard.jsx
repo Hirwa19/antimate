@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import io from "socket.io-client";
 import {
   Thermometer,
@@ -13,7 +14,13 @@ import BottomNav from "../components/BottomNav";
 import AppHeader from "../components/AppHeader";
 import { useAppSettings } from "../context/AppSettingsContext";
 
-const socket = io("https://brooder-backend.onrender.com");
+const API =
+  import.meta.env.VITE_API_URL ||
+  "https://brooder-backend.onrender.com";
+
+const socket = io(API, {
+  transports: ["websocket", "polling"],
+});
 
 function Dashboard() {
   const { isDark } = useAppSettings();
@@ -22,88 +29,371 @@ function Dashboard() {
     temperature: 0,
     humidity: 0,
     heater: "OFF",
-    fan: 0,
+    fanSpeed: 0,
     condition: "NORMAL",
   });
 
   const [history, setHistory] = useState([]);
+  const [connected, setConnected] = useState(false);
+
+  // =====================================================
+  // TELEMETRY
+  // =====================================================
 
   useEffect(() => {
-    socket.on("sensorData", (newData) => {
-      setData(newData);
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
 
-      setHistory((prev) => {
-        const next = [
-          ...prev,
+    const userId = user?._id || user?.id;
+
+    // Join user socket room
+    if (userId) {
+      socket.emit("join-user", userId);
+    }
+
+    // ---------------------------------------------------
+    // SOCKET CONNECTION
+    // ---------------------------------------------------
+
+    const handleConnect = () => {
+      console.log("🟢 Dashboard Socket Connected");
+
+      setConnected(true);
+
+      if (userId) {
+        socket.emit("join-user", userId);
+      }
+    };
+
+    const handleDisconnect = () => {
+      console.log("🔴 Dashboard Socket Disconnected");
+      setConnected(false);
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    // ---------------------------------------------------
+    // LOAD LATEST TELEMETRY
+    // ---------------------------------------------------
+
+    const loadTelemetry = async () => {
+      if (!token) {
+        console.warn("⚠️ No authentication token");
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          `${API}/api/telemetry/latest`,
           {
-            time: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            temperature: Number(newData.temperature || newData.t || 0),
-            humidity: Number(newData.humidity || newData.h || 0),
-          },
-        ];
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-        return next.slice(-12);
-      });
-    });
+        const telemetry = response.data?.data;
 
-    return () => socket.off("sensorData");
+        if (!telemetry) {
+          console.log("ℹ️ No telemetry available yet");
+          return;
+        }
+
+        console.log(
+          "📡 Latest telemetry:",
+          telemetry
+        );
+
+        updateTelemetry(telemetry);
+      } catch (error) {
+        console.error(
+          "❌ TELEMETRY LOAD ERROR:",
+          error.response?.data || error.message
+        );
+      }
+    };
+
+    // ---------------------------------------------------
+    // LIVE TELEMETRY
+    // ---------------------------------------------------
+
+    const handleTelemetry = (telemetry) => {
+      console.log(
+        "📡 Live telemetry:",
+        telemetry
+      );
+
+      updateTelemetry(telemetry);
+    };
+
+    socket.on(
+      "telemetry:update",
+      handleTelemetry
+    );
+
+    loadTelemetry();
+
+    // ---------------------------------------------------
+    // CLEANUP
+    // ---------------------------------------------------
+
+    return () => {
+      socket.off(
+        "connect",
+        handleConnect
+      );
+
+      socket.off(
+        "disconnect",
+        handleDisconnect
+      );
+
+      socket.off(
+        "telemetry:update",
+        handleTelemetry
+      );
+    };
   }, []);
 
-  const temperature = Number(data.temperature || data.t || 0);
-  const humidity = Number(data.humidity || data.h || 0);
-  const heaterOn = data.heater === "ON" || data.heater === 1 || data.heater === true;
-  const fanValue = Number(data.fan || 0);
+  // =====================================================
+  // UPDATE TELEMETRY
+  // =====================================================
 
-  const conditionText = data.condition || "NORMAL";
+  const updateTelemetry = (telemetry) => {
+    const temperature = Number(
+      telemetry.temperature ??
+        telemetry.temp ??
+        telemetry.t ??
+        0
+    );
 
-  const bg = isDark ? "#0f172a" : "#f8fafc";
-  const text = isDark ? "#f8fafc" : "#0f172a";
-  const muted = isDark ? "#94a3b8" : "#64748b";
-  const softBg = isDark ? "rgba(30,41,59,0.72)" : "rgba(255,255,255,0.78)";
-  const border = isDark ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.08)";
+    const humidity = Number(
+      telemetry.humidity ??
+        telemetry.rh ??
+        telemetry.h ??
+        0
+    );
+
+    const fanSpeed = Number(
+      telemetry.fanSpeed ??
+        telemetry.fan ??
+        0
+    );
+
+    const heater =
+      telemetry.heater ??
+      "OFF";
+
+    setData({
+      temperature,
+      humidity,
+      heater,
+      fanSpeed,
+      condition:
+        telemetry.condition ||
+        "NORMAL",
+    });
+
+    setHistory((previous) => {
+      const item = {
+        time: new Date(
+          telemetry.createdAt ||
+            Date.now()
+        ).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+
+        temperature,
+
+        humidity,
+      };
+
+      const next = [
+        ...previous,
+        item,
+      ];
+
+      return next.slice(-12);
+    });
+  };
+
+  // =====================================================
+  // VALUES
+  // =====================================================
+
+  const temperature = Number(
+    data.temperature || 0
+  );
+
+  const humidity = Number(
+    data.humidity || 0
+  );
+
+  const heaterOn =
+    data.heater === "ON" ||
+    data.heater === 1 ||
+    data.heater === true;
+
+  const fanValue = Number(
+    data.fanSpeed || 0
+  );
+
+  const conditionText =
+    data.condition || "NORMAL";
+
+  // =====================================================
+  // THEME
+  // =====================================================
+
+  const bg = isDark
+    ? "#0f172a"
+    : "#f8fafc";
+
+  const text = isDark
+    ? "#f8fafc"
+    : "#0f172a";
+
+  const muted = isDark
+    ? "#94a3b8"
+    : "#64748b";
+
+  const softBg = isDark
+    ? "rgba(30,41,59,0.72)"
+    : "rgba(255,255,255,0.78)";
+
+  const border = isDark
+    ? "rgba(148,163,184,0.14)"
+    : "rgba(15,23,42,0.08)";
+
+  // =====================================================
+  // CHART
+  // =====================================================
 
   const chartPoints = useMemo(() => {
     const values = history.length
-      ? history.map((item) => item.temperature)
-      : [temperature || 25, temperature || 25, temperature || 25];
+      ? history.map(
+          (item) =>
+            item.temperature
+        )
+      : [
+          temperature || 25,
+          temperature || 25,
+          temperature || 25,
+        ];
 
-    const min = Math.min(...values) - 1;
-    const max = Math.max(...values) + 1;
+    const min =
+      Math.min(...values) - 1;
+
+    const max =
+      Math.max(...values) + 1;
+
     const width = 320;
+
     const height = 105;
 
     return values
       .map((value, index) => {
-        const x = values.length === 1 ? 0 : (index / (values.length - 1)) * width;
-        const y = height - ((value - min) / (max - min || 1)) * height;
+        const x =
+          values.length === 1
+            ? 0
+            : (index /
+                (values.length - 1)) *
+              width;
+
+        const y =
+          height -
+          ((value - min) /
+            (max - min || 1)) *
+            height;
+
         return `${x},${y}`;
       })
       .join(" ");
-  }, [history, temperature]);
+  }, [
+    history,
+    temperature,
+  ]);
 
-  const InfoRow = ({ icon, label, value, extra }) => (
-    <div style={{ ...styles.infoRow, background: softBg, border: `1px solid ${border}` }}>
+  // =====================================================
+  // INFO ROW
+  // =====================================================
+
+  const InfoRow = ({
+    icon,
+    label,
+    value,
+    extra,
+  }) => (
+    <div
+      style={{
+        ...styles.infoRow,
+        background: softBg,
+        border: `1px solid ${border}`,
+      }}
+    >
       <div style={styles.infoLeft}>
-        <span style={styles.iconBox}>{icon}</span>
+        <div style={styles.iconBox}>
+          {icon}
+        </div>
+
         <div>
-          <p style={{ ...styles.label, color: muted }}>{label}</p>
-          <h3 style={{ ...styles.value, color: text }}>{value}</h3>
+          <p
+            style={{
+              ...styles.label,
+              color: muted,
+            }}
+          >
+            {label}
+          </p>
+
+          <h3
+            style={{
+              ...styles.value,
+              color: text,
+            }}
+          >
+            {value}
+          </h3>
         </div>
       </div>
-      {extra && <span style={{ ...styles.extra, color: muted }}>{extra}</span>}
+
+      {extra && (
+        <span
+          style={{
+            ...styles.extra,
+            color: muted,
+          }}
+        >
+          {extra}
+        </span>
+      )}
     </div>
   );
 
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
-    <div style={{ ...styles.page, background: bg, color: text }}>
+    <div
+      style={{
+        ...styles.page,
+        background: bg,
+        color: text,
+      }}
+    >
       <style>
         {`
           @keyframes moveLine {
-            0% { transform: translateX(-55%); }
-            100% { transform: translateX(55%); }
+            0% {
+              transform: translateX(-55%);
+            }
+
+            100% {
+              transform: translateX(55%);
+            }
           }
         `}
       </style>
@@ -111,52 +401,133 @@ function Dashboard() {
       <AppHeader title="Dashboard" />
 
       <main style={styles.content}>
+
+        {/* HERO */}
+
         <section style={styles.hero}>
           <div>
-            <p style={{ ...styles.smallText, color: muted }}>Live brooder status</p>
-            <h2 style={styles.title}>ANTIMATE Edge</h2>
+            <p
+              style={{
+                ...styles.smallText,
+                color: muted,
+              }}
+            >
+              Live brooder status
+            </p>
+
+            <h2 style={styles.title}>
+              ANTIMATE Edge
+            </h2>
           </div>
 
           <div style={styles.statusPill}>
             <Activity size={14} />
-            <span>{conditionText}</span>
+
+            <span>
+              {conditionText}
+            </span>
           </div>
         </section>
 
+        {/* QUICK STATS */}
+
         <section style={styles.quickStats}>
+
           <div style={styles.bigStat}>
             <Thermometer size={18} />
+
             <div>
-              <p style={{ ...styles.label, color: muted }}>Temperature</p>
-              <h1 style={styles.bigValue}>{temperature.toFixed(1)}°C</h1>
+              <p style={styles.whiteLabel}>
+                Temperature
+              </p>
+
+              <h1 style={styles.bigValue}>
+                {temperature.toFixed(1)}
+                °C
+              </h1>
             </div>
           </div>
 
           <div style={styles.bigStat}>
             <Droplets size={18} />
+
             <div>
-              <p style={{ ...styles.label, color: muted }}>Humidity</p>
-              <h1 style={styles.bigValue}>{humidity.toFixed(1)}%</h1>
+              <p style={styles.whiteLabel}>
+                Humidity
+              </p>
+
+              <h1 style={styles.bigValue}>
+                {humidity.toFixed(1)}
+                %
+              </h1>
             </div>
           </div>
+
         </section>
 
-        <section style={{ ...styles.chartBox, background: softBg, border: `1px solid ${border}` }}>
+        {/* TEMPERATURE CHART */}
+
+        <section
+          style={{
+            ...styles.chartBox,
+            background: softBg,
+            border: `1px solid ${border}`,
+          }}
+        >
           <div style={styles.chartHeader}>
+
             <div>
-              <p style={{ ...styles.label, color: muted }}>Temperature trend</p>
-              <h3 style={{ ...styles.chartTitle, color: text }}>Last readings</h3>
+              <p
+                style={{
+                  ...styles.label,
+                  color: muted,
+                }}
+              >
+                Temperature trend
+              </p>
+
+              <h3
+                style={{
+                  ...styles.chartTitle,
+                  color: text,
+                }}
+              >
+                Last readings
+              </h3>
             </div>
-            <span style={{ ...styles.extra, color: muted }}>
-              {history.length ? `${history.length} points` : "waiting"}
+
+            <span
+              style={{
+                ...styles.extra,
+                color: muted,
+              }}
+            >
+              {history.length
+                ? `${history.length} points`
+                : "waiting"}
             </span>
+
           </div>
 
-          <svg viewBox="0 0 320 115" style={styles.svg}>
+          <svg
+            viewBox="0 0 320 115"
+            style={styles.svg}
+          >
             <defs>
-              <linearGradient id="trendGradient" x1="0" x2="1">
-                <stop offset="0%" stopColor="#2563eb" />
-                <stop offset="100%" stopColor="#7c3aed" />
+              <linearGradient
+                id="trendGradient"
+                x1="0"
+                x2="1"
+              >
+                <stop
+                  offset="0%"
+                  stopColor="#2563eb"
+                />
+
+                <stop
+                  offset="100%"
+                  stopColor="#7c3aed"
+                />
               </linearGradient>
             </defs>
 
@@ -171,8 +542,18 @@ function Dashboard() {
 
             {history.length > 0 && (
               <circle
-                cx={chartPoints.split(" ").at(-1)?.split(",")[0]}
-                cy={chartPoints.split(" ").at(-1)?.split(",")[1]}
+                cx={
+                  chartPoints
+                    .split(" ")
+                    .at(-1)
+                    ?.split(",")[0]
+                }
+                cy={
+                  chartPoints
+                    .split(" ")
+                    .at(-1)
+                    ?.split(",")[1]
+                }
                 r="4.5"
                 fill="#7c3aed"
               />
@@ -180,38 +561,79 @@ function Dashboard() {
           </svg>
         </section>
 
+        {/* DEVICE STATUS */}
+
         <section style={styles.deviceSection}>
+
           <InfoRow
-            icon={<Flame size={17} />}
+            icon={
+              <Flame size={17} />
+            }
             label="Heater"
-            value={heaterOn ? "ON" : "OFF"}
-            extra={heaterOn ? "heating" : "standby"}
+            value={
+              heaterOn
+                ? "ON"
+                : "OFF"
+            }
+            extra={
+              heaterOn
+                ? "heating"
+                : "standby"
+            }
           />
 
           <InfoRow
-            icon={<Wind size={17} />}
+            icon={
+              <Wind size={17} />
+            }
             label="Fan"
             value={`${fanValue}%`}
-            extra={fanValue > 0 ? "running" : "off"}
+            extra={
+              fanValue > 0
+                ? "running"
+                : "off"
+            }
           />
 
           <InfoRow
-            icon={<Power size={17} />}
+            icon={
+              <Power size={17} />
+            }
             label="Connection"
-            value="Live"
-            extra="socket"
+            value={
+              connected
+                ? "Live"
+                : "Offline"
+            }
+            extra={
+              connected
+                ? "socket"
+                : "disconnected"
+            }
           />
+
         </section>
+
       </main>
 
-      <div style={styles.bottomLineWrap}>
-        <div style={styles.bottomLine}></div>
+      {/* BOTTOM ANIMATION */}
+
+      <div
+        style={styles.bottomLineWrap}
+      >
+        <div
+          style={styles.bottomLine}
+        />
       </div>
 
       <BottomNav />
     </div>
   );
 }
+
+// =====================================================
+// STYLES
+// =====================================================
 
 const styles = {
   page: {
@@ -250,7 +672,8 @@ const styles = {
     gap: "6px",
     padding: "7px 11px",
     borderRadius: "999px",
-    background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+    background:
+      "linear-gradient(135deg, #2563eb, #7c3aed)",
     color: "white",
     fontSize: "11px",
     fontWeight: 600,
@@ -258,7 +681,8 @@ const styles = {
 
   quickStats: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns:
+      "1fr 1fr",
     gap: "12px",
     marginBottom: "14px",
   },
@@ -270,9 +694,18 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    background: "linear-gradient(145deg, #2563eb, #7c3aed)",
+    background:
+      "linear-gradient(145deg, #2563eb, #7c3aed)",
     color: "white",
-    boxShadow: "0 18px 35px rgba(37,99,235,0.22)",
+    boxShadow:
+      "0 18px 35px rgba(37,99,235,0.22)",
+  },
+
+  whiteLabel: {
+    margin: 0,
+    fontSize: "11px",
+    fontWeight: 500,
+    opacity: 0.85,
   },
 
   label: {
@@ -296,7 +729,8 @@ const styles = {
 
   chartHeader: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     marginBottom: "10px",
   },
@@ -325,7 +759,8 @@ const styles = {
     padding: "12px 14px",
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     backdropFilter: "blur(12px)",
   },
 
@@ -341,7 +776,8 @@ const styles = {
     borderRadius: "14px",
     display: "grid",
     placeItems: "center",
-    background: "linear-gradient(135deg, rgba(37,99,235,0.18), rgba(124,58,237,0.18))",
+    background:
+      "linear-gradient(135deg, rgba(37,99,235,0.18), rgba(124,58,237,0.18))",
     color: "#7c3aed",
   },
 
@@ -360,12 +796,14 @@ const styles = {
     position: "fixed",
     bottom: "76px",
     left: "50%",
-    transform: "translateX(-50%)",
+    transform:
+      "translateX(-50%)",
     width: "58%",
     height: "4px",
     borderRadius: "999px",
     overflow: "hidden",
-    background: "rgba(148,163,184,0.18)",
+    background:
+      "rgba(148,163,184,0.18)",
     backdropFilter: "blur(5px)",
     zIndex: 20,
   },
@@ -375,7 +813,8 @@ const styles = {
     height: "100%",
     background:
       "linear-gradient(90deg, transparent, #2563eb, #7c3aed, transparent)",
-    animation: "moveLine 2.8s linear infinite",
+    animation:
+      "moveLine 2.8s linear infinite",
   },
 };
 

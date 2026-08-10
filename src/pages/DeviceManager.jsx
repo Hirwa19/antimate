@@ -51,7 +51,7 @@ export default function DeviceManager() {
         await axios.post(`${API}/api/devices/verify`, { deviceId, qrToken }, { headers });
       }
       if (mode === "KEY") {
-        await axios.post(`${API}/api/devices/verify-key`, { deviceId, deviceKey }, { headers });
+        await axios.post(`${API}/api/devices/verify`, { deviceId, deviceKey }, { headers });
       }
       await axios.post(`${API}/api/devices/claim`, { deviceId }, { headers });
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import { useAppSettings } from "../context/AppSettingsContext";
 
@@ -8,22 +9,24 @@ const API_URL =
 
 export default function History() {
   const { isDark } = useAppSettings();
+  const navigate = useNavigate();
 
+  const [profile, setProfile] = useState(null);
   const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] =
-    useState("");
-
+  const [selectedDevice, setSelectedDevice] = useState("");
   const [history, setHistory] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // =====================================================
-  // FETCH USER DEVICES
+  // FETCH PROFILE / SUBSCRIPTION
   // =====================================================
 
-  async function fetchDevices() {
-    const token =
-      localStorage.getItem("token");
+  async function fetchProfile() {
+    const token = localStorage.getItem("token");
 
     if (!token) {
       setError("You are not logged in.");
@@ -33,11 +36,10 @@ export default function History() {
 
     try {
       const res = await fetch(
-        `${API_URL}/api/devices/my-devices`,
+        `${API_URL}/api/profile/me`,
         {
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -46,49 +48,55 @@ export default function History() {
 
       if (!res.ok) {
         throw new Error(
-          data.message ||
-            "Failed to load devices"
+          data.message || "Failed to load profile"
         );
       }
 
-      const deviceList =
-        Array.isArray(data)
-          ? data
-          : data.data || [];
+      setProfile(data);
 
-      setDevices(deviceList);
-
-      if (deviceList.length > 0) {
-        setSelectedDevice(
-          deviceList[0].deviceId
-        );
-      }
+      return data;
     } catch (err) {
-      console.error(
-        "Devices error:",
-        err
-      );
-
+      console.error("Profile error:", err);
       setError(
-        err.message ||
-          "Failed to load devices"
+        err.message || "Failed to load profile"
       );
+      return null;
     }
   }
 
   // =====================================================
-  // FETCH HISTORY
+  // CHECK SUBSCRIPTION
   // =====================================================
 
-  async function fetchHistory(deviceId) {
-    if (!deviceId) {
-      setHistory([]);
-      setLoading(false);
-      return;
+  function checkHistoryAccess(profileData) {
+    const plan = profileData?.plan;
+
+    if (!plan) {
+      return false;
     }
 
-    const token =
-      localStorage.getItem("token");
+    const planName = String(
+      plan.planName || plan.name || "Free"
+    ).toLowerCase();
+
+    /*
+     * History is available to paid plans.
+     *
+     * Free = no history
+     * Basic = history
+     * Pro = history
+     * Premium = history
+     */
+
+    return planName !== "free";
+  }
+
+  // =====================================================
+  // FETCH USER DEVICES
+  // =====================================================
+
+  async function fetchDevices() {
+    const token = localStorage.getItem("token");
 
     if (!token) {
       setError("You are not logged in.");
@@ -101,13 +109,10 @@ export default function History() {
       setError("");
 
       const res = await fetch(
-        `${API_URL}/api/telemetry/history/${encodeURIComponent(
-          deviceId
-        )}?limit=100`,
+        `${API_URL}/api/devices/my-devices`,
         {
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -116,8 +121,90 @@ export default function History() {
 
       if (!res.ok) {
         throw new Error(
+          data.message || "Failed to load devices"
+        );
+      }
+
+      const deviceList = Array.isArray(data)
+        ? data
+        : Array.isArray(data.data)
+        ? data.data
+        : [];
+
+      setDevices(deviceList);
+
+      if (deviceList.length > 0) {
+        setSelectedDevice(
+          deviceList[0].deviceId
+        );
+      }
+    } catch (err) {
+      console.error("Devices error:", err);
+
+      setDevices([]);
+
+      setError(
+        err.message || "Failed to load devices"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =====================================================
+  // FETCH HISTORY
+  // =====================================================
+
+  async function fetchHistory(deviceId) {
+    if (!deviceId || accessDenied) {
+      setHistory([]);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("You are not logged in.");
+      return;
+    }
+
+    try {
+      setHistoryLoading(true);
+      setError("");
+
+      const res = await fetch(
+        `${API_URL}/api/telemetry/history/${encodeURIComponent(
+          deviceId
+        )}?limit=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      // ===============================================
+      // SUBSCRIPTION BLOCKED
+      // ===============================================
+
+      if (res.status === 403) {
+        setHistory([]);
+        setAccessDenied(true);
+
+        setError(
           data.message ||
-            "Failed to load history"
+            "Your current subscription does not include sensor history."
+        );
+
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to load sensor history"
         );
       }
 
@@ -127,19 +214,16 @@ export default function History() {
           : []
       );
     } catch (err) {
-      console.error(
-        "History error:",
-        err
-      );
+      console.error("History error:", err);
 
       setHistory([]);
 
       setError(
         err.message ||
-          "Failed to load history"
+          "Failed to load sensor history"
       );
     } finally {
-      setLoading(false);
+      setHistoryLoading(false);
     }
   }
 
@@ -148,18 +232,45 @@ export default function History() {
   // =====================================================
 
   useEffect(() => {
-    fetchDevices();
+    async function loadPage() {
+      const profileData =
+        await fetchProfile();
+
+      if (!profileData) {
+        setLoading(false);
+        return;
+      }
+
+      const allowed =
+        checkHistoryAccess(profileData);
+
+      if (!allowed) {
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
+
+      await fetchDevices();
+    }
+
+    loadPage();
   }, []);
 
   // =====================================================
-  // LOAD SELECTED DEVICE HISTORY
+  // LOAD HISTORY WHEN DEVICE CHANGES
   // =====================================================
 
   useEffect(() => {
-    if (selectedDevice) {
+    if (
+      selectedDevice &&
+      !accessDenied
+    ) {
       fetchHistory(selectedDevice);
     }
-  }, [selectedDevice]);
+  }, [
+    selectedDevice,
+    accessDenied,
+  ]);
 
   // =====================================================
   // FORMAT DATE
@@ -170,14 +281,9 @@ export default function History() {
       return "Unknown time";
     }
 
-    const parsed =
-      new Date(date);
+    const parsed = new Date(date);
 
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
+    if (Number.isNaN(parsed.getTime())) {
       return "Unknown time";
     }
 
@@ -209,7 +315,142 @@ export default function History() {
     : "rgba(15,23,42,0.08)";
 
   // =====================================================
-  // UI
+  // LOADING
+  // =====================================================
+
+  if (
+    loading &&
+    !profile
+  ) {
+    return (
+      <div
+        style={{
+          ...styles.page,
+          background,
+          color: text,
+        }}
+      >
+        <div style={styles.loadingPage}>
+          <div style={styles.spinner} />
+          <p style={{ color: muted }}>
+            Checking subscription...
+          </p>
+        </div>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // =====================================================
+  // SUBSCRIPTION GATE
+  // =====================================================
+
+  if (accessDenied) {
+    const currentPlan =
+      profile?.plan?.planName ||
+      "Free";
+
+    return (
+      <div
+        style={{
+          ...styles.page,
+          background,
+          color: text,
+        }}
+      >
+        <div style={styles.header}>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                marginBottom: 8,
+              }}
+            >
+              Sensor History
+            </h1>
+
+            <p
+              style={{
+                color: muted,
+                margin: 0,
+              }}
+            >
+              Temperature and humidity records
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            ...styles.subscriptionCard,
+            background: cardBackground,
+            border: `1px solid ${border}`,
+          }}
+        >
+          <div style={styles.lockIcon}>
+            🔒
+          </div>
+
+          <h2 style={styles.subscriptionTitle}>
+            History requires a paid plan
+          </h2>
+
+          <p
+            style={{
+              ...styles.subscriptionText,
+              color: muted,
+            }}
+          >
+            Your current plan is{" "}
+            <strong>
+              {currentPlan}
+            </strong>
+            .
+          </p>
+
+          <p
+            style={{
+              ...styles.subscriptionText,
+              color: muted,
+            }}
+          >
+            Upgrade your ANTIMATE subscription
+            to access sensor history, historical
+            temperature and humidity records,
+            and longer-term monitoring.
+          </p>
+
+          <button
+            onClick={() =>
+              navigate("/plans")
+            }
+            style={
+              styles.primaryButton
+            }
+          >
+            View Plans
+          </button>
+
+          <button
+            onClick={() =>
+              navigate("/dashboard")
+            }
+            style={
+              styles.secondaryButton
+            }
+          >
+            Back to Dashboard
+          </button>
+        </div>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // =====================================================
+  // MAIN UI
   // =====================================================
 
   return (
@@ -221,7 +462,7 @@ export default function History() {
         background,
         color: text,
         fontFamily:
-          "Inter, Arial",
+          "Inter, Arial, sans-serif",
         position: "relative",
       }}
     >
@@ -236,14 +477,45 @@ export default function History() {
               transform: translateX(300%);
             }
           }
+
+          @keyframes spin {
+            from {
+              transform: rotate(0deg);
+            }
+
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @media (max-width: 600px) {
+            .history-row {
+              flex-direction: column;
+              align-items: flex-start !important;
+              gap: 14px;
+            }
+
+            .history-right {
+              width: 100%;
+              text-align: left !important;
+            }
+
+            .history-header {
+              flex-direction: column;
+              align-items: flex-start !important;
+              gap: 12px;
+            }
+
+            .analysis-button {
+              width: 100%;
+            }
+          }
         `}
       </style>
 
-      {/* =================================================
-          LOADING BAR
-      ================================================= */}
+      {/* LOADING BAR */}
 
-      {loading && (
+      {historyLoading && (
         <div
           style={
             styles.loadingContainer
@@ -257,16 +529,17 @@ export default function History() {
         </div>
       )}
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* HEADER */}
 
-      <div style={styles.header}>
+      <div
+        className="history-header"
+        style={styles.header}
+      >
         <div>
           <h1
             style={{
               margin: 0,
-              marginBottom: "8px",
+              marginBottom: 8,
             }}
           >
             Sensor History
@@ -278,15 +551,24 @@ export default function History() {
               margin: 0,
             }}
           >
-            Temperature and humidity
-            records
+            Temperature and humidity records
           </p>
         </div>
+
+        <button
+          className="analysis-button"
+          onClick={() =>
+            navigate("/analysis")
+          }
+          style={
+            styles.analysisButton
+          }
+        >
+          📊 View Analysis
+        </button>
       </div>
 
-      {/* =================================================
-          DEVICE SELECTOR
-      ================================================= */}
+      {/* DEVICE SELECTOR */}
 
       {devices.length > 0 && (
         <div
@@ -294,8 +576,7 @@ export default function History() {
             ...styles.selectorCard,
             background:
               cardBackground,
-            border:
-              `1px solid ${border}`,
+            border: `1px solid ${border}`,
           }}
         >
           <label
@@ -316,12 +597,12 @@ export default function History() {
             }
             style={{
               ...styles.select,
-              background: isDark
-                ? "#172033"
-                : "#ffffff",
+              background:
+                isDark
+                  ? "#172033"
+                  : "#ffffff",
               color: text,
-              border:
-                `1px solid ${border}`,
+              border: `1px solid ${border}`,
             }}
           >
             {devices.map(
@@ -343,17 +624,16 @@ export default function History() {
         </div>
       )}
 
-      {/* =================================================
-          ERROR
-      ================================================= */}
+      {/* ERROR */}
 
       {error && (
         <div
           style={{
             ...styles.error,
-            background: isDark
-              ? "rgba(239,68,68,0.12)"
-              : "rgba(239,68,68,0.08)",
+            background:
+              isDark
+                ? "rgba(239,68,68,0.12)"
+                : "rgba(239,68,68,0.08)",
             border:
               "1px solid rgba(239,68,68,0.2)",
           }}
@@ -362,9 +642,7 @@ export default function History() {
         </div>
       )}
 
-      {/* =================================================
-          NO DEVICES
-      ================================================= */}
+      {/* NO DEVICES */}
 
       {!loading &&
         devices.length === 0 &&
@@ -397,14 +675,26 @@ export default function History() {
               start receiving sensor
               history.
             </p>
+
+            <button
+              onClick={() =>
+                navigate(
+                  "/device-management"
+                )
+              }
+              style={
+                styles.primaryButton
+              }
+            >
+              Add Device
+            </button>
           </div>
         )}
 
-      {/* =================================================
-          NO HISTORY
-      ================================================= */}
+      {/* NO HISTORY */}
 
       {!loading &&
+        !historyLoading &&
         devices.length > 0 &&
         history.length === 0 &&
         !error && (
@@ -440,9 +730,7 @@ export default function History() {
           </div>
         )}
 
-      {/* =================================================
-          HISTORY
-      ================================================= */}
+      {/* HISTORY */}
 
       <div>
         {history.map(
@@ -465,6 +753,7 @@ export default function History() {
 
             return (
               <div
+                className="history-row"
                 key={
                   item._id ||
                   `${item.createdAt}-${index}`
@@ -477,8 +766,6 @@ export default function History() {
                     `1px solid ${border}`,
                 }}
               >
-                {/* LEFT */}
-
                 <div>
                   <div
                     style={
@@ -490,8 +777,7 @@ export default function History() {
                     </span>
 
                     <strong>
-                      {temperature}
-                      °C
+                      {temperature}°C
                     </strong>
                   </div>
 
@@ -510,9 +796,8 @@ export default function History() {
                   </div>
                 </div>
 
-                {/* RIGHT */}
-
                 <div
+                  className="history-right"
                   style={
                     styles.right
                   }
@@ -522,8 +807,7 @@ export default function History() {
                       styles.status
                     }
                   >
-                    🔥{" "}
-                    {heater}
+                    🔥 {heater}
                   </p>
 
                   <p
@@ -531,8 +815,7 @@ export default function History() {
                       styles.fan
                     }
                   >
-                    💨 Fan{" "}
-                    {fan}%
+                    💨 Fan {fan}%
                   </p>
 
                   <p
@@ -552,10 +835,6 @@ export default function History() {
         )}
       </div>
 
-      {/* =================================================
-          BOTTOM NAVIGATION
-      ================================================= */}
-
       <BottomNav />
     </div>
   );
@@ -566,6 +845,35 @@ export default function History() {
 // =====================================================
 
 const styles = {
+  page: {
+    minHeight: "100vh",
+    padding: "20px",
+    paddingBottom: "100px",
+    fontFamily:
+      "Inter, Arial, sans-serif",
+  },
+
+  loadingPage: {
+    minHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+  },
+
+  spinner: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    border:
+      "3px solid rgba(148,163,184,0.25)",
+    borderTop:
+      "3px solid #2563eb",
+    animation:
+      "spin 0.8s linear infinite",
+  },
+
   loadingContainer: {
     position: "fixed",
     bottom: "72px",
@@ -586,7 +894,24 @@ const styles = {
   },
 
   header: {
+    display: "flex",
+    justifyContent:
+      "space-between",
+    alignItems: "center",
     marginBottom: "22px",
+  },
+
+  analysisButton: {
+    padding: "11px 16px",
+    border: "none",
+    borderRadius: "14px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow:
+      "0 8px 20px rgba(37,99,235,0.22)",
   },
 
   selectorCard: {
@@ -679,5 +1004,65 @@ const styles = {
   emptyIcon: {
     fontSize: "35px",
     marginBottom: "10px",
+  },
+
+  subscriptionCard: {
+    maxWidth: "520px",
+    margin:
+      "50px auto 0",
+    padding: "35px 25px",
+    borderRadius: "28px",
+    textAlign: "center",
+    backdropFilter:
+      "blur(14px)",
+    boxShadow:
+      "0 20px 50px rgba(0,0,0,0.18)",
+  },
+
+  lockIcon: {
+    fontSize: "48px",
+    marginBottom: "12px",
+  },
+
+  subscriptionTitle: {
+    margin:
+      "0 0 12px",
+    fontSize: "22px",
+  },
+
+  subscriptionText: {
+    fontSize: "14px",
+    lineHeight: 1.6,
+    margin:
+      "8px 0",
+  },
+
+  primaryButton: {
+    marginTop: "18px",
+    padding:
+      "12px 20px",
+    border: "none",
+    borderRadius: "14px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  secondaryButton: {
+    display: "block",
+    width: "100%",
+    marginTop: "10px",
+    padding:
+      "11px 18px",
+    border:
+      "1px solid rgba(148,163,184,0.25)",
+    borderRadius: "14px",
+    background:
+      "transparent",
+    color: "inherit",
+    fontWeight: 600,
+    cursor: "pointer",
   },
 };

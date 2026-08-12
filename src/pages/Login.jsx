@@ -2,301 +2,751 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import {
-  Cpu,
-  Wifi,
-  Radio,
-  Activity,
-  Database,
-  ShieldCheck,
-  X,
-  Eye,
-  EyeOff,
   ArrowRight,
   Brain,
-  Layers3,
   Cloud,
-  Lock,
+  Eye,
+  EyeOff,
+  Leaf,
   LineChart,
-  Globe2,
+  Lock,
+  Menu,
+  ShieldCheck,
+  Sparkles,
+  Wifi,
+  X,
+  Sun,
+  Moon,
+  HeartHandshake,
 } from "lucide-react";
 import "./Login.css";
 
-// Antimate Logo Component
-const AntimateLogo = ({ size = 32 }) => (
+const AntimateLogo = ({ size = 38 }) => (
   <svg
     width={size}
     height={size}
     viewBox="0 0 100 100"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="antimate-svg-logo"
+    className="antimate-logo"
   >
     <defs>
-      <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <linearGradient
+        id="logoGradient"
+        x1="0%"
+        y1="0%"
+        x2="100%"
+        y2="100%"
+      >
         <stop offset="0%" stopColor="#00d9ff" />
-        <stop offset="100%" stopColor="#0055ff" />
+        <stop offset="100%" stopColor="#2563eb" />
       </linearGradient>
     </defs>
-    {/* Outer 'A' Frame */}
+
     <path
       d="M50 10 L85 85 L65 85 L50 50 L35 85 L15 85 Z"
-      fill="url(#logoGrad)"
+      fill="url(#logoGradient)"
     />
-    {/* Inner Diagonal Slash */}
+
     <path
       d="M50 35 L62 60 L50 60 Z"
-      fill="#00030a"
+      fill="#07111f"
     />
   </svg>
 );
 
 function Login() {
   const navigate = useNavigate();
+
   const [showLogin, setShowLogin] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const departments = [
-    {
-      id: "ai",
-      icon: <Brain size={26} />,
-      title: "ANTIMATE AI",
-      subtitle: "ARTIFICIAL INTELLIGENCE & MACHINE LEARNING",
-      color: "#00d9ff",
+  const [language, setLanguage] = useState("rw");
+  const [darkMode, setDarkMode] = useState(true);
+
+  const content = {
+    rw: {
+      navHome: "Ahabanza",
+      navHow: "Uko ikora",
+      navVision: "Intego",
+      login: "Injira",
+      signup: "Tangira natwe",
+
+      eyebrow: "UBWOROZI BW'IGIHE KIZAZA",
+
+      title1: "Ubworozi bwiza",
+      title2: "butangirira ku makuru meza.",
+
+      description:
+        "ANTIMATE igufasha gukurikirana ubworozi bwawe, kumenya uko amatungo yawe ameze no gufata ibyemezo byiza ukoresheje ikoranabuhanga ryoroheje kandi ryizewe.",
+
+      start: "Tangira natwe",
+      learn: "Menya byinshi",
+
+      live: "Amakuru y'igihe nyacyo",
+      smart: "Ubworozi bw'ikoranabuhanga",
+
+      featuresTitle: "Ikoranabuhanga rikora ku bworozi bwawe",
+
+      feature1Title: "Kurikira ubworozi",
+      feature1Text:
+        "Reba uko ubushyuhe, ubuhehere n'ibindi bipimo bihinduka igihe cyose.",
+
+      feature2Title: "Menya ibibazo hakiri kare",
+      feature2Text:
+        "ANTIMATE igufasha kubona impinduka zishobora kugira ingaruka ku matungo yawe.",
+
+      feature3Title: "Fata ibyemezo neza",
+      feature3Text:
+        "Amakuru yoroheje kandi asobanutse agufasha gukora ibikwiye ku gihe.",
+
+      visionTitle: "Duharanira ubworozi bwiza kandi bwunguka",
+
+      visionText:
+        "Duhuza ubworozi n'ikoranabuhanga kugira ngo umuhinzi cyangwa umworozi abashe gukora byinshi, mu buryo bworoshye kandi bwizewe.",
+
+      joinTitle: "Witeguye gutangira?",
+      joinText:
+        "Injira muri ANTIMATE maze uhindure uburyo ukurikiranamo ubworozi bwawe.",
+
+      loginTitle: "Murakaza neza",
+      loginSubtitle:
+        "Injira muri konti yawe ya ANTIMATE",
+
+      identifier: "Email, Username cyangwa Telefoni",
+      identifierPlaceholder:
+        "Andika email cyangwa username",
+
+      password: "Ijambobanga",
+      passwordPlaceholder:
+        "Andika ijambobanga",
+
+      signIn: "Injira muri Dashboard",
+      forgot: "Wibagiwe ijambobanga?",
+
+      noAccount: "Nta konti ufite?",
+      create: "Fungura konti",
+
+      footer:
+        "ANTIMATE © 2026 • Ikoranabuhanga mu bworozi",
     },
-    {
-      id: "edge",
-      icon: <Layers3 size={26} />,
-      title: "ANTIMATE EDGE",
-      subtitle: "IOT DEVICES & EDGE SOLUTIONS",
-      color: "#00ff7f",
+
+    en: {
+      navHome: "Home",
+      navHow: "How it works",
+      navVision: "Our vision",
+      login: "Login",
+      signup: "Join us",
+
+      eyebrow: "THE FUTURE OF FARMING",
+
+      title1: "Better farming",
+      title2: "starts with better information.",
+
+      description:
+        "ANTIMATE helps you monitor your farm, understand your animals and make better decisions using simple, reliable technology.",
+
+      start: "Get started",
+      learn: "Learn more",
+
+      live: "Real-time insights",
+      smart: "Smart farming",
+
+      featuresTitle:
+        "Technology that works for your farm",
+
+      feature1Title: "Monitor your farm",
+      feature1Text:
+        "Track temperature, humidity and other important conditions in real time.",
+
+      feature2Title: "Detect problems early",
+      feature2Text:
+        "ANTIMATE helps you notice changes that may affect your animals.",
+
+      feature3Title: "Make better decisions",
+      feature3Text:
+        "Clear information helps you take the right action at the right time.",
+
+      visionTitle:
+        "Building better and more productive farms",
+
+      visionText:
+        "We connect farming with technology so farmers can do more with less complexity and greater confidence.",
+
+      joinTitle: "Ready to get started?",
+      joinText:
+        "Join ANTIMATE and transform the way you manage your farm.",
+
+      loginTitle: "Welcome back",
+      loginSubtitle:
+        "Sign in to your ANTIMATE account",
+
+      identifier: "Email, Username or Phone",
+      identifierPlaceholder:
+        "Enter your email or username",
+
+      password: "Password",
+      passwordPlaceholder:
+        "Enter your password",
+
+      signIn: "Sign in to Dashboard",
+      forgot: "Forgot password?",
+
+      noAccount: "Don't have an account?",
+      create: "Create account",
+
+      footer:
+        "ANTIMATE © 2026 • Intelligent Farming Technology",
     },
-    {
-      id: "link",
-      icon: <Wifi size={26} />,
-      title: "ANTIMATE LINK",
-      subtitle: "LORAWAN & WIRELESS CONNECTIVITY",
-      color: "#c300ff",
-    },
-    {
-      id: "cloud",
-      icon: <Cloud size={26} />,
-      title: "ANTIMATE CLOUD",
-      subtitle: "CLOUD INFRASTRUCTURE & DATA SERVICES",
-      color: "#00d9ff",
-    },
-  ];
+  };
+
+  const t = content[language];
 
   async function handleLogin(e) {
     e.preventDefault();
+
     try {
       setLoading(true);
       setMessage("");
-      const res = await loginUser({ identifier, password });
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      const res = await loginUser({
+        identifier,
+        password,
+      });
+
+      localStorage.setItem(
+        "token",
+        res.data.token
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(res.data.user)
+      );
+
       navigate("/home");
     } catch (err) {
-      setMessage(err.response?.data?.message || "Login failed. Please check your credentials.");
+      setMessage(
+        err.response?.data?.message ||
+          "Login failed. Please check your credentials."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="landing-page antimate-theme">
-      {/* BACKGROUND GLOW EFFECTS */}
-      <div className="bg-glow bg-glow-1"></div>
-      <div className="bg-glow bg-glow-2"></div>
+    <div
+      className={`login-page ${
+        darkMode ? "dark" : "light"
+      }`}
+    >
+      <div className="background-orb orb-one" />
+      <div className="background-orb orb-two" />
 
-      {/* NAVBAR */}
-      <header className="navbar">
+      <header className="login-navbar">
         <div className="brand">
-          <div className="brand-icon-logo">
-            <AntimateLogo size={34} />
+          <div className="brand-logo">
+            <AntimateLogo size={39} />
           </div>
-          <div className="brand-text">
-            <h1>ANTIMATE</h1>
-            <p>INTELLIGENT TECHNOLOGY ECOSYSTEM</p>
+
+          <div>
+            <strong>ANTIMATE</strong>
+            <span>
+              SMART FARMING
+            </span>
           </div>
         </div>
 
-        <nav className="nav-links">
-          <a href="#departments">Departments</a>
-          <a href="#vision">Vision & Mission</a>
+        <nav
+          className={
+            mobileMenu
+              ? "navigation mobile-open"
+              : "navigation"
+          }
+        >
+          <a href="#home">
+            {t.navHome}
+          </a>
+
+          <a href="#features">
+            {t.navHow}
+          </a>
+
+          <a href="#vision">
+            {t.navVision}
+          </a>
+
+          <button
+            onClick={() => {
+              setShowLogin(true);
+              setMobileMenu(false);
+            }}
+            className="nav-login"
+          >
+            {t.login}
+          </button>
+
+          <Link
+            to="/signup"
+            className="nav-signup"
+          >
+            {t.signup}
+            <ArrowRight size={15} />
+          </Link>
         </nav>
 
-        <div className="nav-buttons">
-          <button onClick={() => setShowLogin(true)} className="login-btn">
-            Login
+        <div className="navbar-tools">
+          <button
+            className="language-button"
+            onClick={() =>
+              setLanguage(
+                language === "rw"
+                  ? "en"
+                  : "rw"
+              )
+            }
+          >
+            {language === "rw"
+              ? "RW"
+              : "EN"}
           </button>
-          <Link to="/signup" className="signup-btn">
-            Access Platform <ArrowRight size={16} />
-          </Link>
+
+          <button
+            className="theme-button"
+            onClick={() =>
+              setDarkMode(!darkMode)
+            }
+          >
+            {darkMode ? (
+              <Sun size={17} />
+            ) : (
+              <Moon size={17} />
+            )}
+          </button>
+
+          <button
+            className="mobile-menu-button"
+            onClick={() =>
+              setMobileMenu(!mobileMenu)
+            }
+          >
+            {mobileMenu ? (
+              <X />
+            ) : (
+              <Menu />
+            )}
+          </button>
         </div>
       </header>
 
-      {/* HERO SECTION WITH IOT ANIMATION */}
-      <section className="hero">
-        <div className="hero-content">
-          <h1>
-            Smart Farming Powered by <br />
-            <span>AI + IoT</span>
-          </h1>
-          <p>
-            ANTIMATE Smart Brooder is an intelligent poultry management platform 
-            combining real-time IoT devices, low-latency connectivity, cloud infrastructure, 
-            and Artificial Intelligence to maximize farm productivity.
-          </p>
-          <div className="hero-cta">
-            <button onClick={() => setShowLogin(true)} className="primary-btn">
-              Access Platform <ArrowRight size={18} />
-            </button>
-            <a href="#departments" className="secondary-btn">Explore Ecosystem</a>
-          </div>
-        </div>
-
-        {/* IoT Interactive Animation Area */}
-        <div className="iot-animation-wrapper">
-          <div className="iot-core">
-            <AntimateLogo size={42} />
-          </div>
-          <div className="iot-orbit orbit-1">
-            <div className="iot-node node1"><Cpu size={20} /></div>
-          </div>
-          <div className="iot-orbit orbit-2">
-            <div className="iot-node node2"><Wifi size={20} /></div>
-            <div className="iot-node node3"><Radio size={20} /></div>
-          </div>
-          <div className="iot-orbit orbit-3">
-            <div className="iot-node node4"><Activity size={20} /></div>
-            <div className="iot-node node5"><Database size={20} /></div>
-            <div className="iot-node node6"><ShieldCheck size={20} /></div>
-          </div>
-        </div>
-      </section>
-
-      {/* CORE DEPARTMENTS SECTION */}
-      <section id="departments" className="departments-section">
-        <div className="section-header">
-          <h2>Core Departments</h2>
-          <p>The foundation of our intelligent technology ecosystem.</p>
-        </div>
-        <div className="department-grid">
-          {departments.map((dept) => (
-            <div key={dept.id} className="dept-card" style={{ "--dept-color": dept.color }}>
-              <div className="dept-icon-wrapper">{dept.icon}</div>
-              <h3>{dept.title}</h3>
-              <p className="dept-subtitle">{dept.subtitle}</p>
-              <div className="dept-glow-line"></div>
+      <main>
+        <section
+          id="home"
+          className="hero-section"
+        >
+          <div className="hero-content">
+            <div className="hero-badge">
+              <Sparkles size={15} />
+              {t.eyebrow}
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* VISION & MISSION SECTION */}
-      <section id="vision" className="vision-mission-container">
-        <div id="vision-card" className="info-card">
-          <div className="card-icon-wrapper"><Layers3 size={24} /></div>
-          <h2>Our Vision</h2>
-          <p>
-            To transform global agriculture through intelligent technology where farmers seamlessly access 
-            real-time telemetry, automated controls, and predictive AI solutions for superior yields.
-          </p>
+            <h1>
+              {t.title1}
+              <br />
+              <span>{t.title2}</span>
+            </h1>
+
+            <div className="animated-words">
+              <span>
+                Ubworozi bwiza.
+              </span>
+
+              <span>
+                Ikoranabuhanga ryoroshye.
+              </span>
+
+              <span>
+                Umusaruro mwiza.
+              </span>
+
+              <span>
+                Ejo hazaza heza.
+              </span>
+            </div>
+
+            <p className="hero-description">
+              {t.description}
+            </p>
+
+            <div className="hero-buttons">
+              <button
+                className="primary-button"
+                onClick={() =>
+                  setShowLogin(true)
+                }
+              >
+                {t.start}
+                <ArrowRight size={18} />
+              </button>
+
+              <a
+                href="#features"
+                className="secondary-button"
+              >
+                {t.learn}
+              </a>
+            </div>
+
+            <div className="hero-trust">
+              <div>
+                <ShieldCheck size={17} />
+                <span>
+                  {t.live}
+                </span>
+              </div>
+
+              <div>
+                <Leaf size={17} />
+                <span>
+                  {t.smart}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="hero-visual">
+            <div className="visual-glow" />
+
+            <div className="farm-image">
+              <img
+                src="https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=900&q=85"
+                alt="Chickens on a farm"
+              />
+            </div>
+
+            <div className="floating-card card-temperature">
+              <div className="floating-icon">
+                <Leaf size={17} />
+              </div>
+
+              <div>
+                <span>
+                  Farm conditions
+                </span>
+                <strong>
+                  Healthy
+                </strong>
+              </div>
+            </div>
+
+            <div className="floating-card card-ai">
+              <div className="ai-icon">
+                <Brain size={18} />
+              </div>
+
+              <div>
+                <span>
+                  ANTIMATE
+                </span>
+                <strong>
+                  Smart insights
+                </strong>
+              </div>
+            </div>
+
+            <div className="floating-circle circle-one" />
+            <div className="floating-circle circle-two" />
+          </div>
+        </section>
+
+        <section
+          id="features"
+          className="features-section"
+        >
+          <div className="section-heading">
+            <span>
+              ANTIMATE
+            </span>
+
+            <h2>
+              {t.featuresTitle}
+            </h2>
+          </div>
+
+          <div className="feature-grid">
+            <Feature
+              icon={<Wifi />}
+              title={t.feature1Title}
+              text={t.feature1Text}
+            />
+
+            <Feature
+              icon={<Brain />}
+              title={t.feature2Title}
+              text={t.feature2Text}
+            />
+
+            <Feature
+              icon={<LineChart />}
+              title={t.feature3Title}
+              text={t.feature3Text}
+            />
+          </div>
+        </section>
+
+        <section
+          id="vision"
+          className="vision-section"
+        >
+          <div className="vision-image">
+            <img
+              src="https://a-z-animals.com/media/2022/01/group-of-funny-baby-chicks-on-the-farm-picture-id1243389108.jpg"
+              alt="Modern poultry farming"
+            />
+          </div>
+
+          <div className="vision-content">
+            <div className="small-heading">
+              <HeartHandshake size={17} />
+              OUR PURPOSE
+            </div>
+
+            <h2>
+              {t.visionTitle}
+            </h2>
+
+            <p>
+              {t.visionText}
+            </p>
+
+            <div className="vision-points">
+              <div>
+                <Cloud size={18} />
+                <span>
+                  Simple technology
+                </span>
+              </div>
+
+              <div>
+                <ShieldCheck size={18} />
+                <span>
+                  Reliable information
+                </span>
+              </div>
+
+              <div>
+                <Lock size={18} />
+                <span>
+                  Secure platform
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="join-section">
+          <div className="join-content">
+            <Sparkles size={28} />
+
+            <h2>
+              {t.joinTitle}
+            </h2>
+
+            <p>
+              {t.joinText}
+            </p>
+
+            <Link
+              to="/signup"
+              className="primary-button"
+            >
+              {t.signup}
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+        </section>
+      </main>
+
+      <footer className="login-footer">
+        <div className="footer-brand">
+          <AntimateLogo size={30} />
+          <strong>ANTIMATE</strong>
         </div>
 
-        <div id="mission-card" className="info-card">
-          <div className="card-icon-wrapper"><ShieldCheck size={24} /></div>
-          <h2>Our Mission</h2>
-          <p>
-            To deliver affordable, robust, AI-powered IoT ecosystems that empower modern farmers to 
-            precisely monitor, manage, and scale animal production with zero guesswork.
-          </p>
-        </div>
-      </section>
-
-      {/* VALUE PROPOSITION */}
-      <section className="value-proposition">
-        <div className="value-grid">
-          <div className="value-item"><Brain /><h4>INTELLIGENT</h4><p>AI-powered solutions for a smarter future.</p></div>
-          <div className="value-item"><Radio /><h4>CONNECTED</h4><p>Seamless devices and networks everywhere.</p></div>
-          <div className="value-item"><Globe2 /><h4>SCALABLE</h4><p>Cloud infrastructure built to scale.</p></div>
-          <div className="value-item"><Lock /><h4>SECURE</h4><p>Enterprise-grade security and data protection.</p></div>
-          <div className="value-item"><LineChart /><h4>IMPACTFUL</h4><p>Real-world impact through innovation and technology.</p></div>
-        </div>
-      </section>
-
-      <footer>
-        <p>ANTIMATE EDGE AI © 2026 • Intelligent Agriculture Systems • Ecosystem by ANTIMATE</p>
+        <p>{t.footer}</p>
       </footer>
 
-      {/* LOGIN POPUP MODAL */}
       {showLogin && (
-        <div className="modal-overlay">
-          <div className="login-card animate-scale-up">
-            <button className="close-modal" onClick={() => setShowLogin(false)}>
-              <X size={20} />
+        <div
+          className="modal-overlay"
+          onMouseDown={(e) => {
+            if (
+              e.target === e.currentTarget
+            ) {
+              setShowLogin(false);
+            }
+          }}
+        >
+          <div className="login-modal">
+            <button
+              className="close-modal"
+              onClick={() =>
+                setShowLogin(false)
+              }
+            >
+              <X size={19} />
             </button>
 
-            <div className="modal-header">
-              <div className="brand-icon-modal">
-                <AntimateLogo size={36} />
-              </div>
-              <h2>Welcome Back</h2>
-              <p className="subtitle">Sign in to your ANTIMATE Dashboard</p>
+            <div className="modal-logo">
+              <AntimateLogo size={42} />
             </div>
 
-            <form onSubmit={handleLogin}>
+            <h2>{t.loginTitle}</h2>
+
+            <p className="modal-subtitle">
+              {t.loginSubtitle}
+            </p>
+
+            <form
+              onSubmit={handleLogin}
+            >
               <div className="input-group">
-                <label>Email, Username, or Phone</label>
+                <label>
+                  {t.identifier}
+                </label>
+
                 <input
-                  className="login-input"
-                  placeholder="e.g. farmer@antimate.com"
+                  type="text"
+                  placeholder={
+                    t.identifierPlaceholder
+                  }
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  onChange={(e) =>
+                    setIdentifier(
+                      e.target.value
+                    )
+                  }
                   required
                 />
               </div>
 
               <div className="input-group">
-                <label>Password</label>
-                <div className="password-box">
+                <label>
+                  {t.password}
+                </label>
+
+                <div className="password-input">
                   <input
-                    className="login-input"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••••••"
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
+                    placeholder={
+                      t.passwordPlaceholder
+                    }
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) =>
+                      setPassword(
+                        e.target.value
+                      )
+                    }
                     required
                   />
+
                   <button
                     type="button"
-                    className="show-password"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() =>
+                      setShowPassword(
+                        !showPassword
+                      )
+                    }
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
                   </button>
                 </div>
               </div>
 
-              {message && <div className="error-alert">{message}</div>}
+              {message && (
+                <div className="login-error">
+                  {message}
+                </div>
+              )}
 
-              <button className="login-button" disabled={loading}>
-                {loading ? <span className="spinner"></span> : "Sign In to Dashboard"}
+              <button
+                className="modal-login-button"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="loader" />
+                ) : (
+                  <>
+                    {t.signIn}
+                    <ArrowRight
+                      size={17}
+                    />
+                  </>
+                )}
               </button>
             </form>
 
-            <div className="modal-footer">
-              <Link className="forgot" to="/forgot-password" onClick={() => setShowLogin(false)}>
-                Forgot password?
+            <div className="modal-bottom">
+              <Link
+                to="/forgot-password"
+                onClick={() =>
+                  setShowLogin(false)
+                }
+              >
+                {t.forgot}
               </Link>
+
+              <span>
+                {t.noAccount}{" "}
+                <Link
+                  to="/signup"
+                  onClick={() =>
+                    setShowLogin(false)
+                  }
+                >
+                  {t.create}
+                </Link>
+              </span>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Feature({
+  icon,
+  title,
+  text,
+}) {
+  return (
+    <div className="feature-card">
+      <div className="feature-icon">
+        {icon}
+      </div>
+
+      <h3>{title}</h3>
+
+      <p>{text}</p>
+
+      <div className="feature-line" />
     </div>
   );
 }

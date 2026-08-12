@@ -8,6 +8,7 @@ import {
   Wind,
   Activity,
   Power,
+  BarChart3,
 } from "lucide-react";
 
 import BottomNav from "../components/BottomNav";
@@ -22,6 +23,9 @@ const socket = io(API, {
   transports: ["websocket", "polling"],
 });
 
+const DEVICE_TIMEOUT = 3 * 60 * 1000;
+const CHART_WINDOW = 120 * 60 * 1000;
+
 function Dashboard() {
   const { isDark } = useAppSettings();
 
@@ -31,94 +35,242 @@ function Dashboard() {
     heater: "OFF",
     fanSpeed: 0,
     condition: "NORMAL",
+    chicksAge: null,
   });
 
   const [history, setHistory] = useState([]);
-  const [connected, setConnected] = useState(false);
+  const [lastActivity, setLastActivity] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // =====================================================
+  // UPDATE TIME
+  // =====================================================
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // =====================================================
+  // HELPERS
+  // =====================================================
+
+  const getTimestamp = (telemetry) => {
+    const timestamp =
+      telemetry?.heartbeatAt ||
+      telemetry?.lastHeartbeat ||
+      telemetry?.heartbeat ||
+      telemetry?.createdAt ||
+      telemetry?.timestamp ||
+      telemetry?.updatedAt;
+
+    if (!timestamp) {
+      return Date.now();
+    }
+
+    const parsed = new Date(timestamp).getTime();
+
+    return Number.isNaN(parsed)
+      ? Date.now()
+      : parsed;
+  };
+
+  const getChicksAge = (telemetry) => {
+    const directAge =
+      telemetry?.chicksAge ??
+      telemetry?.chickAge ??
+      telemetry?.ageDays ??
+      telemetry?.dayAge ??
+      telemetry?.flockAge ??
+      telemetry?.chickenAge;
+
+    if (
+      directAge !== undefined &&
+      directAge !== null &&
+      directAge !== ""
+    ) {
+      const age = Number(directAge);
+
+      if (!Number.isNaN(age)) {
+        return age;
+      }
+    }
+
+    const birthDate =
+      telemetry?.birthDate ||
+      telemetry?.chicksBirthDate ||
+      telemetry?.flockBirthDate;
+
+    if (birthDate) {
+      const birth = new Date(birthDate).getTime();
+
+      if (!Number.isNaN(birth)) {
+        return Math.max(
+          0,
+          Math.floor(
+            (Date.now() - birth) /
+              (24 * 60 * 60 * 1000)
+          )
+        );
+      }
+    }
+
+    return null;
+  };
+
+  // =====================================================
+  // UPDATE TELEMETRY
+  // =====================================================
+
+  const updateTelemetry = (telemetry) => {
+    if (!telemetry) return;
+
+    const temperature = Number(
+      telemetry.temperature ??
+        telemetry.temp ??
+        telemetry.t ??
+        0
+    );
+
+    const humidity = Number(
+      telemetry.humidity ??
+        telemetry.rh ??
+        telemetry.h ??
+        0
+    );
+
+    const fanSpeed = Number(
+      telemetry.fanSpeed ??
+        telemetry.fan ??
+        telemetry.fanPercent ??
+        0
+    );
+
+    const heater =
+      telemetry.heater ??
+      telemetry.heaterStatus ??
+      "OFF";
+
+    const condition =
+      telemetry.condition ||
+      telemetry.status ||
+      "NORMAL";
+
+    const timestamp =
+      getTimestamp(telemetry);
+
+    const chicksAge =
+      getChicksAge(telemetry);
+
+    setData({
+      temperature,
+      humidity,
+      heater,
+      fanSpeed,
+      condition,
+      chicksAge,
+    });
+
+    setLastActivity(timestamp);
+
+    setHistory((previous) => {
+      const point = {
+        timestamp,
+        temperature,
+        humidity,
+      };
+
+      const existingIndex =
+        previous.findIndex(
+          (item) =>
+            Math.abs(
+              item.timestamp -
+                timestamp
+            ) < 1000
+        );
+
+      let next;
+
+      if (existingIndex >= 0) {
+        next = [...previous];
+        next[existingIndex] = point;
+      } else {
+        next = [
+          ...previous,
+          point,
+        ];
+      }
+
+      const cutoff =
+        Date.now() - CHART_WINDOW;
+
+      return next
+        .filter(
+          (item) =>
+            item.timestamp >= cutoff
+        )
+        .sort(
+          (a, b) =>
+            a.timestamp -
+            b.timestamp
+        );
+    });
+  };
 
   // =====================================================
   // TELEMETRY
   // =====================================================
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const token =
+      localStorage.getItem("token");
 
-    const userId = user?._id || user?.id;
+    const user = JSON.parse(
+      localStorage.getItem("user") ||
+        "null"
+    );
 
-    // Join user socket room
-    if (userId) {
-      socket.emit("join-user", userId);
-    }
+    const userId =
+      user?._id || user?.id;
 
     // ---------------------------------------------------
-    // SOCKET CONNECTION
+    // SOCKET CONNECT
     // ---------------------------------------------------
 
     const handleConnect = () => {
-      console.log("🟢 Dashboard Socket Connected");
+      console.log(
+        "🟢 Dashboard Socket Connected"
+      );
 
-      setConnected(true);
+      setSocketConnected(true);
 
       if (userId) {
-        socket.emit("join-user", userId);
+        socket.emit(
+          "join-user",
+          userId
+        );
       }
     };
 
     const handleDisconnect = () => {
-      console.log("🔴 Dashboard Socket Disconnected");
-      setConnected(false);
-    };
+      console.log(
+        "🔴 Dashboard Socket Disconnected"
+      );
 
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
-
-    // ---------------------------------------------------
-    // LOAD LATEST TELEMETRY
-    // ---------------------------------------------------
-
-    const loadTelemetry = async () => {
-      if (!token) {
-        console.warn("⚠️ No authentication token");
-        return;
-      }
-
-      try {
-        const response = await axios.get(
-          `${API}/api/telemetry/latest`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const telemetry = response.data?.data;
-
-        if (!telemetry) {
-          console.log("ℹ️ No telemetry available yet");
-          return;
-        }
-
-        console.log(
-          "📡 Latest telemetry:",
-          telemetry
-        );
-
-        updateTelemetry(telemetry);
-      } catch (error) {
-        console.error(
-          "❌ TELEMETRY LOAD ERROR:",
-          error.response?.data || error.message
-        );
-      }
+      setSocketConnected(false);
     };
 
     // ---------------------------------------------------
     // LIVE TELEMETRY
     // ---------------------------------------------------
 
-    const handleTelemetry = (telemetry) => {
+    const handleTelemetry = (
+      telemetry
+    ) => {
       console.log(
         "📡 Live telemetry:",
         telemetry
@@ -127,16 +279,79 @@ function Dashboard() {
       updateTelemetry(telemetry);
     };
 
+    // ---------------------------------------------------
+    // LOAD LATEST
+    // ---------------------------------------------------
+
+    const loadTelemetry = async () => {
+      if (!token) {
+        console.warn(
+          "⚠️ No authentication token"
+        );
+        return;
+      }
+
+      try {
+        const response =
+          await axios.get(
+            `${API}/api/telemetry/latest`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            }
+          );
+
+        const telemetry =
+          response.data?.data ||
+          response.data;
+
+        if (!telemetry) {
+          console.log(
+            "ℹ️ No telemetry available yet"
+          );
+
+          return;
+        }
+
+        console.log(
+          "📡 Latest telemetry:",
+          telemetry
+        );
+
+        updateTelemetry(
+          telemetry
+        );
+      } catch (error) {
+        console.error(
+          "❌ TELEMETRY LOAD ERROR:",
+          error.response?.data ||
+            error.message
+        );
+      }
+    };
+
+    socket.on(
+      "connect",
+      handleConnect
+    );
+
+    socket.on(
+      "disconnect",
+      handleDisconnect
+    );
+
     socket.on(
       "telemetry:update",
       handleTelemetry
     );
 
-    loadTelemetry();
+    if (socket.connected) {
+      handleConnect();
+    }
 
-    // ---------------------------------------------------
-    // CLEANUP
-    // ---------------------------------------------------
+    loadTelemetry();
 
     return () => {
       socket.off(
@@ -157,67 +372,62 @@ function Dashboard() {
   }, []);
 
   // =====================================================
-  // UPDATE TELEMETRY
+  // DEVICE STATUS
   // =====================================================
 
-  const updateTelemetry = (telemetry) => {
-    const temperature = Number(
-      telemetry.temperature ??
-        telemetry.temp ??
-        telemetry.t ??
-        0
+  const deviceOnline = useMemo(() => {
+    if (!lastActivity) {
+      return false;
+    }
+
+    return (
+      now - lastActivity <=
+      DEVICE_TIMEOUT
+    );
+  }, [
+    lastActivity,
+    now,
+  ]);
+
+  // =====================================================
+  // LAST SEEN
+  // =====================================================
+
+  const lastSeenText = useMemo(() => {
+    if (!lastActivity) {
+      return "No data received";
+    }
+
+    const seconds = Math.floor(
+      (now - lastActivity) /
+        1000
     );
 
-    const humidity = Number(
-      telemetry.humidity ??
-        telemetry.rh ??
-        telemetry.h ??
-        0
+    if (seconds < 10) {
+      return "Just now";
+    }
+
+    if (seconds < 60) {
+      return `${seconds}s ago`;
+    }
+
+    const minutes = Math.floor(
+      seconds / 60
     );
 
-    const fanSpeed = Number(
-      telemetry.fanSpeed ??
-        telemetry.fan ??
-        0
+    if (minutes < 60) {
+      return `${minutes}m ago`;
+    }
+
+    const hours = Math.floor(
+      minutes / 60
     );
 
-    const heater =
-      telemetry.heater ??
-      "OFF";
-
-    setData({
-      temperature,
-      humidity,
-      heater,
-      fanSpeed,
-      condition:
-        telemetry.condition ||
-        "NORMAL",
-    });
-
-    setHistory((previous) => {
-      const item = {
-        time: new Date(
-          telemetry.createdAt ||
-            Date.now()
-        ).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-
-        temperature,
-
-        humidity,
-      };
-
-      const next = [
-        ...previous,
-        item,
-      ];
-
-      return next.slice(-12);
-    });
-  };
+    return `${hours}h ago`;
+  }, [
+    lastActivity,
+    now,
+  ]);
 
   // =====================================================
   // VALUES
@@ -236,12 +446,28 @@ function Dashboard() {
     data.heater === 1 ||
     data.heater === true;
 
-  const fanValue = Number(
-    data.fanSpeed || 0
+  const fanValue = Math.max(
+    0,
+    Math.min(
+      100,
+      Number(data.fanSpeed || 0)
+    )
   );
 
   const conditionText =
     data.condition || "NORMAL";
+
+  // =====================================================
+  // CHICKS AGE
+  // =====================================================
+
+  const chicksAgeText =
+    data.chicksAge === null ||
+    data.chicksAge === undefined
+      ? "—"
+      : `${Number(
+          data.chicksAge
+        ).toFixed(0)} days`;
 
   // =====================================================
   // THEME
@@ -271,48 +497,188 @@ function Dashboard() {
   // CHART
   // =====================================================
 
-  const chartPoints = useMemo(() => {
-    const values = history.length
-      ? history.map(
-          (item) =>
-            item.temperature
-        )
-      : [
-          temperature || 25,
-          temperature || 25,
-          temperature || 25,
-        ];
+  const chart = useMemo(() => {
+    const width = 360;
+    const height = 150;
 
-    const min =
-      Math.min(...values) - 1;
+    const left = 42;
+    const right = 10;
+    const top = 12;
+    const bottom = 28;
 
-    const max =
-      Math.max(...values) + 1;
+    const plotWidth =
+      width - left - right;
 
-    const width = 320;
+    const plotHeight =
+      height - top - bottom;
 
-    const height = 105;
+    const cutoff =
+      now - CHART_WINDOW;
 
-    return values
-      .map((value, index) => {
-        const x =
-          values.length === 1
-            ? 0
-            : (index /
-                (values.length - 1)) *
-              width;
+    const points = history
+      .filter(
+        (item) =>
+          item.timestamp >= cutoff
+      )
+      .sort(
+        (a, b) =>
+          a.timestamp -
+          b.timestamp
+      );
 
-        const y =
-          height -
-          ((value - min) /
-            (max - min || 1)) *
-            height;
+    let values = points.map(
+      (item) =>
+        Number(item.temperature)
+    );
 
-        return `${x},${y}`;
-      })
+    if (!values.length) {
+      values = [temperature || 25];
+    }
+
+    let minTemp =
+      Math.floor(
+        Math.min(...values) - 1
+      );
+
+    let maxTemp =
+      Math.ceil(
+        Math.max(...values) + 1
+      );
+
+    if (
+      maxTemp - minTemp <
+      4
+    ) {
+      const middle =
+        (maxTemp + minTemp) / 2;
+
+      minTemp =
+        Math.floor(
+          middle - 2
+        );
+
+      maxTemp =
+        Math.ceil(
+          middle + 2
+        );
+    }
+
+    const tempRange =
+      maxTemp - minTemp;
+
+    const getX = (timestamp) => {
+      const position =
+        (timestamp - cutoff) /
+        CHART_WINDOW;
+
+      return (
+        left +
+        Math.max(
+          0,
+          Math.min(
+            1,
+            position
+          )
+        ) *
+          plotWidth
+      );
+    };
+
+    const getY = (value) => {
+      const position =
+        (value - minTemp) /
+        tempRange;
+
+      return (
+        top +
+        (1 - position) *
+          plotHeight
+      );
+    };
+
+    const polyline = points
+      .map(
+        (point) =>
+          `${getX(
+            point.timestamp
+          )},${getY(
+            point.temperature
+          )}`
+      )
       .join(" ");
+
+    const last =
+      points.length
+        ? points[
+            points.length - 1
+          ]
+        : null;
+
+    const lastX = last
+      ? getX(last.timestamp)
+      : null;
+
+    const lastY = last
+      ? getY(last.temperature)
+      : null;
+
+    const yTicks = [
+      maxTemp,
+      Math.round(
+        minTemp +
+          tempRange * 0.66
+      ),
+      Math.round(
+        minTemp +
+          tempRange * 0.33
+      ),
+      minTemp,
+    ];
+
+    const xTicks = [
+      {
+        label: "120m",
+        ratio: 0,
+      },
+      {
+        label: "90m",
+        ratio: 0.25,
+      },
+      {
+        label: "60m",
+        ratio: 0.5,
+      },
+      {
+        label: "30m",
+        ratio: 0.75,
+      },
+      {
+        label: "Now",
+        ratio: 1,
+      },
+    ];
+
+    return {
+      width,
+      height,
+      left,
+      right,
+      top,
+      bottom,
+      plotWidth,
+      plotHeight,
+      polyline,
+      lastX,
+      lastY,
+      yTicks,
+      xTicks,
+      minTemp,
+      maxTemp,
+      points,
+    };
   }, [
     history,
+    now,
     temperature,
   ]);
 
@@ -325,6 +691,7 @@ function Dashboard() {
     label,
     value,
     extra,
+    valueColor,
   }) => (
     <div
       style={{
@@ -351,7 +718,8 @@ function Dashboard() {
           <h3
             style={{
               ...styles.value,
-              color: text,
+              color:
+                valueColor || text,
             }}
           >
             {value}
@@ -401,7 +769,6 @@ function Dashboard() {
       <AppHeader title="Dashboard" />
 
       <main style={styles.content}>
-
         {/* HERO */}
 
         <section style={styles.hero}>
@@ -420,29 +787,54 @@ function Dashboard() {
             </h2>
           </div>
 
-          <div style={styles.statusPill}>
+          <div
+            style={{
+              ...styles.statusPill,
+              background:
+                deviceOnline
+                  ? "rgba(34,197,94,0.14)"
+                  : "rgba(239,68,68,0.14)",
+              color:
+                deviceOnline
+                  ? "#22c55e"
+                  : "#ef4444",
+              border:
+                deviceOnline
+                  ? "1px solid rgba(34,197,94,0.22)"
+                  : "1px solid rgba(239,68,68,0.22)",
+            }}
+          >
             <Activity size={14} />
 
             <span>
-              {conditionText}
+              {deviceOnline
+                ? "Online"
+                : "Offline"}
             </span>
           </div>
         </section>
 
         {/* QUICK STATS */}
 
-        <section style={styles.quickStats}>
-
+        <section
+          style={styles.quickStats}
+        >
           <div style={styles.bigStat}>
             <Thermometer size={18} />
 
             <div>
-              <p style={styles.whiteLabel}>
+              <p
+                style={styles.whiteLabel}
+              >
                 Temperature
               </p>
 
-              <h1 style={styles.bigValue}>
-                {temperature.toFixed(1)}
+              <h1
+                style={styles.bigValue}
+              >
+                {temperature.toFixed(
+                  1
+                )}
                 °C
               </h1>
             </div>
@@ -452,17 +844,68 @@ function Dashboard() {
             <Droplets size={18} />
 
             <div>
-              <p style={styles.whiteLabel}>
+              <p
+                style={styles.whiteLabel}
+              >
                 Humidity
               </p>
 
-              <h1 style={styles.bigValue}>
+              <h1
+                style={styles.bigValue}
+              >
                 {humidity.toFixed(1)}
                 %
               </h1>
             </div>
           </div>
+        </section>
 
+        {/* CHICKS AGE */}
+
+        <section
+          style={{
+            ...styles.ageCard,
+            background: softBg,
+            border: `1px solid ${border}`,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                ...styles.label,
+                color: muted,
+              }}
+            >
+              Chicks age
+            </p>
+
+            <h2
+              style={{
+                margin: "4px 0 0",
+                fontSize: "21px",
+              }}
+            >
+              {chicksAgeText}
+            </h2>
+          </div>
+
+          <div
+            style={{
+              ...styles.ageIndicator,
+              background:
+                deviceOnline
+                  ? "rgba(34,197,94,0.12)"
+                  : "rgba(239,68,68,0.12)",
+              color:
+                deviceOnline
+                  ? "#22c55e"
+                  : "#ef4444",
+            }}
+          >
+            {deviceOnline
+              ? "Device active"
+              : "Device offline"}
+          </div>
         </section>
 
         {/* TEMPERATURE CHART */}
@@ -474,8 +917,9 @@ function Dashboard() {
             border: `1px solid ${border}`,
           }}
         >
-          <div style={styles.chartHeader}>
-
+          <div
+            style={styles.chartHeader}
+          >
             <div>
               <p
                 style={{
@@ -483,7 +927,7 @@ function Dashboard() {
                   color: muted,
                 }}
               >
-                Temperature trend
+                Temperature
               </p>
 
               <h3
@@ -492,7 +936,7 @@ function Dashboard() {
                   color: text,
                 }}
               >
-                Last readings
+                Last 120 minutes
               </h3>
             </div>
 
@@ -502,68 +946,229 @@ function Dashboard() {
                 color: muted,
               }}
             >
-              {history.length
-                ? `${history.length} points`
-                : "waiting"}
+              {chart.points.length} readings
             </span>
-
           </div>
 
-          <svg
-            viewBox="0 0 320 115"
-            style={styles.svg}
-          >
-            <defs>
-              <linearGradient
-                id="trendGradient"
-                x1="0"
-                x2="1"
-              >
-                <stop
-                  offset="0%"
-                  stopColor="#2563eb"
-                />
+          <div style={styles.chartWrapper}>
+            <svg
+              viewBox={`0 0 ${chart.width} ${chart.height}`}
+              style={styles.svg}
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient
+                  id="trendGradient"
+                  x1="0"
+                  x2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor="#2563eb"
+                  />
 
-                <stop
-                  offset="100%"
-                  stopColor="#7c3aed"
-                />
-              </linearGradient>
-            </defs>
+                  <stop
+                    offset="100%"
+                    stopColor="#7c3aed"
+                  />
+                </linearGradient>
+              </defs>
 
-            <polyline
-              points={chartPoints}
-              fill="none"
-              stroke="url(#trendGradient)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+              {/* Y GRID */}
 
-            {history.length > 0 && (
-              <circle
-                cx={
-                  chartPoints
-                    .split(" ")
-                    .at(-1)
-                    ?.split(",")[0]
+              {chart.yTicks.map(
+                (value, index) => {
+                  const y =
+                    chart.top +
+                    (index /
+                      (chart.yTicks
+                        .length -
+                        1)) *
+                      chart.plotHeight;
+
+                  return (
+                    <g
+                      key={
+                        `y-${index}`
+                      }
+                    >
+                      <line
+                        x1={chart.left}
+                        x2={
+                          chart.width -
+                          chart.right
+                        }
+                        y1={y}
+                        y2={y}
+                        stroke={
+                          isDark
+                            ? "rgba(148,163,184,0.10)"
+                            : "rgba(15,23,42,0.08)"
+                        }
+                        strokeWidth="1"
+                      />
+
+                      <text
+                        x="3"
+                        y={
+                          y + 4
+                        }
+                        fontSize="9"
+                        fill={muted}
+                      >
+                        {value}°
+                      </text>
+                    </g>
+                  );
                 }
-                cy={
-                  chartPoints
-                    .split(" ")
-                    .at(-1)
-                    ?.split(",")[1]
+              )}
+
+              {/* X AXIS */}
+
+              <line
+                x1={chart.left}
+                x2={
+                  chart.width -
+                  chart.right
                 }
-                r="4.5"
-                fill="#7c3aed"
+                y1={
+                  chart.top +
+                  chart.plotHeight
+                }
+                y2={
+                  chart.top +
+                  chart.plotHeight
+                }
+                stroke={
+                  isDark
+                    ? "rgba(148,163,184,0.25)"
+                    : "rgba(15,23,42,0.15)"
+                }
               />
-            )}
-          </svg>
+
+              {/* X LABELS */}
+
+              {chart.xTicks.map(
+                (tick) => {
+                  const x =
+                    chart.left +
+                    tick.ratio *
+                      chart.plotWidth;
+
+                  return (
+                    <text
+                      key={
+                        tick.label
+                      }
+                      x={x}
+                      y={
+                        chart.height -
+                        7
+                      }
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill={muted}
+                    >
+                      {tick.label}
+                    </text>
+                  );
+                }
+              )}
+
+              {/* TEMPERATURE LINE */}
+
+              {chart.polyline && (
+                <polyline
+                  points={
+                    chart.polyline
+                  }
+                  fill="none"
+                  stroke="url(#trendGradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* LAST POINT */}
+
+              {chart.lastX !==
+                null && (
+                <>
+                  <circle
+                    cx={
+                      chart.lastX
+                    }
+                    cy={
+                      chart.lastY
+                    }
+                    r="7"
+                    fill="rgba(124,58,237,0.18)"
+                  />
+
+                  <circle
+                    cx={
+                      chart.lastX
+                    }
+                    cy={
+                      chart.lastY
+                    }
+                    r="4"
+                    fill="#7c3aed"
+                  />
+                </>
+              )}
+            </svg>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              marginTop: "2px",
+              fontSize: "10px",
+              color: muted,
+            }}
+          >
+            <span>
+              Temperature °C
+            </span>
+
+            <span>
+              Time
+            </span>
+          </div>
         </section>
 
         {/* DEVICE STATUS */}
 
-        <section style={styles.deviceSection}>
+        <section
+          style={styles.deviceSection}
+        >
+          <InfoRow
+            icon={
+              <Power size={17} />
+            }
+            label="Device status"
+            value={
+              deviceOnline
+                ? "Online"
+                : "Offline"
+            }
+            valueColor={
+              deviceOnline
+                ? "#22c55e"
+                : "#ef4444"
+            }
+            extra={
+              deviceOnline
+                ? "data received"
+                : lastActivity
+                ? `last ${lastSeenText}`
+                : "no data"
+            }
+          />
 
           <InfoRow
             icon={
@@ -574,6 +1179,11 @@ function Dashboard() {
               heaterOn
                 ? "ON"
                 : "OFF"
+            }
+            valueColor={
+              heaterOn
+                ? "#f59e0b"
+                : undefined
             }
             extra={
               heaterOn
@@ -594,32 +1204,71 @@ function Dashboard() {
                 : "off"
             }
           />
-
-          <InfoRow
-            icon={
-              <Power size={17} />
-            }
-            label="Connection"
-            value={
-              connected
-                ? "Live"
-                : "Offline"
-            }
-            extra={
-              connected
-                ? "socket"
-                : "disconnected"
-            }
-          />
-
         </section>
 
+        {/* CONNECTION DETAILS */}
+
+        <section
+          style={{
+            ...styles.connectionCard,
+            background: softBg,
+            border: `1px solid ${border}`,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                ...styles.label,
+                color: muted,
+              }}
+            >
+              Device heartbeat
+            </p>
+
+            <strong
+              style={{
+                fontSize: "14px",
+              }}
+            >
+              {deviceOnline
+                ? "Receiving data normally"
+                : "No recent heartbeat or telemetry"}
+            </strong>
+          </div>
+
+          <span
+            style={{
+              fontSize: "11px",
+              color: muted,
+            }}
+          >
+            {lastSeenText}
+          </span>
+        </section>
+
+        {/* ANALYSIS BUTTON */}
+
+        <button
+          onClick={() =>
+            window.location.href =
+              "/analysis"
+          }
+          style={styles.analysisButton}
+        >
+          <BarChart3 size={18} />
+
+          <span>
+            View detailed analysis
+          </span>
+        </button>
       </main>
 
       {/* BOTTOM ANIMATION */}
 
       <div
-        style={styles.bottomLineWrap}
+        style={
+          styles.bottomLineWrap
+        }
       >
         <div
           style={styles.bottomLine}
@@ -651,7 +1300,9 @@ const styles = {
   hero: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
+    gap: "12px",
     marginBottom: "18px",
   },
 
@@ -672,11 +1323,9 @@ const styles = {
     gap: "6px",
     padding: "7px 11px",
     borderRadius: "999px",
-    background:
-      "linear-gradient(135deg, #2563eb, #7c3aed)",
-    color: "white",
     fontSize: "11px",
-    fontWeight: 600,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
   },
 
   quickStats: {
@@ -684,7 +1333,7 @@ const styles = {
     gridTemplateColumns:
       "1fr 1fr",
     gap: "12px",
-    marginBottom: "14px",
+    marginBottom: "12px",
   },
 
   bigStat: {
@@ -693,9 +1342,10 @@ const styles = {
     padding: "16px",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     background:
-      "linear-gradient(145deg, #2563eb, #7c3aed)",
+      "linear-gradient(145deg,#2563eb,#7c3aed)",
     color: "white",
     boxShadow:
       "0 18px 35px rgba(37,99,235,0.22)",
@@ -708,23 +1358,45 @@ const styles = {
     opacity: 0.85,
   },
 
-  label: {
-    margin: 0,
-    fontSize: "11px",
-    fontWeight: 500,
-  },
-
   bigValue: {
     margin: "5px 0 0",
     fontSize: "25px",
     fontWeight: 750,
   },
 
-  chartBox: {
-    borderRadius: "28px",
-    padding: "15px",
+  ageCard: {
+    minHeight: "68px",
+    borderRadius: "22px",
+    padding: "13px 15px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
+    gap: "10px",
     marginBottom: "14px",
     backdropFilter: "blur(12px)",
+  },
+
+  ageIndicator: {
+    padding: "7px 10px",
+    borderRadius: "999px",
+    fontSize: "10px",
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  label: {
+    margin: 0,
+    fontSize: "11px",
+    fontWeight: 500,
+  },
+
+  chartBox: {
+    borderRadius: "26px",
+    padding: "15px",
+    marginBottom: "14px",
+    backdropFilter:
+      "blur(12px)",
   },
 
   chartHeader: {
@@ -732,7 +1404,7 @@ const styles = {
     justifyContent:
       "space-between",
     alignItems: "center",
-    marginBottom: "10px",
+    marginBottom: "8px",
   },
 
   chartTitle: {
@@ -740,9 +1412,14 @@ const styles = {
     fontSize: "15px",
   },
 
+  chartWrapper: {
+    width: "100%",
+    overflow: "hidden",
+  },
+
   svg: {
     width: "100%",
-    height: "125px",
+    height: "160px",
     display: "block",
     overflow: "visible",
   },
@@ -761,23 +1438,27 @@ const styles = {
     alignItems: "center",
     justifyContent:
       "space-between",
-    backdropFilter: "blur(12px)",
+    gap: "10px",
+    backdropFilter:
+      "blur(12px)",
   },
 
   infoLeft: {
     display: "flex",
     alignItems: "center",
     gap: "11px",
+    minWidth: 0,
   },
 
   iconBox: {
     width: "38px",
     height: "38px",
+    flexShrink: 0,
     borderRadius: "14px",
     display: "grid",
     placeItems: "center",
     background:
-      "linear-gradient(135deg, rgba(37,99,235,0.18), rgba(124,58,237,0.18))",
+      "linear-gradient(135deg,rgba(37,99,235,0.18),rgba(124,58,237,0.18))",
     color: "#7c3aed",
   },
 
@@ -790,6 +1471,39 @@ const styles = {
   extra: {
     fontSize: "11px",
     fontWeight: 500,
+    whiteSpace: "nowrap",
+  },
+
+  connectionCard: {
+    marginTop: "10px",
+    padding: "14px 15px",
+    borderRadius: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
+    gap: "12px",
+  },
+
+  analysisButton: {
+    width: "100%",
+    marginTop: "14px",
+    padding: "14px 18px",
+    border: "none",
+    borderRadius: "18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    gap: "9px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    color: "#fff",
+    fontSize: "13px",
+    fontWeight: 800,
+    cursor: "pointer",
+    boxShadow:
+      "0 12px 25px rgba(37,99,235,0.20)",
   },
 
   bottomLineWrap: {
@@ -812,7 +1526,7 @@ const styles = {
     width: "200%",
     height: "100%",
     background:
-      "linear-gradient(90deg, transparent, #2563eb, #7c3aed, transparent)",
+      "linear-gradient(90deg,transparent,#2563eb,#7c3aed,transparent)",
     animation:
       "moveLine 2.8s linear infinite",
   },

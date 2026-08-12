@@ -21,28 +21,21 @@ export default function History() {
   const [error, setError] = useState("");
   const [accessDenied, setAccessDenied] = useState(false);
 
-  // =====================================================
-  // FETCH PROFILE / SUBSCRIPTION
-  // =====================================================
-
   async function fetchProfile() {
     const token = localStorage.getItem("token");
 
     if (!token) {
       setError("You are not logged in.");
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/profile/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/api/profile/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await res.json();
 
@@ -53,20 +46,13 @@ export default function History() {
       }
 
       setProfile(data);
-
       return data;
     } catch (err) {
       console.error("Profile error:", err);
-      setError(
-        err.message || "Failed to load profile"
-      );
+      setError(err.message || "Failed to load profile");
       return null;
     }
   }
-
-  // =====================================================
-  // CHECK SUBSCRIPTION
-  // =====================================================
 
   function checkHistoryAccess(profileData) {
     const plan = profileData?.plan;
@@ -79,21 +65,8 @@ export default function History() {
       plan.planName || plan.name || "Free"
     ).toLowerCase();
 
-    /*
-     * History is available to paid plans.
-     *
-     * Free = no history
-     * Basic = history
-     * Pro = history
-     * Premium = history
-     */
-
     return planName !== "free";
   }
-
-  // =====================================================
-  // FETCH USER DEVICES
-  // =====================================================
 
   async function fetchDevices() {
     const token = localStorage.getItem("token");
@@ -135,14 +108,12 @@ export default function History() {
 
       if (deviceList.length > 0) {
         setSelectedDevice(
-          deviceList[0].deviceId
+          deviceList[0].deviceId || ""
         );
       }
     } catch (err) {
       console.error("Devices error:", err);
-
       setDevices([]);
-
       setError(
         err.message || "Failed to load devices"
       );
@@ -150,10 +121,6 @@ export default function History() {
       setLoading(false);
     }
   }
-
-  // =====================================================
-  // FETCH HISTORY
-  // =====================================================
 
   async function fetchHistory(deviceId) {
     if (!deviceId || accessDenied) {
@@ -185,19 +152,13 @@ export default function History() {
 
       const data = await res.json();
 
-      // ===============================================
-      // SUBSCRIPTION BLOCKED
-      // ===============================================
-
       if (res.status === 403) {
         setHistory([]);
         setAccessDenied(true);
-
         setError(
           data.message ||
             "Your current subscription does not include sensor history."
         );
-
         return;
       }
 
@@ -208,19 +169,22 @@ export default function History() {
         );
       }
 
-      const rawData = Array.isArray(data.data) ? data.data : [];
+      const rawData = Array.isArray(data.data)
+        ? data.data
+        : Array.isArray(data)
+        ? data
+        : [];
 
-      // Sort entries so newest timestamps come first (new at top, old at bottom)
       const sortedHistory = [...rawData].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        (a, b) =>
+          new Date(b.createdAt) -
+          new Date(a.createdAt)
       );
 
       setHistory(sortedHistory);
     } catch (err) {
       console.error("History error:", err);
-
       setHistory([]);
-
       setError(
         err.message ||
           "Failed to load sensor history"
@@ -230,14 +194,9 @@ export default function History() {
     }
   }
 
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
-
   useEffect(() => {
     async function loadPage() {
-      const profileData =
-        await fetchProfile();
+      const profileData = await fetchProfile();
 
       if (!profileData) {
         setLoading(false);
@@ -259,10 +218,6 @@ export default function History() {
     loadPage();
   }, []);
 
-  // =====================================================
-  // LOAD HISTORY WHEN DEVICE CHANGES
-  // =====================================================
-
   useEffect(() => {
     if (
       selectedDevice &&
@@ -270,14 +225,7 @@ export default function History() {
     ) {
       fetchHistory(selectedDevice);
     }
-  }, [
-    selectedDevice,
-    accessDenied,
-  ]);
-
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
+  }, [selectedDevice, accessDenied]);
 
   function formatDate(date) {
     if (!date) {
@@ -292,10 +240,6 @@ export default function History() {
 
     return parsed.toLocaleString();
   }
-
-  // =====================================================
-  // COLORS
-  // =====================================================
 
   const background = isDark
     ? "linear-gradient(135deg,#07111f,#0f2537)"
@@ -317,14 +261,7 @@ export default function History() {
     ? "rgba(255,255,255,0.08)"
     : "rgba(15,23,42,0.08)";
 
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (
-    loading &&
-    !profile
-  ) {
+  if (loading && !profile) {
     return (
       <div
         style={{
@@ -335,6 +272,7 @@ export default function History() {
       >
         <div style={styles.loadingPage}>
           <div style={styles.spinner} />
+
           <p style={{ color: muted }}>
             Checking subscription...
           </p>
@@ -345,14 +283,9 @@ export default function History() {
     );
   }
 
-  // =====================================================
-  // SUBSCRIPTION GATE
-  // =====================================================
-
   if (accessDenied) {
     const currentPlan =
-      profile?.plan?.planName ||
-      "Free";
+      profile?.plan?.planName || "Free";
 
     return (
       <div
@@ -406,10 +339,7 @@ export default function History() {
             }}
           >
             Your current plan is{" "}
-            <strong>
-              {currentPlan}
-            </strong>
-            .
+            <strong>{currentPlan}</strong>.
           </p>
 
           <p
@@ -419,18 +349,14 @@ export default function History() {
             }}
           >
             Upgrade your ANTIMATE subscription
-            to access sensor history, historical
-            temperature and humidity records,
-            and longer-term monitoring.
+            to access sensor history,
+            historical temperature and humidity
+            records, and longer-term monitoring.
           </p>
 
           <button
-            onClick={() =>
-              navigate("/plans")
-            }
-            style={
-              styles.primaryButton
-            }
+            onClick={() => navigate("/plans")}
+            style={styles.primaryButton}
           >
             View Plans
           </button>
@@ -439,9 +365,7 @@ export default function History() {
             onClick={() =>
               navigate("/dashboard")
             }
-            style={
-              styles.secondaryButton
-            }
+            style={styles.secondaryButton}
           >
             Back to Dashboard
           </button>
@@ -452,10 +376,6 @@ export default function History() {
     );
   }
 
-  // =====================================================
-  // MAIN UI
-  // =====================================================
-
   return (
     <div
       style={{
@@ -464,8 +384,7 @@ export default function History() {
         paddingBottom: "100px",
         background,
         color: text,
-        fontFamily:
-          "Inter, Arial, sans-serif",
+        fontFamily: "Inter, Arial, sans-serif",
         position: "relative",
       }}
     >
@@ -516,23 +435,11 @@ export default function History() {
         `}
       </style>
 
-      {/* LOADING BAR */}
-
       {historyLoading && (
-        <div
-          style={
-            styles.loadingContainer
-          }
-        >
-          <div
-            style={
-              styles.loadingBar
-            }
-          />
+        <div style={styles.loadingContainer}>
+          <div style={styles.loadingBar} />
         </div>
       )}
-
-      {/* HEADER */}
 
       <div
         className="history-header"
@@ -563,22 +470,17 @@ export default function History() {
           onClick={() =>
             navigate("/analysis")
           }
-          style={
-            styles.analysisButton
-          }
+          style={styles.analysisButton}
         >
           📊 View Analysis
         </button>
       </div>
 
-      {/* DEVICE SELECTOR */}
-
       {devices.length > 0 && (
         <div
           style={{
             ...styles.selectorCard,
-            background:
-              cardBackground,
+            background: cardBackground,
             border: `1px solid ${border}`,
           }}
         >
@@ -594,49 +496,39 @@ export default function History() {
           <select
             value={selectedDevice}
             onChange={(e) =>
-              setSelectedDevice(
-                e.target.value
-              )
+              setSelectedDevice(e.target.value)
             }
             style={{
               ...styles.select,
-              background:
-                isDark
-                  ? "#172033"
-                  : "#ffffff",
+              background: isDark
+                ? "#172033"
+                : "#ffffff",
               color: text,
               border: `1px solid ${border}`,
             }}
           >
-            {devices.map(
-              (device) => (
-                <option
-                  key={
-                    device._id ||
-                    device.deviceId
-                  }
-                  value={
-                    device.deviceId
-                  }
-                >
-                  {device.deviceId}
-                </option>
-              )
-            )}
+            {devices.map((device) => (
+              <option
+                key={
+                  device._id ||
+                  device.deviceId
+                }
+                value={device.deviceId}
+              >
+                {device.deviceId}
+              </option>
+            ))}
           </select>
         </div>
       )}
-
-      {/* ERROR */}
 
       {error && (
         <div
           style={{
             ...styles.error,
-            background:
-              isDark
-                ? "rgba(239,68,68,0.12)"
-                : "rgba(239,68,68,0.08)",
+            background: isDark
+              ? "rgba(239,68,68,0.12)"
+              : "rgba(239,68,68,0.08)",
             border:
               "1px solid rgba(239,68,68,0.2)",
           }}
@@ -645,38 +537,24 @@ export default function History() {
         </div>
       )}
 
-      {/* NO DEVICES */}
-
       {!loading &&
         devices.length === 0 &&
         !error && (
           <div
             style={{
               ...styles.empty,
-              background:
-                cardBackground,
+              background: cardBackground,
             }}
           >
-            <div
-              style={
-                styles.emptyIcon
-              }
-            >
+            <div style={styles.emptyIcon}>
               📡
             </div>
 
-            <h3>
-              No device connected
-            </h3>
+            <h3>No device connected</h3>
 
-            <p
-              style={{
-                color: muted,
-              }}
-            >
-              Connect a device to
-              start receiving sensor
-              history.
+            <p style={{ color: muted }}>
+              Connect a device to start receiving
+              sensor history.
             </p>
 
             <button
@@ -685,16 +563,12 @@ export default function History() {
                   "/device-management"
                 )
               }
-              style={
-                styles.primaryButton
-              }
+              style={styles.primaryButton}
             >
               Add Device
             </button>
           </div>
         )}
-
-      {/* NO HISTORY */}
 
       {!loading &&
         !historyLoading &&
@@ -704,138 +578,99 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background:
-                cardBackground,
+              background: cardBackground,
             }}
           >
-            <div
-              style={
-                styles.emptyIcon
-              }
-            >
+            <div style={styles.emptyIcon}>
               📊
             </div>
 
-            <h3>
-              No sensor data yet
-            </h3>
+            <h3>No sensor data yet</h3>
 
-            <p
-              style={{
-                color: muted,
-              }}
-            >
-              Telemetry from this
-              device will appear here
-              once the device starts
+            <p style={{ color: muted }}>
+              Telemetry from this device will
+              appear here once the device starts
               sending data.
             </p>
           </div>
         )}
 
-      {/* HISTORY */}
-
       <div>
-        {history.map(
-          (item, index) => {
-            const temperature =
-              item.temperature ??
-              "--";
+        {history.map((item, index) => {
+          const temperature =
+            item.temperature ?? "--";
 
-            const humidity =
-              item.humidity ??
-              "--";
+          const humidity =
+            item.humidity ?? "--";
 
-            const heater =
-              item.heater ||
-              "OFF";
+          const heater =
+            item.heater || "OFF";
 
-            const fan =
-              item.fanSpeed ??
-              0;
+          const fan =
+            item.fanSpeed ?? 0;
 
-            return (
-              <div
-                className="history-row"
-                key={
-                  item._id ||
-                  `${item.createdAt}-${index}`
-                }
-                style={{
-                  ...styles.row,
-                  background:
-                    cardBackground,
-                  border:
-                    `1px solid ${border}`,
-                }}
-              >
-                <div>
-                  <div
-                    style={
-                      styles.temperature
-                    }
-                  >
-                    <span>
-                      🌡
-                    </span>
+          return (
+            <div
+              className="history-row"
+              key={
+                item._id ||
+                `${item.createdAt}-${index}`
+              }
+              style={{
+                ...styles.row,
+                background: cardBackground,
+                border:
+                  `1px solid ${border}`,
+              }}
+            >
+              <div>
+                <div
+                  style={styles.temperature}
+                >
+                  <span>🌡</span>
 
-                    <strong>
-                      {temperature}°C
-                    </strong>
-                  </div>
-
-                  <div
-                    style={
-                      styles.humidity
-                    }
-                  >
-                    <span>
-                      💧
-                    </span>
-
-                    <span>
-                      {humidity}%
-                    </span>
-                  </div>
+                  <strong>
+                    {temperature}°C
+                  </strong>
                 </div>
 
                 <div
-                  className="history-right"
-                  style={
-                    styles.right
-                  }
+                  style={styles.humidity}
                 >
-                  <p
-                    style={
-                      styles.status
-                    }
-                  >
-                    🔥 {heater}
-                  </p>
+                  <span>💧</span>
 
-                  <p
-                    style={
-                      styles.fan
-                    }
-                  >
-                    💨 Fan {fan}%
-                  </p>
-
-                  <p
-                    style={{
-                      ...styles.date,
-                      color: muted,
-                    }}
-                  >
-                    {formatDate(
-                      item.createdAt
-                    )}
-                  </p>
+                  <span>
+                    {humidity}%
+                  </span>
                 </div>
               </div>
-            );
-          }
-        )}
+
+              <div
+                className="history-right"
+                style={styles.right}
+              >
+                <p style={styles.status}>
+                  🔥 {heater}
+                </p>
+
+                <p style={styles.fan}>
+                  💨 Fan {fan}%
+                </p>
+
+                <p
+                  style={{
+                    ...styles.date,
+                    color: muted,
+                  }}
+                >
+                  {formatDate(
+                    item.createdAt
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <BottomNav />
@@ -843,17 +678,12 @@ export default function History() {
   );
 }
 
-// =====================================================
-// STYLES
-// =====================================================
-
 const styles = {
   page: {
     minHeight: "100vh",
     padding: "20px",
     paddingBottom: "100px",
-    fontFamily:
-      "Inter, Arial, sans-serif",
+    fontFamily: "Inter, Arial, sans-serif",
   },
 
   loadingPage: {
@@ -871,8 +701,7 @@ const styles = {
     borderRadius: "50%",
     border:
       "3px solid rgba(148,163,184,0.25)",
-    borderTop:
-      "3px solid #2563eb",
+    borderTop: "3px solid #2563eb",
     animation:
       "spin 0.8s linear infinite",
   },
@@ -898,8 +727,7 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "22px",
   },
@@ -921,8 +749,7 @@ const styles = {
     padding: "14px",
     borderRadius: "20px",
     marginBottom: "16px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   selectorLabel: {
@@ -952,11 +779,9 @@ const styles = {
     borderRadius: "20px",
     marginBottom: "14px",
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
     boxShadow:
       "0 10px 25px rgba(0,0,0,0.08)",
   },
@@ -1000,8 +825,7 @@ const styles = {
     padding: "40px 20px",
     textAlign: "center",
     borderRadius: "24px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   emptyIcon: {
@@ -1011,13 +835,11 @@ const styles = {
 
   subscriptionCard: {
     maxWidth: "520px",
-    margin:
-      "50px auto 0",
+    margin: "50px auto 0",
     padding: "35px 25px",
     borderRadius: "28px",
     textAlign: "center",
-    backdropFilter:
-      "blur(14px)",
+    backdropFilter: "blur(14px)",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.18)",
   },
@@ -1028,22 +850,19 @@ const styles = {
   },
 
   subscriptionTitle: {
-    margin:
-      "0 0 12px",
+    margin: "0 0 12px",
     fontSize: "22px",
   },
 
   subscriptionText: {
     fontSize: "14px",
     lineHeight: 1.6,
-    margin:
-      "8px 0",
+    margin: "8px 0",
   },
 
   primaryButton: {
     marginTop: "18px",
-    padding:
-      "12px 20px",
+    padding: "12px 20px",
     border: "none",
     borderRadius: "14px",
     background:
@@ -1057,13 +876,11 @@ const styles = {
     display: "block",
     width: "100%",
     marginTop: "10px",
-    padding:
-      "11px 18px",
+    padding: "11px 18px",
     border:
       "1px solid rgba(148,163,184,0.25)",
     borderRadius: "14px",
-    background:
-      "transparent",
+    background: "transparent",
     color: "inherit",
     fontWeight: 600,
     cursor: "pointer",

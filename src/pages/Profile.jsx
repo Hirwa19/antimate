@@ -10,7 +10,7 @@ const API_URL =
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { isDark } = useAppSettings();
+  const { isDark, text: t } = useAppSettings();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,39 +20,28 @@ export default function Profile() {
     try {
       setLoading(true);
 
-      const token =
-        localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
       if (!token) {
         navigate("/login");
         return;
       }
 
-      const res = await fetch(
-        `${API_URL}/api/profile/me`,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_URL}/api/profile/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to load profile"
-        );
+        throw new Error(data.message || "Failed to load profile");
       }
 
       setProfile(data);
     } catch (err) {
-      console.error(
-        "Profile error:",
-        err
-      );
+      console.error("Profile error:", err);
     } finally {
       setLoading(false);
     }
@@ -63,7 +52,8 @@ export default function Profile() {
   }, []);
 
   function logout() {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     navigate("/login");
   }
 
@@ -72,24 +62,16 @@ export default function Profile() {
   }
 
   const user = profile?.user;
-  const devices =
-    profile?.devices || [];
+  const devices = profile?.devices || [];
   const plan = profile?.plan;
-
-  const hasDevice =
-    devices.length > 0;
+  const hasDevice = devices.length > 0;
 
   const background = isDark
     ? "linear-gradient(135deg,#07111f,#0f2537)"
     : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
 
-  const text = isDark
-    ? "#ffffff"
-    : "#0f172a";
-
-  const muted = isDark
-    ? "#94a3b8"
-    : "#64748b";
+  const text = isDark ? "#ffffff" : "#0f172a";
+  const muted = isDark ? "#94a3b8" : "#64748b";
 
   const cardBackground = isDark
     ? "rgba(255,255,255,0.08)"
@@ -107,14 +89,10 @@ export default function Profile() {
         color: text,
       }}
     >
-      {/* =================================================
-          TOP BAR
-      ================================================= */}
-
       <div style={styles.topBar}>
         <div>
           <h2 style={styles.title}>
-            Profile
+            {t?.profile || "Profile"}
           </h2>
 
           <p
@@ -123,18 +101,15 @@ export default function Profile() {
               color: muted,
             }}
           >
-            Account overview
+            {t?.accountOverview || "Account overview"}
           </p>
         </div>
 
         <button
-          onClick={() =>
-            setMenuOpen(!menuOpen)
-          }
+          onClick={() => setMenuOpen(!menuOpen)}
           style={{
             ...styles.menuBtn,
-            background:
-              cardBackground,
+            background: cardBackground,
             color: text,
             border,
           }}
@@ -143,60 +118,40 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* =================================================
-          MENU
-      ================================================= */}
-
       {menuOpen && (
         <div
           style={{
             ...styles.menu,
-            background:
-              isDark
-                ? "#111c2c"
-                : "#ffffff",
+            background: isDark ? "#111c2c" : "#ffffff",
             border,
-            boxShadow:
-              "0 18px 40px rgba(0,0,0,0.18)",
+            boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
           }}
         >
           <MenuButton
-            label="Dashboard"
+            label={t?.dashboard || "Dashboard"}
             icon="⌂"
-            onClick={() =>
-              navigate("/dashboard")
-            }
+            onClick={() => navigate("/dashboard")}
             color={text}
           />
 
           <MenuButton
-            label="Device Management"
-            icon="⚙️"
-            onClick={() =>
-              navigate(
-                "/device-management"
-              )
-            }
+            label={t?.deviceManagement || "Device Management"}
+            icon="📡"
+            onClick={() => navigate("/device-management")}
             color={text}
           />
 
-          {/* PLAN BUTTON */}
-
           <MenuButton
-            label="Plans"
+            label={t?.plans || "Plans"}
             icon="💳"
-            onClick={() =>
-              navigate("/plans")
-            }
+            onClick={() => navigate("/plans")}
             color={text}
           />
 
           <MenuButton
-            label="Settings"
+            label={t?.settings || "Settings"}
             icon="⚙"
-            onClick={() =>
-              navigate("/settings")
-            }
+            onClick={() => navigate("/settings")}
             color={text}
           />
 
@@ -217,33 +172,25 @@ export default function Profile() {
               color: "#ef4444",
             }}
           >
-            <span>↪</span>
-            <span>Logout</span>
+            <span style={styles.menuIcon}>↪</span>
+            <span>{t?.logout || "Logout"}</span>
           </button>
         </div>
       )}
 
-      {/* =================================================
-          PROFILE CARD
-      ================================================= */}
-
       <div
         style={{
           ...styles.card,
-          background:
-            cardBackground,
+          background: cardBackground,
           border,
         }}
       >
         <div style={styles.avatar}>
-          {user?.fullName
-            ?.charAt(0)
-            ?.toUpperCase() || "U"}
+          {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
         </div>
 
         <h3 style={styles.name}>
-          {user?.fullName ||
-            "User"}
+          {user?.fullName || "User"}
         </h3>
 
         <p
@@ -252,21 +199,12 @@ export default function Profile() {
             color: muted,
           }}
         >
-          @{user?.username ||
-            "username"}
+          @{user?.username || "username"}
         </p>
 
-        <div
-          style={styles.stats}
-        >
-          <div
-            style={
-              styles.statItem
-            }
-          >
-            <strong
-              style={styles.statValue}
-            >
+        <div style={styles.stats}>
+          <div style={styles.statItem}>
+            <strong style={styles.statValue}>
               {devices.length}
             </strong>
 
@@ -276,26 +214,15 @@ export default function Profile() {
                 color: muted,
               }}
             >
-              Device
+              {t?.devices || "Devices"}
             </span>
           </div>
 
-          <div
-            style={
-              styles.statDivider
-            }
-          />
+          <div style={styles.statDivider} />
 
-          <div
-            style={
-              styles.statItem
-            }
-          >
-            <strong
-              style={styles.statValue}
-            >
-              {plan?.planName ||
-                "Free"}
+          <div style={styles.statItem}>
+            <strong style={styles.statValue}>
+              {plan?.planName || "Free"}
             </strong>
 
             <span
@@ -304,44 +231,24 @@ export default function Profile() {
                 color: muted,
               }}
             >
-              Plan
+              {t?.plan || "Plan"}
             </span>
           </div>
         </div>
 
-        {/* PLAN BUTTON */}
-
         <button
-          onClick={() =>
-            navigate("/plans")
-          }
-          style={
-            styles.planButton
-          }
+          onClick={() => navigate("/plans")}
+          style={styles.planButton}
         >
-          💳 View Plans
+          💳 {t?.viewPlans || "View Plans"}
         </button>
       </div>
 
-      {/* =================================================
-          DEVICE SECTION
-      ================================================= */}
-
-      <div
-        style={styles.section}
-      >
-        <div
-          style={
-            styles.sectionHeader
-          }
-        >
+      <div style={styles.section}>
+        <div style={styles.sectionHeader}>
           <div>
-            <h3
-              style={{
-                margin: 0,
-              }}
-            >
-              Devices
+            <h3 style={{ margin: 0 }}>
+              {t?.devices || "Devices"}
             </h3>
 
             <p
@@ -350,158 +257,99 @@ export default function Profile() {
                 color: muted,
               }}
             >
-              Connected ANTIMATE
-              devices
+              {t?.connectedAntimateDevices ||
+                "Connected ANTIMATE devices"}
             </p>
           </div>
 
           <button
-            onClick={() =>
-              navigate(
-                "/device-management"
-              )
-            }
-            style={
-              styles.addBtn
-            }
+            onClick={() => navigate("/device-management")}
+            style={styles.addBtn}
           >
-            + Add
+            + {t?.add || "Add"}
           </button>
         </div>
 
         {hasDevice ? (
           <div>
-            {devices.map(
-              (device) => (
-                <div
-                  key={
-                    device._id ||
-                    device.deviceId
-                  }
-                  style={{
-                    ...styles.deviceCard,
-                    background:
-                      cardBackground,
-                    border,
-                  }}
-                >
-                  <div
-                    style={
-                      styles.deviceInfo
-                    }
-                  >
-                    <div
-                      style={
-                        styles.deviceIcon
-                      }
+            {devices.map((device) => (
+              <div
+                key={device._id || device.deviceId}
+                style={{
+                  ...styles.deviceCard,
+                  background: cardBackground,
+                  border,
+                }}
+              >
+                <div style={styles.deviceInfo}>
+                  <div style={styles.deviceIcon}>📡</div>
+
+                  <div>
+                    <strong>
+                      {device.deviceId}
+                    </strong>
+
+                    <p
+                      style={{
+                        ...styles.deviceStatus,
+                        color: muted,
+                      }}
                     >
-                      📡
-                    </div>
-
-                    <div>
-                      <strong>
-                        {
-                          device.deviceId
-                        }
-                      </strong>
-
-                      <p
-                        style={{
-                          ...styles.deviceStatus,
-                          color: muted,
-                        }}
-                      >
-                        Status:{" "}
-                        {device.activationStatus ||
-                          "UNKNOWN"}
-                      </p>
-                    </div>
+                      {t?.status || "Status"}:{" "}
+                      {device.activationStatus || "UNKNOWN"}
+                    </p>
                   </div>
-
-                  <button
-                    onClick={() =>
-                      navigate(
-                        "/device-management"
-                      )
-                    }
-                    style={
-                      styles.smallBtn
-                    }
-                  >
-                    Manage
-                  </button>
                 </div>
-              )
-            )}
+
+                <button
+                  onClick={() => navigate("/device-management")}
+                  style={styles.smallBtn}
+                >
+                  {t?.manage || "Manage"}
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div
             style={{
               ...styles.emptyDevice,
-              background:
-                cardBackground,
+              background: cardBackground,
               border,
             }}
           >
-            <div
-              style={
-                styles.emptyIcon
-              }
-            >
-              📡
-            </div>
+            <div style={styles.emptyIcon}>📡</div>
 
             <strong>
-              No device linked
+              {t?.noDeviceLinked || "No device linked"}
             </strong>
 
             <p
               style={{
                 color: muted,
-                margin:
-                  "6px 0 14px",
+                margin: "6px 0 14px",
               }}
             >
-              Connect your ANTIMATE
-              device to start
-              monitoring your brooder.
+              {t?.connectAntimateDevice ||
+                "Connect your ANTIMATE device to start monitoring your brooder."}
             </p>
 
             <button
-              onClick={() =>
-                navigate(
-                  "/device-management"
-                )
-              }
-              style={
-                styles.primaryBtn
-              }
+              onClick={() => navigate("/device-management")}
+              style={styles.primaryBtn}
             >
-              Device Management
+              {t?.deviceManagement || "Device Management"}
             </button>
           </div>
         )}
       </div>
-
-      {/* =================================================
-          BOTTOM NAV
-      ================================================= */}
 
       <BottomNav />
     </div>
   );
 }
 
-// =====================================================
-// MENU BUTTON
-// =====================================================
-
-function MenuButton({
-  label,
-  icon,
-  onClick,
-  color,
-}) {
+function MenuButton({ label, icon, onClick, color }) {
   return (
     <button
       onClick={onClick}
@@ -510,37 +358,24 @@ function MenuButton({
         color,
       }}
     >
-      <span
-        style={
-          styles.menuIcon
-        }
-      >
-        {icon}
-      </span>
-
+      <span style={styles.menuIcon}>{icon}</span>
       <span>{label}</span>
     </button>
   );
 }
-
-// =====================================================
-// STYLES
-// =====================================================
 
 const styles = {
   page: {
     minHeight: "100vh",
     padding: "20px",
     paddingBottom: "110px",
-    fontFamily:
-      "Inter, Arial, sans-serif",
+    fontFamily: "Inter, Arial, sans-serif",
     position: "relative",
   },
 
   topBar: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
   },
 
@@ -559,7 +394,6 @@ const styles = {
     width: "44px",
     height: "44px",
     borderRadius: "14px",
-    border: "none",
     fontSize: "21px",
     cursor: "pointer",
   },
@@ -602,28 +436,23 @@ const styles = {
     padding: "24px 20px",
     borderRadius: "26px",
     textAlign: "center",
-    backdropFilter:
-      "blur(14px)",
-    boxShadow:
-      "0 18px 40px rgba(0,0,0,0.12)",
+    backdropFilter: "blur(14px)",
+    boxShadow: "0 18px 40px rgba(0,0,0,0.12)",
   },
 
   avatar: {
     width: "76px",
     height: "76px",
     borderRadius: "24px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     display: "flex",
-    justifyContent:
-      "center",
+    justifyContent: "center",
     alignItems: "center",
     fontSize: "28px",
     fontWeight: 700,
     margin: "0 auto 12px",
-    boxShadow:
-      "0 12px 28px rgba(37,99,235,0.25)",
+    boxShadow: "0 12px 28px rgba(37,99,235,0.25)",
   },
 
   name: {
@@ -638,8 +467,7 @@ const styles = {
 
   stats: {
     display: "flex",
-    justifyContent:
-      "center",
+    justifyContent: "center",
     alignItems: "center",
     marginTop: "22px",
     gap: "35px",
@@ -647,8 +475,7 @@ const styles = {
 
   statItem: {
     display: "flex",
-    flexDirection:
-      "column",
+    flexDirection: "column",
     gap: "4px",
   },
 
@@ -663,8 +490,7 @@ const styles = {
   statDivider: {
     width: "1px",
     height: "34px",
-    background:
-      "rgba(148,163,184,0.25)",
+    background: "rgba(148,163,184,0.25)",
   },
 
   planButton: {
@@ -673,8 +499,7 @@ const styles = {
     padding: "12px",
     border: "none",
     borderRadius: "15px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -687,8 +512,7 @@ const styles = {
 
   sectionHeader: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "12px",
   },
@@ -702,8 +526,7 @@ const styles = {
     border: "none",
     borderRadius: "12px",
     padding: "9px 13px",
-    background:
-      "linear-gradient(135deg,#22c55e,#14b8a6)",
+    background: "linear-gradient(135deg,#22c55e,#14b8a6)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -714,11 +537,9 @@ const styles = {
     padding: "14px",
     borderRadius: "19px",
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   deviceInfo: {
@@ -733,8 +554,7 @@ const styles = {
     borderRadius: "14px",
     display: "grid",
     placeItems: "center",
-    background:
-      "rgba(37,99,235,0.12)",
+    background: "rgba(37,99,235,0.12)",
     fontSize: "19px",
   },
 
@@ -747,8 +567,7 @@ const styles = {
     border: "none",
     borderRadius: "11px",
     padding: "8px 11px",
-    background:
-      "#22c55e",
+    background: "#22c55e",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -759,8 +578,7 @@ const styles = {
     padding: "30px 20px",
     borderRadius: "22px",
     textAlign: "center",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   emptyIcon: {
@@ -772,8 +590,7 @@ const styles = {
     border: "none",
     borderRadius: "13px",
     padding: "11px 15px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",

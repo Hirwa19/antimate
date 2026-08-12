@@ -1,267 +1,749 @@
-import React, { useState } from "react";
+import React from "react";
 import BottomNav from "../components/BottomNav";
 import AppHeader from "../components/AppHeader";
 import { useAppSettings } from "../context/AppSettingsContext";
 
-// Data z'amakuru, tips n'ikoranabuhanga
 const HERO_ARTICLE = {
-  id: "hero-1",
-  category: "FEATURED",
-  title: "Ikoranabuhanga rya AI n'Ubuhinzi n'Ubworozi bugezweho muri ANTIMATE",
-  description:
-    "Uko ibyuma bya IoT n'ubwenge bukorano (AI) biri guhindura imyoretse y'inkoko n'ubuhinzi bugezweho ku borozi n'abahinzi mu Rwanda n'Afrika.",
   image:
     "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=1200&q=80",
-  author: "ANTIMATE Team",
-  date: "July 24, 2026",
 };
-
-const AGRI_NEWS = [
-  {
-    id: "news-1",
-    category: "Technology",
-    title: "Gukoresha Drones n'Ibyuma bya IoT mu kuhatira imyaka",
-    description: "Ibyuma bihenze bishobora gupima ubuhehere bwo mu ubutaka no kuhira neza ahakenewe gusa bila kwangiza amazi.",
-    image: "https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80",
-    author: "Jean Paul N.",
-    date: "July 22, 2026",
-  },
-  {
-    id: "news-2",
-    category: "Poultry",
-    title: "Uko wagabanya impfu z'iminyawanwa (imishwi) mu cyumweru cya mbere",
-    description: "Gucunga ubushyuhe, umwuka mwiza, n'amazi meza biragufasha kurinda imishwi yawe gupfa ku kigero cya 90%.",
-    image: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=800&q=80",
-    author: "Dr. Alice M.",
-    date: "July 20, 2026",
-  },
-  {
-    id: "news-3",
-    category: "AI & IoT",
-    title: "Smart Brooder: AI yakorewe korora inkoko neza",
-    description: "Kumenya ibipimo by'ubushyuhe n'umwuka muri poultry shed yawe ugakoresha terefone gusa.",
-    image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
-    author: "ANTIMATE Devs",
-    date: "July 18, 2026",
-  }
-];
 
 const POULTRY_TIPS = [
   {
     id: "pt-1",
-    title: "Ubushyuhe Bwiza muri Brooder",
-    description: "Tangirira ku gipimo cy'ubushyuhe buhagije mu cyumweru cya mbere ugenda ugabanya gake gake.",
-    image: "https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&w=600&q=80",
+    image:
+      "https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "pt-2",
-    title: "Isuku n'Amazi Meza",
-    description: "Sukura ibikoresho by'amazi buri munsi kugira ngo urinde indwara nka Coccidiosis.",
-    image: "https://images.unsplash.com/photo-1533318087102-b3ad366ed041?auto=format&fit=crop&w=600&q=80",
+    image:
+      "https://images.unsplash.com/photo-1533318087102-b3ad366ed041?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "pt-3",
-    title: "Guhindura Umwuka (Ventilation)",
-    description: "Leka umwuka mwiza winjire kuko bituma inkoko zitabura oxygen ntiwipfutse cyane.",
-    image: "https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=600&q=80",
-  }
+    image:
+      "https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=600&q=80",
+  },
 ];
 
-// Video z'ubworozi bw'inkoko mu Kinyarwanda zikora neza muri Embedded iframe
+const AGRI_NEWS = [
+  {
+    id: "news-1",
+    image:
+      "https://images.unsplash.com/photo-1508614589041-895b88991e3e?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "news-2",
+    image:
+      "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=800&q=80",
+  },
+  {
+    id: "news-3",
+    image:
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+  },
+];
+
 const YOUTUBE_VIDEOS = [
   {
     id: "yt-1",
     embedId: "htbmHQnTdb4",
-    title: "Uko warinda Inkoko zawe Indwara y'Umuraramo (Newcastle Disease)",
-    description: "Inyigisho irambuye mu Kinyarwanda igufasha kurinda inkoko zawe icyorezo cy'umuraramo no kuzirinda gupfa.",
-    youtubeUrl: "https://www.youtube.com/watch?v=htbmHQnTdb4",
   },
   {
     id: "yt-2",
     embedId: "-qEs9hWjXy4",
-    title: "Yavuye kuri Zero ageze kure mu Bworozi bw'Inkoko mu Rwanda",
-    description: "Urugero rw'umworozi w'inkoko mu Rwanda usobanura uburyo yatejemo imbere ubworozi bwe n'inyungu abukuramo.",
-    youtubeUrl: "https://www.youtube.com/watch?v=-qEs9hWjXy4",
   },
   {
     id: "yt-3",
     embedId: "DOk8HBq3kWU",
-    title: "Ubworozi bw'Inkoko bugezweho n'Umusaruro wazo mu Rwanda",
-    description: "Uko gukoresha uburyo bugezweho mu korora inkoko byongera umusaruro w'amagi n'inyama.",
-    youtubeUrl: "https://www.youtube.com/watch?v=DOk8HBq3kWU",
-  }
+  },
 ];
 
 function Home() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   const { isDark, text } = useAppSettings();
 
-  // Dynamic Theme Styling
+  const t = text || {};
+
   const bgMain = isDark ? "#0f172a" : "#f8fafc";
   const bgCard = isDark ? "#1e293b" : "#ffffff";
   const textPrimary = isDark ? "#ffffff" : "#0f172a";
   const textSecondary = isDark ? "#94a3b8" : "#64748b";
-  const accentGreen = "#00ff99";
   const borderColor = isDark ? "#334155" : "#e2e8f0";
+  const accent = "#00c896";
+
+  const content = {
+    greeting:
+      t.homeGreeting ||
+      (t.home === "Ahabanza"
+        ? "Murakaza neza"
+        : "Welcome"),
+
+    greetingText:
+      t.homeGreetingText ||
+      (t.home === "Ahabanza"
+        ? "Menya amakuru mashya, inyigisho n'uburyo bwagufasha guteza imbere ubworozi bwawe."
+        : "Discover useful news, tips and ideas to help you improve your farm."),
+
+    featured:
+      t.featured ||
+      (t.home === "Ahabanza" ? "IBY'INGENZI" : "FEATURED"),
+
+    heroTitle:
+      t.heroTitle ||
+      (t.home === "Ahabanza"
+        ? "Ikoranabuhanga rihindura ubworozi bw'inkoko"
+        : "Technology transforming modern poultry farming"),
+
+    heroDescription:
+      t.heroDescription ||
+      (t.home === "Ahabanza"
+        ? "Menya uburyo ikoranabuhanga, amakuru y'igihe nyacyo n'ubwenge bukorano bishobora gufasha umworozi gufata ibyemezo byiza no kongera umusaruro."
+        : "Discover how intelligent technology, real-time information and AI can help farmers make better decisions and improve productivity."),
+
+    readMore:
+      t.readMore ||
+      (t.home === "Ahabanza"
+        ? "Soma birambuye"
+        : "Read more"),
+
+    poultryTips:
+      t.poultryTips ||
+      (t.home === "Ahabanza"
+        ? "🐥 Inyigisho ku Bworozi bw'Inkoko"
+        : "🐥 Poultry Farming Tips"),
+
+    agricultureNews:
+      t.agricultureNews ||
+      (t.home === "Ahabanza"
+        ? "🌱 Amakuru y'Ubuhinzi n'Ikoranabuhanga"
+        : "🌱 Agriculture & Technology News"),
+
+    videos:
+      t.educationVideos ||
+      (t.home === "Ahabanza"
+        ? "🎥 Amashusho y'Inyigisho"
+        : "🎥 Educational Videos"),
+
+    watchYoutube:
+      t.watchYoutube ||
+      (t.home === "Ahabanza"
+        ? "Reba kuri YouTube ↗"
+        : "Watch on YouTube ↗"),
+  };
+
+  const tips =
+    t.home === "Ahabanza"
+      ? [
+          {
+            title: "Ubushyuhe bwiza mu cyumweru cya mbere",
+            description:
+              "Tangira ku bushyuhe bukwiye, hanyuma ubugabanye buhoro buhoro uko imishwi ikura.",
+          },
+          {
+            title: "Isuku n'amazi meza",
+            description:
+              "Sukura ibikoresho by'amazi buri munsi kandi uhore utanga amazi meza.",
+          },
+          {
+            title: "Umwuka mwiza",
+            description:
+              "Ventilation nziza ifasha inkoko kubona umwuka uhagije no gukura neza.",
+          },
+        ]
+      : [
+          {
+            title: "Proper brooder temperature",
+            description:
+              "Start with the right temperature and gradually reduce it as chicks grow.",
+          },
+          {
+            title: "Clean water and hygiene",
+            description:
+              "Clean drinking equipment regularly and always provide fresh water.",
+          },
+          {
+            title: "Good ventilation",
+            description:
+              "Proper ventilation helps birds get enough fresh air and grow well.",
+          },
+        ];
+
+  const news =
+    t.home === "Ahabanza"
+      ? [
+          {
+            category: "Ikoranabuhanga",
+            title: "Ikoranabuhanga mu buhinzi",
+            description:
+              "Menya uko ibikoresho by'ikoranabuhanga bishobora gufasha gucunga amazi n'ibindi bikenerwa mu buhinzi.",
+          },
+          {
+            category: "Ubworozi",
+            title: "Kurinda imishwi mu ntangiriro",
+            description:
+              "Ubushyuhe bukwiye, amazi meza n'umwuka mwiza ni ingenzi cyane mu cyumweru cya mbere.",
+          },
+          {
+            category: "AI & Smart Farming",
+            title: "Ubwenge bukorano mu bworozi",
+            description:
+              "Koresha amakuru ava mu bikoresho byawe kugira ngo ubone ubumenyi bugufasha gufata ibyemezo.",
+          },
+        ]
+      : [
+          {
+            category: "Technology",
+            title: "Technology in agriculture",
+            description:
+              "Discover how modern technology can help farmers manage water and other farm resources.",
+          },
+          {
+            category: "Poultry",
+            title: "Protecting chicks early",
+            description:
+              "Proper temperature, clean water and fresh air are especially important during the first week.",
+          },
+          {
+            category: "AI & Smart Farming",
+            title: "AI in poultry farming",
+            description:
+              "Use information from your farm to gain insights that help you make better decisions.",
+          },
+        ];
+
+  const videos =
+    t.home === "Ahabanza"
+      ? [
+          {
+            title:
+              "Uko warinda inkoko indwara y'umuraramo",
+            description:
+              "Inyigisho igufasha kumenya uburyo bwo kurinda inkoko indwara y'umuraramo.",
+          },
+          {
+            title:
+              "Uko watangira ubworozi bw'inkoko",
+            description:
+              "Urugero rw'umworozi wateje imbere ubworozi bwe mu Rwanda.",
+          },
+          {
+            title:
+              "Ubworozi bw'inkoko bugezweho",
+            description:
+              "Menya uburyo bugezweho bushobora kongera umusaruro w'amagi n'inyama.",
+          },
+        ]
+      : [
+          {
+            title:
+              "How to protect chickens from Newcastle disease",
+            description:
+              "Learn practical ways to protect your poultry from Newcastle disease.",
+          },
+          {
+            title:
+              "How to start poultry farming",
+            description:
+              "Learn from a poultry farmer who developed a successful farming business.",
+          },
+          {
+            title:
+              "Modern poultry farming",
+            description:
+              "Discover modern methods that can improve egg and meat production.",
+          },
+        ];
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: bgMain,
+        background: bgMain,
         color: textPrimary,
         paddingBottom: "100px",
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Inter, Arial, sans-serif",
       }}
     >
-      <AppHeader title={text?.home || "Home"} />
+      <AppHeader title={t.home || "Home"} />
 
-      <main style={{ maxWidth: "700px", margin: "0 auto", padding: "16px", display: "flex", flexDirection: "column", gap: "24px" }}>
-        
-        {/* User Greeting Header */}
-        <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "bold" }}>
-            {text?.home || "Home"}, {user?.name || "User"} 👋
+      <main style={styles.main}>
+        {/* GREETING */}
+
+        <section>
+          <h1 style={styles.greeting}>
+            {content.greeting},{" "}
+            {user?.name || (t.home === "Ahabanza" ? "Mworozi" : "Farmer")} 👋
           </h1>
-          <p style={{ color: textSecondary, fontSize: "14px" }}>
-            Soma amakuru mashya y'ubuhinzi, inkoko, n'ikoranabuhanga rya ANTIMATE.
-          </p>
-        </div>
 
-        {/* HERO FEATURED ARTICLE */}
-        <div
+          <p
+            style={{
+              ...styles.greetingText,
+              color: textSecondary,
+            }}
+          >
+            {content.greetingText}
+          </p>
+        </section>
+
+        {/* FEATURED ARTICLE */}
+
+        <section
           style={{
-            backgroundColor: bgCard,
-            borderRadius: "20px",
+            ...styles.heroCard,
+            background: bgCard,
             border: `1px solid ${borderColor}`,
-            overflow: "hidden",
-            boxShadow: isDark ? "none" : "0 10px 25px rgba(0,0,0,0.05)",
+            boxShadow: isDark
+              ? "none"
+              : "0 12px 30px rgba(0,0,0,0.06)",
           }}
         >
-          <img
-            src={HERO_ARTICLE.image}
-            alt="Hero"
-            style={{ width: "100%", height: "200px", objectFit: "cover" }}
-          />
-          <div style={{ padding: "16px" }}>
-            <span style={{ backgroundColor: accentGreen, color: "#0f172a", fontSize: "11px", fontWeight: "bold", padding: "4px 8px", borderRadius: "10px" }}>
-              {HERO_ARTICLE.category}
-            </span>
-            <h2 style={{ fontSize: "18px", marginTop: "10px", color: textPrimary }}>{HERO_ARTICLE.title}</h2>
-            <p style={{ fontSize: "13px", color: textSecondary, margin: "8px 0" }}>{HERO_ARTICLE.description}</p>
-            <button
+          <div style={styles.heroImageWrapper}>
+            <img
+              src={HERO_ARTICLE.image}
+              alt="Smart farming"
+              style={styles.heroImage}
+            />
+
+            <div style={styles.imageOverlay}>
+              <span
+                style={{
+                  ...styles.badge,
+                  background: accent,
+                }}
+              >
+                {content.featured}
+              </span>
+            </div>
+          </div>
+
+          <div style={styles.heroContent}>
+            <h2
               style={{
-                background: accentGreen,
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "10px",
-                fontWeight: "bold",
-                color: "#0f172a",
-                cursor: "pointer",
-                marginTop: "6px"
+                ...styles.heroTitle,
+                color: textPrimary,
               }}
             >
-              Soma birambuye →
+              {content.heroTitle}
+            </h2>
+
+            <p
+              style={{
+                ...styles.heroDescription,
+                color: textSecondary,
+              }}
+            >
+              {content.heroDescription}
+            </p>
+
+            <button
+              style={{
+                ...styles.primaryButton,
+                background: accent,
+              }}
+            >
+              {content.readMore} →
             </button>
           </div>
-        </div>
+        </section>
 
-        {/* POULTRY TIPS (HORIZONTAL SCROLL) */}
-        <div>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🐥 Inyigisho ku Bworozi bwa Inkoko</h2>
-          <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "8px" }}>
-            {POULTRY_TIPS.map((tip) => (
+        {/* POULTRY TIPS */}
+
+        <section>
+          <SectionTitle
+            title={content.poultryTips}
+            color={textPrimary}
+          />
+
+          <div style={styles.horizontalScroll}>
+            {POULTRY_TIPS.map((tip, index) => (
               <div
                 key={tip.id}
                 style={{
-                  minWidth: "200px",
-                  backgroundColor: bgCard,
-                  borderRadius: "16px",
+                  ...styles.tipCard,
+                  background: bgCard,
                   border: `1px solid ${borderColor}`,
-                  padding: "12px",
-                  flexShrink: 0,
                 }}
               >
-                <img src={tip.image} alt={tip.title} style={{ width: "100%", height: "100px", objectFit: "cover", borderRadius: "10px" }} />
-                <h4 style={{ fontSize: "14px", marginTop: "8px", color: textPrimary }}>{tip.title}</h4>
-                <p style={{ fontSize: "11px", color: textSecondary, marginTop: "4px" }}>{tip.description}</p>
+                <img
+                  src={tip.image}
+                  alt={tips[index].title}
+                  style={styles.tipImage}
+                />
+
+                <h3
+                  style={{
+                    ...styles.tipTitle,
+                    color: textPrimary,
+                  }}
+                >
+                  {tips[index].title}
+                </h3>
+
+                <p
+                  style={{
+                    ...styles.tipDescription,
+                    color: textSecondary,
+                  }}
+                >
+                  {tips[index].description}
+                </p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* AGRICULTURE & TECH NEWS */}
-        <div>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🌱 Amakuru Mashya y'Ubuhinzi & AI</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {AGRI_NEWS.map((item) => (
-              <div
+        {/* AGRICULTURE NEWS */}
+
+        <section>
+          <SectionTitle
+            title={content.agricultureNews}
+            color={textPrimary}
+          />
+
+          <div style={styles.newsList}>
+            {AGRI_NEWS.map((item, index) => (
+              <article
                 key={item.id}
                 style={{
-                  backgroundColor: bgCard,
-                  borderRadius: "16px",
+                  ...styles.newsCard,
+                  background: bgCard,
                   border: `1px solid ${borderColor}`,
-                  padding: "12px",
-                  display: "flex",
-                  gap: "12px",
-                  alignItems: "center"
                 }}
               >
-                <img src={item.image} alt={item.title} style={{ width: "90px", height: "90px", objectFit: "cover", borderRadius: "12px" }} />
-                <div>
-                  <span style={{ color: accentGreen, fontSize: "10px", fontWeight: "bold" }}>{item.category}</span>
-                  <h3 style={{ fontSize: "14px", color: textPrimary, margin: "4px 0" }}>{item.title}</h3>
-                  <p style={{ fontSize: "11px", color: textSecondary }}>{item.description}</p>
+                <img
+                  src={item.image}
+                  alt={news[index].title}
+                  style={styles.newsImage}
+                />
+
+                <div style={styles.newsContent}>
+                  <span
+                    style={{
+                      color: accent,
+                      fontSize: "10px",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {news[index].category}
+                  </span>
+
+                  <h3
+                    style={{
+                      ...styles.newsTitle,
+                      color: textPrimary,
+                    }}
+                  >
+                    {news[index].title}
+                  </h3>
+
+                  <p
+                    style={{
+                      ...styles.newsDescription,
+                      color: textSecondary,
+                    }}
+                  >
+                    {news[index].description}
+                  </p>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* YOUTUBE VIDEOS SECTION (KINYARWANDA) */}
-        <div>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "12px" }}>🎥 Amashusho y'Inyigisho mu Kinyarwanda</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {YOUTUBE_VIDEOS.map((vid) => (
-              <div key={vid.id} style={{ backgroundColor: bgCard, borderRadius: "16px", border: `1px solid ${borderColor}`, overflow: "hidden" }}>
-                <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
+        {/* VIDEOS */}
+
+        <section>
+          <SectionTitle
+            title={content.videos}
+            color={textPrimary}
+          />
+
+          <div style={styles.videoList}>
+            {YOUTUBE_VIDEOS.map((video, index) => (
+              <article
+                key={video.id}
+                style={{
+                  ...styles.videoCard,
+                  background: bgCard,
+                  border: `1px solid ${borderColor}`,
+                }}
+              >
+                <div style={styles.videoWrapper}>
                   <iframe
-                    src={`https://www.youtube.com/embed/${vid.embedId}`}
-                    title={vid.title}
-                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                    src={`https://www.youtube.com/embed/${video.embedId}`}
+                    title={videos[index].title}
+                    style={styles.video}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
-                <div style={{ padding: "12px" }}>
-                  <h3 style={{ fontSize: "14px", color: textPrimary }}>{vid.title}</h3>
-                  <p style={{ fontSize: "12px", color: textSecondary, marginTop: "4px" }}>{vid.description}</p>
+
+                <div style={styles.videoContent}>
+                  <h3
+                    style={{
+                      ...styles.videoTitle,
+                      color: textPrimary,
+                    }}
+                  >
+                    {videos[index].title}
+                  </h3>
+
+                  <p
+                    style={{
+                      ...styles.videoDescription,
+                      color: textSecondary,
+                    }}
+                  >
+                    {videos[index].description}
+                  </p>
+
                   <a
-                    href={vid.youtubeUrl}
+                    href={`https://www.youtube.com/watch?v=${video.embedId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      display: "inline-block",
-                      marginTop: "8px",
-                      color: accentGreen,
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      textDecoration: "none"
+                      ...styles.youtubeLink,
+                      color: accent,
                     }}
                   >
-                    Watch on YouTube ↗
+                    {content.watchYoutube}
                   </a>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
-
+        </section>
       </main>
 
       <BottomNav />
     </div>
   );
 }
+
+function SectionTitle({ title, color }) {
+  return (
+    <h2
+      style={{
+        margin: "0 0 13px",
+        fontSize: "18px",
+        fontWeight: 800,
+        color,
+      }}
+    >
+      {title}
+    </h2>
+  );
+}
+
+const styles = {
+  main: {
+    width: "100%",
+    maxWidth: "760px",
+    margin: "0 auto",
+    padding: "16px",
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    gap: "26px",
+  },
+
+  greeting: {
+    margin: 0,
+    fontSize: "23px",
+    fontWeight: 800,
+    lineHeight: 1.3,
+  },
+
+  greetingText: {
+    margin: "7px 0 0",
+    fontSize: "13px",
+    lineHeight: 1.6,
+  },
+
+  heroCard: {
+    overflow: "hidden",
+    borderRadius: "22px",
+  },
+
+  heroImageWrapper: {
+    position: "relative",
+    width: "100%",
+    height: "220px",
+    overflow: "hidden",
+  },
+
+  heroImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  },
+
+  imageOverlay: {
+    position: "absolute",
+    left: "14px",
+    bottom: "14px",
+  },
+
+  badge: {
+    display: "inline-block",
+    padding: "5px 9px",
+    borderRadius: "999px",
+    color: "#07111f",
+    fontSize: "10px",
+    fontWeight: 800,
+  },
+
+  heroContent: {
+    padding: "17px",
+  },
+
+  heroTitle: {
+    margin: 0,
+    fontSize: "19px",
+    lineHeight: 1.4,
+    fontWeight: 800,
+  },
+
+  heroDescription: {
+    margin: "9px 0 13px",
+    fontSize: "13px",
+    lineHeight: 1.65,
+  },
+
+  primaryButton: {
+    border: "none",
+    borderRadius: "11px",
+    padding: "9px 14px",
+    color: "#07111f",
+    fontWeight: 800,
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+
+  horizontalScroll: {
+    display: "flex",
+    gap: "12px",
+    overflowX: "auto",
+    paddingBottom: "5px",
+    scrollbarWidth: "none",
+  },
+
+  tipCard: {
+    minWidth: "210px",
+    maxWidth: "210px",
+    padding: "11px",
+    borderRadius: "18px",
+    flexShrink: 0,
+  },
+
+  tipImage: {
+    width: "100%",
+    height: "105px",
+    objectFit: "cover",
+    borderRadius: "12px",
+    display: "block",
+  },
+
+  tipTitle: {
+    margin: "9px 0 5px",
+    fontSize: "14px",
+    lineHeight: 1.4,
+  },
+
+  tipDescription: {
+    margin: 0,
+    fontSize: "11px",
+    lineHeight: 1.55,
+  },
+
+  newsList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+
+  newsCard: {
+    display: "flex",
+    gap: "12px",
+    padding: "11px",
+    borderRadius: "18px",
+    alignItems: "center",
+  },
+
+  newsImage: {
+    width: "92px",
+    height: "92px",
+    objectFit: "cover",
+    borderRadius: "13px",
+    flexShrink: 0,
+  },
+
+  newsContent: {
+    minWidth: 0,
+    flex: 1,
+  },
+
+  newsTitle: {
+    margin: "4px 0",
+    fontSize: "14px",
+    lineHeight: 1.35,
+  },
+
+  newsDescription: {
+    margin: 0,
+    fontSize: "11px",
+    lineHeight: 1.5,
+  },
+
+  videoList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "15px",
+  },
+
+  videoCard: {
+    overflow: "hidden",
+    borderRadius: "18px",
+  },
+
+  videoWrapper: {
+    position: "relative",
+    width: "100%",
+    paddingBottom: "56.25%",
+    height: 0,
+  },
+
+  video: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+  },
+
+  videoContent: {
+    padding: "13px",
+  },
+
+  videoTitle: {
+    margin: 0,
+    fontSize: "14px",
+    lineHeight: 1.4,
+  },
+
+  videoDescription: {
+    margin: "6px 0 8px",
+    fontSize: "11px",
+    lineHeight: 1.5,
+  },
+
+  youtubeLink: {
+    fontSize: "11px",
+    fontWeight: 800,
+    textDecoration: "none",
+  },
+};
 
 export default Home;

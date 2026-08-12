@@ -27,7 +27,7 @@ const DEVICE_TIMEOUT = 3 * 60 * 1000;
 const CHART_WINDOW = 120 * 60 * 1000;
 
 function Dashboard() {
-  const { isDark } = useAppSettings();
+  const { isDark, text } = useAppSettings();
 
   const [data, setData] = useState({
     temperature: 0,
@@ -40,12 +40,9 @@ function Dashboard() {
 
   const [history, setHistory] = useState([]);
   const [lastActivity, setLastActivity] = useState(null);
-  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketConnected, setSocketConnected] =
+    useState(false);
   const [now, setNow] = useState(Date.now());
-
-  // =====================================================
-  // UPDATE TIME
-  // =====================================================
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -54,10 +51,6 @@ function Dashboard() {
 
     return () => clearInterval(timer);
   }, []);
-
-  // =====================================================
-  // HELPERS
-  // =====================================================
 
   const getTimestamp = (telemetry) => {
     const timestamp =
@@ -68,9 +61,7 @@ function Dashboard() {
       telemetry?.timestamp ||
       telemetry?.updatedAt;
 
-    if (!timestamp) {
-      return Date.now();
-    }
+    if (!timestamp) return Date.now();
 
     const parsed = new Date(timestamp).getTime();
 
@@ -95,9 +86,7 @@ function Dashboard() {
     ) {
       const age = Number(directAge);
 
-      if (!Number.isNaN(age)) {
-        return age;
-      }
+      if (!Number.isNaN(age)) return age;
     }
 
     const birthDate =
@@ -121,10 +110,6 @@ function Dashboard() {
 
     return null;
   };
-
-  // =====================================================
-  // UPDATE TELEMETRY
-  // =====================================================
 
   const updateTelemetry = (telemetry) => {
     if (!telemetry) return;
@@ -160,11 +145,8 @@ function Dashboard() {
       telemetry.status ||
       "NORMAL";
 
-    const timestamp =
-      getTimestamp(telemetry);
-
-    const chicksAge =
-      getChicksAge(telemetry);
+    const timestamp = getTimestamp(telemetry);
+    const chicksAge = getChicksAge(telemetry);
 
     setData({
       temperature,
@@ -184,14 +166,10 @@ function Dashboard() {
         humidity,
       };
 
-      const existingIndex =
-        previous.findIndex(
-          (item) =>
-            Math.abs(
-              item.timestamp -
-                timestamp
-            ) < 1000
-        );
+      const existingIndex = previous.findIndex(
+        (item) =>
+          Math.abs(item.timestamp - timestamp) < 1000
+      );
 
       let next;
 
@@ -199,10 +177,7 @@ function Dashboard() {
         next = [...previous];
         next[existingIndex] = point;
       } else {
-        next = [
-          ...previous,
-          point,
-        ];
+        next = [...previous, point];
       }
 
       const cutoff =
@@ -215,31 +190,19 @@ function Dashboard() {
         )
         .sort(
           (a, b) =>
-            a.timestamp -
-            b.timestamp
+            a.timestamp - b.timestamp
         );
     });
   };
 
-  // =====================================================
-  // TELEMETRY
-  // =====================================================
-
   useEffect(() => {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     const user = JSON.parse(
-      localStorage.getItem("user") ||
-        "null"
+      localStorage.getItem("user") || "null"
     );
 
-    const userId =
-      user?._id || user?.id;
-
-    // ---------------------------------------------------
-    // SOCKET CONNECT
-    // ---------------------------------------------------
+    const userId = user?._id || user?.id;
 
     const handleConnect = () => {
       console.log(
@@ -249,10 +212,7 @@ function Dashboard() {
       setSocketConnected(true);
 
       if (userId) {
-        socket.emit(
-          "join-user",
-          userId
-        );
+        socket.emit("join-user", userId);
       }
     };
 
@@ -264,13 +224,7 @@ function Dashboard() {
       setSocketConnected(false);
     };
 
-    // ---------------------------------------------------
-    // LIVE TELEMETRY
-    // ---------------------------------------------------
-
-    const handleTelemetry = (
-      telemetry
-    ) => {
+    const handleTelemetry = (telemetry) => {
       console.log(
         "📡 Live telemetry:",
         telemetry
@@ -278,10 +232,6 @@ function Dashboard() {
 
       updateTelemetry(telemetry);
     };
-
-    // ---------------------------------------------------
-    // LOAD LATEST
-    // ---------------------------------------------------
 
     const loadTelemetry = async () => {
       if (!token) {
@@ -292,16 +242,15 @@ function Dashboard() {
       }
 
       try {
-        const response =
-          await axios.get(
-            `${API}/api/telemetry/latest`,
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            }
-          );
+        const response = await axios.get(
+          `${API}/api/telemetry/latest`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
 
         const telemetry =
           response.data?.data ||
@@ -311,7 +260,6 @@ function Dashboard() {
           console.log(
             "ℹ️ No telemetry available yet"
           );
-
           return;
         }
 
@@ -320,9 +268,7 @@ function Dashboard() {
           telemetry
         );
 
-        updateTelemetry(
-          telemetry
-        );
+        updateTelemetry(telemetry);
       } catch (error) {
         console.error(
           "❌ TELEMETRY LOAD ERROR:",
@@ -371,44 +317,33 @@ function Dashboard() {
     };
   }, []);
 
-  // =====================================================
-  // DEVICE STATUS
-  // =====================================================
-
   const deviceOnline = useMemo(() => {
-    if (!lastActivity) {
-      return false;
-    }
+    if (!lastActivity) return false;
 
     return (
       now - lastActivity <=
       DEVICE_TIMEOUT
     );
-  }, [
-    lastActivity,
-    now,
-  ]);
-
-  // =====================================================
-  // LAST SEEN
-  // =====================================================
+  }, [lastActivity, now]);
 
   const lastSeenText = useMemo(() => {
     if (!lastActivity) {
-      return "No data received";
+      return text?.noDataReceived ||
+        "No data received";
     }
 
     const seconds = Math.floor(
-      (now - lastActivity) /
-        1000
+      (now - lastActivity) / 1000
     );
 
     if (seconds < 10) {
-      return "Just now";
+      return text?.justNow || "Just now";
     }
 
     if (seconds < 60) {
-      return `${seconds}s ago`;
+      return `${seconds}s ${
+        text?.ago || "ago"
+      }`;
     }
 
     const minutes = Math.floor(
@@ -416,22 +351,19 @@ function Dashboard() {
     );
 
     if (minutes < 60) {
-      return `${minutes}m ago`;
+      return `${minutes}m ${
+        text?.ago || "ago"
+      }`;
     }
 
     const hours = Math.floor(
       minutes / 60
     );
 
-    return `${hours}h ago`;
-  }, [
-    lastActivity,
-    now,
-  ]);
-
-  // =====================================================
-  // VALUES
-  // =====================================================
+    return `${hours}h ${
+      text?.ago || "ago"
+    }`;
+  }, [lastActivity, now, text]);
 
   const temperature = Number(
     data.temperature || 0
@@ -454,30 +386,21 @@ function Dashboard() {
     )
   );
 
-  const conditionText =
-    data.condition || "NORMAL";
-
-  // =====================================================
-  // CHICKS AGE
-  // =====================================================
-
   const chicksAgeText =
     data.chicksAge === null ||
     data.chicksAge === undefined
       ? "—"
       : `${Number(
           data.chicksAge
-        ).toFixed(0)} days`;
-
-  // =====================================================
-  // THEME
-  // =====================================================
+        ).toFixed(0)} ${
+          text?.days || "days"
+        }`;
 
   const bg = isDark
     ? "#0f172a"
     : "#f8fafc";
 
-  const text = isDark
+  const primaryText = isDark
     ? "#f8fafc"
     : "#0f172a";
 
@@ -492,10 +415,6 @@ function Dashboard() {
   const border = isDark
     ? "rgba(148,163,184,0.14)"
     : "rgba(15,23,42,0.08)";
-
-  // =====================================================
-  // CHART
-  // =====================================================
 
   const chart = useMemo(() => {
     const width = 360;
@@ -532,35 +451,32 @@ function Dashboard() {
     );
 
     if (!values.length) {
-      values = [temperature || 25];
+      values = [
+        temperature || 25,
+      ];
     }
 
-    let minTemp =
-      Math.floor(
-        Math.min(...values) - 1
-      );
+    let minTemp = Math.floor(
+      Math.min(...values) - 1
+    );
 
-    let maxTemp =
-      Math.ceil(
-        Math.max(...values) + 1
-      );
+    let maxTemp = Math.ceil(
+      Math.max(...values) + 1
+    );
 
     if (
-      maxTemp - minTemp <
-      4
+      maxTemp - minTemp < 4
     ) {
       const middle =
         (maxTemp + minTemp) / 2;
 
-      minTemp =
-        Math.floor(
-          middle - 2
-        );
+      minTemp = Math.floor(
+        middle - 2
+      );
 
-      maxTemp =
-        Math.ceil(
-          middle + 2
-        );
+      maxTemp = Math.ceil(
+        middle + 2
+      );
     }
 
     const tempRange =
@@ -575,10 +491,7 @@ function Dashboard() {
         left +
         Math.max(
           0,
-          Math.min(
-            1,
-            position
-          )
+          Math.min(1, position)
         ) *
           plotWidth
       );
@@ -609,9 +522,7 @@ function Dashboard() {
 
     const last =
       points.length
-        ? points[
-            points.length - 1
-          ]
+        ? points[points.length - 1]
         : null;
 
     const lastX = last
@@ -653,7 +564,7 @@ function Dashboard() {
         ratio: 0.75,
       },
       {
-        label: "Now",
+        label: text?.now || "Now",
         ratio: 1,
       },
     ];
@@ -672,19 +583,14 @@ function Dashboard() {
       lastY,
       yTicks,
       xTicks,
-      minTemp,
-      maxTemp,
       points,
     };
   }, [
     history,
     now,
     temperature,
+    text,
   ]);
-
-  // =====================================================
-  // INFO ROW
-  // =====================================================
 
   const InfoRow = ({
     icon,
@@ -719,7 +625,8 @@ function Dashboard() {
             style={{
               ...styles.value,
               color:
-                valueColor || text,
+                valueColor ||
+                primaryText,
             }}
           >
             {value}
@@ -740,37 +647,22 @@ function Dashboard() {
     </div>
   );
 
-  // =====================================================
-  // UI
-  // =====================================================
-
   return (
     <div
       style={{
         ...styles.page,
         background: bg,
-        color: text,
+        color: primaryText,
       }}
     >
-      <style>
-        {`
-          @keyframes moveLine {
-            0% {
-              transform: translateX(-55%);
-            }
-
-            100% {
-              transform: translateX(55%);
-            }
-          }
-        `}
-      </style>
-
-      <AppHeader title="Dashboard" />
+      <AppHeader
+        title={
+          text?.dashboard ||
+          "Dashboard"
+        }
+      />
 
       <main style={styles.content}>
-        {/* HERO */}
-
         <section style={styles.hero}>
           <div>
             <p
@@ -779,7 +671,8 @@ function Dashboard() {
                 color: muted,
               }}
             >
-              Live brooder status
+              {text?.liveBrooderStatus ||
+                "Live brooder status"}
             </p>
 
             <h2 style={styles.title}>
@@ -808,13 +701,13 @@ function Dashboard() {
 
             <span>
               {deviceOnline
-                ? "Online"
-                : "Offline"}
+                ? text?.online ||
+                  "Online"
+                : text?.offline ||
+                  "Offline"}
             </span>
           </div>
         </section>
-
-        {/* QUICK STATS */}
 
         <section
           style={styles.quickStats}
@@ -826,7 +719,8 @@ function Dashboard() {
               <p
                 style={styles.whiteLabel}
               >
-                Temperature
+                {text?.temperature ||
+                  "Temperature"}
               </p>
 
               <h1
@@ -847,7 +741,8 @@ function Dashboard() {
               <p
                 style={styles.whiteLabel}
               >
-                Humidity
+                {text?.humidity ||
+                  "Humidity"}
               </p>
 
               <h1
@@ -859,8 +754,6 @@ function Dashboard() {
             </div>
           </div>
         </section>
-
-        {/* CHICKS AGE */}
 
         <section
           style={{
@@ -876,7 +769,8 @@ function Dashboard() {
                 color: muted,
               }}
             >
-              Chicks age
+              {text?.chicksAge ||
+                "Chicks age"}
             </p>
 
             <h2
@@ -903,12 +797,12 @@ function Dashboard() {
             }}
           >
             {deviceOnline
-              ? "Device active"
-              : "Device offline"}
+              ? text?.deviceActive ||
+                "Device active"
+              : text?.deviceOffline ||
+                "Device offline"}
           </div>
         </section>
-
-        {/* TEMPERATURE CHART */}
 
         <section
           style={{
@@ -927,16 +821,18 @@ function Dashboard() {
                   color: muted,
                 }}
               >
-                Temperature
+                {text?.temperature ||
+                  "Temperature"}
               </p>
 
               <h3
                 style={{
                   ...styles.chartTitle,
-                  color: text,
+                  color: primaryText,
                 }}
               >
-                Last 120 minutes
+                {text?.last120Minutes ||
+                  "Last 120 minutes"}
               </h3>
             </div>
 
@@ -946,7 +842,9 @@ function Dashboard() {
                 color: muted,
               }}
             >
-              {chart.points.length} readings
+              {chart.points.length}{" "}
+              {text?.readings ||
+                "readings"}
             </span>
           </div>
 
@@ -974,8 +872,6 @@ function Dashboard() {
                 </linearGradient>
               </defs>
 
-              {/* Y GRID */}
-
               {chart.yTicks.map(
                 (value, index) => {
                   const y =
@@ -988,9 +884,7 @@ function Dashboard() {
 
                   return (
                     <g
-                      key={
-                        `y-${index}`
-                      }
+                      key={`y-${index}`}
                     >
                       <line
                         x1={chart.left}
@@ -1010,9 +904,7 @@ function Dashboard() {
 
                       <text
                         x="3"
-                        y={
-                          y + 4
-                        }
+                        y={y + 4}
                         fontSize="9"
                         fill={muted}
                       >
@@ -1022,8 +914,6 @@ function Dashboard() {
                   );
                 }
               )}
-
-              {/* X AXIS */}
 
               <line
                 x1={chart.left}
@@ -1046,8 +936,6 @@ function Dashboard() {
                 }
               />
 
-              {/* X LABELS */}
-
               {chart.xTicks.map(
                 (tick) => {
                   const x =
@@ -1057,9 +945,7 @@ function Dashboard() {
 
                   return (
                     <text
-                      key={
-                        tick.label
-                      }
+                      key={tick.label}
                       x={x}
                       y={
                         chart.height -
@@ -1075,8 +961,6 @@ function Dashboard() {
                 }
               )}
 
-              {/* TEMPERATURE LINE */}
-
               {chart.polyline && (
                 <polyline
                   points={
@@ -1089,8 +973,6 @@ function Dashboard() {
                   strokeLinejoin="round"
                 />
               )}
-
-              {/* LAST POINT */}
 
               {chart.lastX !==
                 null && (
@@ -1132,29 +1014,32 @@ function Dashboard() {
             }}
           >
             <span>
-              Temperature °C
+              {text?.temperature ||
+                "Temperature"}{" "}
+              °C
             </span>
 
             <span>
-              Time
+              {text?.time || "Time"}
             </span>
           </div>
         </section>
-
-        {/* DEVICE STATUS */}
 
         <section
           style={styles.deviceSection}
         >
           <InfoRow
-            icon={
-              <Power size={17} />
+            icon={<Power size={17} />}
+            label={
+              text?.deviceStatus ||
+              "Device status"
             }
-            label="Device status"
             value={
               deviceOnline
-                ? "Online"
-                : "Offline"
+                ? text?.online ||
+                  "Online"
+                : text?.offline ||
+                  "Offline"
             }
             valueColor={
               deviceOnline
@@ -1163,22 +1048,25 @@ function Dashboard() {
             }
             extra={
               deviceOnline
-                ? "data received"
+                ? text?.dataReceived ||
+                  "data received"
                 : lastActivity
-                ? `last ${lastSeenText}`
-                : "no data"
+                ? `${text?.last || "last"} ${lastSeenText}`
+                : text?.noData ||
+                  "no data"
             }
           />
 
           <InfoRow
-            icon={
-              <Flame size={17} />
+            icon={<Flame size={17} />}
+            label={
+              text?.heater ||
+              "Heater"
             }
-            label="Heater"
             value={
               heaterOn
-                ? "ON"
-                : "OFF"
+                ? text?.on || "ON"
+                : text?.off || "OFF"
             }
             valueColor={
               heaterOn
@@ -1187,26 +1075,28 @@ function Dashboard() {
             }
             extra={
               heaterOn
-                ? "heating"
-                : "standby"
+                ? text?.heating ||
+                  "heating"
+                : text?.standby ||
+                  "standby"
             }
           />
 
           <InfoRow
-            icon={
-              <Wind size={17} />
+            icon={<Wind size={17} />}
+            label={
+              text?.fan || "Fan"
             }
-            label="Fan"
             value={`${fanValue}%`}
             extra={
               fanValue > 0
-                ? "running"
-                : "off"
+                ? text?.running ||
+                  "running"
+                : text?.off ||
+                  "off"
             }
           />
         </section>
-
-        {/* CONNECTION DETAILS */}
 
         <section
           style={{
@@ -1222,7 +1112,8 @@ function Dashboard() {
                 color: muted,
               }}
             >
-              Device heartbeat
+              {text?.deviceHeartbeat ||
+                "Device heartbeat"}
             </p>
 
             <strong
@@ -1231,8 +1122,10 @@ function Dashboard() {
               }}
             >
               {deviceOnline
-                ? "Receiving data normally"
-                : "No recent heartbeat or telemetry"}
+                ? text?.receivingData ||
+                  "Receiving data normally"
+                : text?.noRecentHeartbeat ||
+                  "No recent heartbeat or telemetry"}
             </strong>
           </div>
 
@@ -1246,43 +1139,26 @@ function Dashboard() {
           </span>
         </section>
 
-        {/* ANALYSIS BUTTON */}
-
         <button
-          onClick={() =>
+          onClick={() => {
             window.location.href =
-              "/analysis"
-          }
+              "/analysis";
+          }}
           style={styles.analysisButton}
         >
           <BarChart3 size={18} />
 
           <span>
-            View detailed analysis
+            {text?.viewDetailedAnalysis ||
+              "View detailed analysis"}
           </span>
         </button>
       </main>
-
-      {/* BOTTOM ANIMATION */}
-
-      <div
-        style={
-          styles.bottomLineWrap
-        }
-      >
-        <div
-          style={styles.bottomLine}
-        />
-      </div>
 
       <BottomNav />
     </div>
   );
 }
-
-// =====================================================
-// STYLES
-// =====================================================
 
 const styles = {
   page: {
@@ -1300,8 +1176,7 @@ const styles = {
   hero: {
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     gap: "12px",
     marginBottom: "18px",
   },
@@ -1330,8 +1205,7 @@ const styles = {
 
   quickStats: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: "12px",
     marginBottom: "12px",
   },
@@ -1342,8 +1216,7 @@ const styles = {
     padding: "16px",
     display: "flex",
     flexDirection: "column",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     background:
       "linear-gradient(145deg,#2563eb,#7c3aed)",
     color: "white",
@@ -1370,8 +1243,7 @@ const styles = {
     padding: "13px 15px",
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     gap: "10px",
     marginBottom: "14px",
     backdropFilter: "blur(12px)",
@@ -1395,14 +1267,12 @@ const styles = {
     borderRadius: "26px",
     padding: "15px",
     marginBottom: "14px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   chartHeader: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "8px",
   },
@@ -1436,11 +1306,9 @@ const styles = {
     padding: "12px 14px",
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     gap: "10px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   infoLeft: {
@@ -1480,8 +1348,7 @@ const styles = {
     borderRadius: "20px",
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     gap: "12px",
   },
 
@@ -1493,8 +1360,7 @@ const styles = {
     borderRadius: "18px",
     display: "flex",
     alignItems: "center",
-    justifyContent:
-      "center",
+    justifyContent: "center",
     gap: "9px",
     background:
       "linear-gradient(135deg,#2563eb,#7c3aed)",
@@ -1504,31 +1370,6 @@ const styles = {
     cursor: "pointer",
     boxShadow:
       "0 12px 25px rgba(37,99,235,0.20)",
-  },
-
-  bottomLineWrap: {
-    position: "fixed",
-    bottom: "76px",
-    left: "50%",
-    transform:
-      "translateX(-50%)",
-    width: "58%",
-    height: "4px",
-    borderRadius: "999px",
-    overflow: "hidden",
-    background:
-      "rgba(148,163,184,0.18)",
-    backdropFilter: "blur(5px)",
-    zIndex: 20,
-  },
-
-  bottomLine: {
-    width: "200%",
-    height: "100%",
-    background:
-      "linear-gradient(90deg,transparent,#2563eb,#7c3aed,transparent)",
-    animation:
-      "moveLine 2.8s linear infinite",
   },
 };
 

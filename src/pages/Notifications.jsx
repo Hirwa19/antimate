@@ -10,17 +10,10 @@ const API_URL =
 export default function Notifications() {
   const { isDark } = useAppSettings();
 
-  const [notifications, setNotifications] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [refreshing, setRefreshing] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
   // =====================================================
   // FETCH NOTIFICATIONS
@@ -36,14 +29,10 @@ export default function Notifications() {
 
       setError("");
 
-      const token =
-        localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
       if (!token) {
-        setError(
-          "You are not logged in."
-        );
-
+        setError("You are not logged in.");
         setNotifications([]);
         return;
       }
@@ -53,10 +42,8 @@ export default function Notifications() {
         {
           method: "GET",
           headers: {
-            Authorization:
-              `Bearer ${token}`,
-            "Content-Type":
-              "application/json",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
@@ -74,15 +61,9 @@ export default function Notifications() {
 
       if (Array.isArray(data)) {
         list = data;
-      } else if (
-        Array.isArray(
-          data.notifications
-        )
-      ) {
+      } else if (Array.isArray(data.notifications)) {
         list = data.notifications;
-      } else if (
-        Array.isArray(data.data)
-      ) {
+      } else if (Array.isArray(data.data)) {
         list = data.data;
       }
 
@@ -111,8 +92,7 @@ export default function Notifications() {
 
   async function markAllAsRead() {
     try {
-      const token =
-        localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
       if (!token) return;
 
@@ -121,17 +101,15 @@ export default function Notifications() {
         {
           method: "PATCH",
           headers: {
-            Authorization:
-              `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
       if (!res.ok) {
-        const data =
-          await res.json().catch(
-            () => ({})
-          );
+        const data = await res
+          .json()
+          .catch(() => ({}));
 
         console.error(
           "Mark read failed:",
@@ -223,14 +201,9 @@ export default function Notifications() {
       return "No date";
     }
 
-    const parsed =
-      new Date(date);
+    const parsed = new Date(date);
 
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
+    if (Number.isNaN(parsed.getTime())) {
       return "No date";
     }
 
@@ -275,6 +248,16 @@ export default function Notifications() {
     >
       <style>
         {`
+          @keyframes spin {
+            from {
+              transform: rotate(0deg);
+            }
+
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
           @media (max-width: 600px) {
             .notification-header {
               align-items: flex-start !important;
@@ -287,13 +270,16 @@ export default function Notifications() {
             .notification-grid {
               grid-template-columns: 1fr !important;
             }
+
+            .notification-footer {
+              flex-direction: column;
+              align-items: flex-start;
+            }
           }
         `}
       </style>
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* HEADER */}
 
       <div
         className="notification-header"
@@ -323,8 +309,7 @@ export default function Notifications() {
           disabled={refreshing}
           style={{
             ...styles.refreshBtn,
-            opacity:
-              refreshing ? 0.6 : 1,
+            opacity: refreshing ? 0.6 : 1,
           }}
         >
           {refreshing
@@ -333,37 +318,29 @@ export default function Notifications() {
         </button>
       </div>
 
-      {/* =================================================
-          LOADING
-      ================================================= */}
+      {/* LOADING */}
 
       {loading ? (
         <PageLoader />
       ) : error ? (
-        /* =================================================
-           ERROR
-        ================================================= */
+        /* ERROR */
 
         <div
           style={{
             ...styles.emptyBox,
-            background:
-              isDark
-                ? "rgba(239,68,68,0.10)"
-                : "rgba(239,68,68,0.07)",
+            background: isDark
+              ? "rgba(239,68,68,0.10)"
+              : "rgba(239,68,68,0.07)",
             border:
               "1px solid rgba(239,68,68,0.20)",
           }}
         >
-          <div
-            style={styles.emptyIcon}
-          >
+          <div style={styles.emptyIcon}>
             ⚠️
           </div>
 
           <h2>
-            Unable to load
-            notifications
+            Unable to load notifications
           </h2>
 
           <p
@@ -378,30 +355,22 @@ export default function Notifications() {
             onClick={() =>
               fetchNotifications()
             }
-            style={
-              styles.retryBtn
-            }
+            style={styles.retryBtn}
           >
             Try Again
           </button>
         </div>
       ) : notifications.length === 0 ? (
-        /* =================================================
-           EMPTY
-        ================================================= */
+        /* EMPTY */
 
         <div
           style={{
             ...styles.emptyBox,
-            background:
-              cardBackground,
-            border:
-              cardBorder,
+            background: cardBackground,
+            border: cardBorder,
           }}
         >
-          <div
-            style={styles.emptyIcon}
-          >
+          <div style={styles.emptyIcon}>
             🔔
           </div>
 
@@ -419,9 +388,7 @@ export default function Notifications() {
           </p>
         </div>
       ) : (
-        /* =================================================
-           NOTIFICATIONS
-        ================================================= */
+        /* NOTIFICATIONS */
 
         <div
           className="notification-grid"
@@ -430,9 +397,7 @@ export default function Notifications() {
           {notifications.map(
             (item, index) => {
               const alertStyle =
-                getAlertStyle(
-                  item.type
-                );
+                getAlertStyle(item.type);
 
               return (
                 <div
@@ -445,31 +410,24 @@ export default function Notifications() {
                     ...alertStyle,
                     background:
                       cardBackground,
-                    border:
-                      cardBorder,
-                    color:
-                      textColor,
+                    border: cardBorder,
+                    color: textColor,
                   }}
                 >
                   {/* CARD TOP */}
 
                   <div
-                    style={
-                      styles.cardTop
-                    }
+                    style={styles.cardTop}
                   >
                     <div
                       style={{
                         ...styles.iconBox,
-                        background:
-                          isDark
-                            ? "rgba(255,255,255,0.12)"
-                            : "rgba(15,23,42,0.06)",
+                        background: isDark
+                          ? "rgba(255,255,255,0.12)"
+                          : "rgba(15,23,42,0.06)",
                       }}
                     >
-                      {getIcon(
-                        item.type
-                      )}
+                      {getIcon(item.type)}
                     </div>
 
                     <div
@@ -503,10 +461,9 @@ export default function Notifications() {
                     <span
                       style={{
                         ...styles.badge,
-                        background:
-                          isDark
-                            ? "rgba(255,255,255,0.14)"
-                            : "rgba(15,23,42,0.08)",
+                        background: isDark
+                          ? "rgba(255,255,255,0.14)"
+                          : "rgba(15,23,42,0.08)",
                       }}
                     >
                       {item.severity ||
@@ -560,6 +517,7 @@ export default function Notifications() {
                       label="Fan"
                       value={String(
                         item.fan ??
+                          item.fanSpeed ??
                           "UNKNOWN"
                       )}
                       isDark={isDark}
@@ -569,6 +527,7 @@ export default function Notifications() {
                   {/* FOOTER */}
 
                   <div
+                    className="notification-footer"
                     style={{
                       ...styles.footer,
                       borderTop: isDark
@@ -579,8 +538,7 @@ export default function Notifications() {
                   >
                     <span>
                       Status:{" "}
-                      {item.status ||
-                        "new"}
+                      {item.status || "new"}
                     </span>
 
                     <span>
@@ -631,9 +589,7 @@ function Detail({
         {label}
       </span>
 
-      <strong
-        style={styles.value}
-      >
+      <strong style={styles.value}>
         {value}
       </strong>
     </div>
@@ -655,8 +611,7 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     gap: "20px",
     marginBottom: "28px",
@@ -681,7 +636,7 @@ const styles = {
     border: "none",
     padding: "11px 17px",
     borderRadius: "14px",
-    fontWeight: "700",
+    fontWeight: 700,
     cursor: "pointer",
     whiteSpace: "nowrap",
   },
@@ -693,7 +648,7 @@ const styles = {
     border: "none",
     padding: "11px 18px",
     borderRadius: "14px",
-    fontWeight: "700",
+    fontWeight: 700,
     cursor: "pointer",
   },
 
@@ -701,8 +656,7 @@ const styles = {
     borderRadius: "24px",
     padding: "45px 25px",
     textAlign: "center",
-    backdropFilter:
-      "blur(14px)",
+    backdropFilter: "blur(14px)",
   },
 
   emptyIcon: {
@@ -722,8 +676,7 @@ const styles = {
     padding: "20px",
     boxShadow:
       "0 18px 40px rgba(0,0,0,0.18)",
-    backdropFilter:
-      "blur(14px)",
+    backdropFilter: "blur(14px)",
     borderLeft:
       "6px solid #22c55e",
   },
@@ -786,16 +739,14 @@ const styles = {
     padding: "6px 10px",
     borderRadius: "999px",
     fontSize: "10px",
-    textTransform:
-      "uppercase",
+    textTransform: "uppercase",
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
 
   message: {
-    lineHeight: "1.6",
-    margin:
-      "0 0 18px",
+    lineHeight: 1.6,
+    margin: "0 0 18px",
     fontSize: "14px",
   },
 
@@ -825,8 +776,7 @@ const styles = {
     marginTop: "17px",
     paddingTop: "13px",
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     gap: "10px",
     fontSize: "12px",
   },

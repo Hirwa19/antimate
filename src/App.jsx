@@ -76,9 +76,19 @@ function App() {
     </ProtectedRoute>
   }
   />
-  {/* plan*/}
+  {/* PLAN */}
 <Route
   path="/plan"
+  element={
+    <ProtectedRoute>
+      <Plan />
+    </ProtectedRoute>
+  }
+/>
+
+{/* PLANS - alias */}
+<Route
+  path="/plans"
   element={
     <ProtectedRoute>
       <Plan />

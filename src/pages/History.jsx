@@ -208,11 +208,14 @@ export default function History() {
         );
       }
 
-      setHistory(
-        Array.isArray(data.data)
-          ? data.data
-          : []
+      const rawData = Array.isArray(data.data) ? data.data : [];
+
+      // Sort entries so newest timestamps come first (new at top, old at bottom)
+      const sortedHistory = [...rawData].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
+
+      setHistory(sortedHistory);
     } catch (err) {
       console.error("History error:", err);
 

@@ -5,6 +5,7 @@ import PageLoader from "../components/PageLoader";
 import { useAppSettings } from "../context/AppSettingsContext";
 import SuccessModal from "../components/SuccessModal";
 import PaymentModal from "../components/PaymentModal";
+import { useNavigate } from "react-router-dom";
 
 const API_URL =
   import.meta.env.VITE_API_URL || "https://brooder-backend.onrender.com";
@@ -17,6 +18,14 @@ export default function Plan() {
   const [successOpen, setSuccessOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const navigate = useNavigate();
+
+<button
+  onClick={() => navigate("/payment")}
+  style={styles.paymentButton}
+>
+  💳 Payment History
+</button>
 
   const plans = [
     {
@@ -35,8 +44,8 @@ export default function Plan() {
     },
     {
       name: "Basic",
-      price: 100,
-      displayPrice: "100 FRW",
+      price: 3000,
+      displayPrice: "3,000 FRW",
       paymentLink:
         "https://payments.paypack.rw/link/plink_Pr1eEHnvXFWRFYb80bmR",
       tag: "Recommended",
@@ -550,4 +559,17 @@ const styles = {
     border: "none",
     fontSize: "14px",
   },
+
+  paymentButton: {
+  width: "100%",
+  marginBottom: "18px",
+  padding: "13px 18px",
+  border: "1px solid rgba(37,99,235,0.2)",
+  borderRadius: "15px",
+  background: "rgba(37,99,235,0.1)",
+  color: "#2563eb",
+  fontWeight: 800,
+  cursor: "pointer",
+},
+
 };

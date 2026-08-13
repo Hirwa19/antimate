@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
-import PageLoader from "../components/PageLoader";
 import { useAppSettings } from "../context/AppSettingsContext";
 
 const API_URL =
@@ -13,13 +12,10 @@ export default function Profile() {
   const { isDark, text: t } = useAppSettings();
 
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
   async function fetchProfile() {
     try {
-      setLoading(true);
-
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -42,8 +38,6 @@ export default function Profile() {
       setProfile(data);
     } catch (err) {
       console.error("Profile error:", err);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -55,10 +49,6 @@ export default function Profile() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
-  }
-
-  if (loading) {
-    return <PageLoader />;
   }
 
   const user = profile?.user;
@@ -131,6 +121,13 @@ export default function Profile() {
             label={t?.dashboard || "Dashboard"}
             icon="⌂"
             onClick={() => navigate("/dashboard")}
+            color={text}
+          />
+
+          <MenuButton
+            label={t?.system || t?.brSystem || "BR System"}
+            icon="🐔"
+            onClick={() => navigate("/systems")}
             color={text}
           />
 
@@ -237,6 +234,13 @@ export default function Profile() {
         </div>
 
         <button
+          onClick={() => navigate("/systems")}
+          style={styles.systemButton}
+        >
+          🐔 {t?.system || t?.brSystem || "BR System"}
+        </button>
+
+        <button
           onClick={() => navigate("/plans")}
           style={styles.planButton}
         >
@@ -282,7 +286,9 @@ export default function Profile() {
                 }}
               >
                 <div style={styles.deviceInfo}>
-                  <div style={styles.deviceIcon}>📡</div>
+                  <div style={styles.deviceIcon}>
+                    📡
+                  </div>
 
                   <div>
                     <strong>
@@ -302,7 +308,9 @@ export default function Profile() {
                 </div>
 
                 <button
-                  onClick={() => navigate("/device-management")}
+                  onClick={() =>
+                    navigate("/device-management")
+                  }
                   style={styles.smallBtn}
                 >
                   {t?.manage || "Manage"}
@@ -318,7 +326,9 @@ export default function Profile() {
               border,
             }}
           >
-            <div style={styles.emptyIcon}>📡</div>
+            <div style={styles.emptyIcon}>
+              📡
+            </div>
 
             <strong>
               {t?.noDeviceLinked || "No device linked"}
@@ -335,10 +345,13 @@ export default function Profile() {
             </p>
 
             <button
-              onClick={() => navigate("/device-management")}
+              onClick={() =>
+                navigate("/device-management")
+              }
               style={styles.primaryBtn}
             >
-              {t?.deviceManagement || "Device Management"}
+              {t?.deviceManagement ||
+                "Device Management"}
             </button>
           </div>
         )}
@@ -349,7 +362,12 @@ export default function Profile() {
   );
 }
 
-function MenuButton({ label, icon, onClick, color }) {
+function MenuButton({
+  label,
+  icon,
+  onClick,
+  color,
+}) {
   return (
     <button
       onClick={onClick}
@@ -358,7 +376,10 @@ function MenuButton({ label, icon, onClick, color }) {
         color,
       }}
     >
-      <span style={styles.menuIcon}>{icon}</span>
+      <span style={styles.menuIcon}>
+        {icon}
+      </span>
+
       <span>{label}</span>
     </button>
   );
@@ -402,7 +423,7 @@ const styles = {
     position: "absolute",
     right: "20px",
     top: "72px",
-    width: "210px",
+    width: "220px",
     padding: "8px",
     borderRadius: "18px",
     zIndex: 100,
@@ -444,7 +465,8 @@ const styles = {
     width: "76px",
     height: "76px",
     borderRadius: "24px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     display: "flex",
     justifyContent: "center",
@@ -452,7 +474,8 @@ const styles = {
     fontSize: "28px",
     fontWeight: 700,
     margin: "0 auto 12px",
-    boxShadow: "0 12px 28px rgba(37,99,235,0.25)",
+    boxShadow:
+      "0 12px 28px rgba(37,99,235,0.25)",
   },
 
   name: {
@@ -490,16 +513,32 @@ const styles = {
   statDivider: {
     width: "1px",
     height: "34px",
-    background: "rgba(148,163,184,0.25)",
+    background:
+      "rgba(148,163,184,0.25)",
   },
 
-  planButton: {
+  systemButton: {
     width: "100%",
     marginTop: "20px",
     padding: "12px",
     border: "none",
     borderRadius: "15px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background:
+      "linear-gradient(135deg,#06b6d4,#2563eb)",
+    color: "#ffffff",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: "13px",
+  },
+
+  planButton: {
+    width: "100%",
+    marginTop: "10px",
+    padding: "12px",
+    border: "none",
+    borderRadius: "15px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -526,7 +565,8 @@ const styles = {
     border: "none",
     borderRadius: "12px",
     padding: "9px 13px",
-    background: "linear-gradient(135deg,#22c55e,#14b8a6)",
+    background:
+      "linear-gradient(135deg,#22c55e,#14b8a6)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -554,7 +594,8 @@ const styles = {
     borderRadius: "14px",
     display: "grid",
     placeItems: "center",
-    background: "rgba(37,99,235,0.12)",
+    background:
+      "rgba(37,99,235,0.12)",
     fontSize: "19px",
   },
 
@@ -590,7 +631,8 @@ const styles = {
     border: "none",
     borderRadius: "13px",
     padding: "11px 15px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",

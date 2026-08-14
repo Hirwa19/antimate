@@ -74,7 +74,7 @@ export default function Plan() {
     },
     {
       name: "Premium",
-      price: 15000,
+      price: 100,
       displayPrice: "15,000 FRW",
       paymentLink:
         "https://payments.paypack.rw/link/plink_aOyQzpAVFiEHPSlecei5",

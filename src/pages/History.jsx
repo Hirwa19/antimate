@@ -3,59 +3,42 @@ import React, {
   useState,
 } from "react";
 
-import {
-  useNavigate,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../components/BottomNav";
 
-import {
-  useAppSettings,
-} from "../context/AppSettingsContext";
+import { useAppSettings } from "../context/AppSettingsContext";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
 export default function History() {
-  const { isDark } =
-    useAppSettings();
+  const { isDark } = useAppSettings();
+  const navigate = useNavigate();
 
-  const navigate =
-    useNavigate();
+  const [planName, setPlanName] = useState("Free");
 
-  const [planName, setPlanName] =
-    useState("Free");
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState("");
 
-  const [devices, setDevices] =
-    useState([]);
+  const [history, setHistory] = useState([]);
 
-  const [selectedDevice, setSelectedDevice] =
-    useState("");
+  const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const [history, setHistory] =
-    useState([]);
+  const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [historyLoading, setHistoryLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [accessDenied, setAccessDenied] =
-    useState(false);
+  // =====================================================
+  // SUBSCRIPTION
+  // =====================================================
 
   async function fetchSubscription() {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      throw new Error(
-        "You are not logged in."
-      );
+      throw new Error("You are not logged in.");
     }
 
     const res = await fetch(
@@ -67,8 +50,7 @@ export default function History() {
       }
     );
 
-    const data =
-      await res.json();
+    const data = await res.json();
 
     if (!res.ok) {
       throw new Error(
@@ -79,28 +61,32 @@ export default function History() {
 
     const currentPlan =
       data.currentPlan ||
+      data.planName ||
+      data.plan ||
       "Free";
 
-    setPlanName(
-      String(currentPlan)
-    );
+    setPlanName(String(currentPlan));
 
     return String(currentPlan);
   }
 
+  // =====================================================
+  // HISTORY ACCESS
+  // =====================================================
+
   function checkHistoryAccess(plan) {
-    return String(plan)
-      .toLowerCase() !== "free";
+    return String(plan).toLowerCase() !== "free";
   }
 
+  // =====================================================
+  // DEVICES
+  // =====================================================
+
   async function fetchDevices() {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      throw new Error(
-        "You are not logged in."
-      );
+      throw new Error("You are not logged in.");
     }
 
     const res = await fetch(
@@ -112,8 +98,7 @@ export default function History() {
       }
     );
 
-    const data =
-      await res.json();
+    const data = await res.json();
 
     if (!res.ok) {
       throw new Error(
@@ -131,34 +116,27 @@ export default function History() {
 
     setDevices(deviceList);
 
-    if (
-      deviceList.length > 0
-    ) {
+    if (deviceList.length > 0) {
       setSelectedDevice(
-        deviceList[0].deviceId ||
-          ""
+        deviceList[0].deviceId || ""
       );
     }
   }
 
-  async function fetchHistory(
-    deviceId
-  ) {
-    if (
-      !deviceId ||
-      accessDenied
-    ) {
+  // =====================================================
+  // HISTORY
+  // =====================================================
+
+  async function fetchHistory(deviceId) {
+    if (!deviceId || accessDenied) {
       setHistory([]);
       return;
     }
 
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     if (!token) {
-      setError(
-        "You are not logged in."
-      );
+      setError("You are not logged in.");
       return;
     }
 
@@ -166,20 +144,18 @@ export default function History() {
       setHistoryLoading(true);
       setError("");
 
-      const res =
-        await fetch(
-          `${API_URL}/api/telemetry/history/${encodeURIComponent(
-            deviceId
-          )}?limit=100`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      const res = await fetch(
+        `${API_URL}/api/telemetry/history/${encodeURIComponent(
+          deviceId
+        )}?limit=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      const data =
-        await res.json();
+      const data = await res.json();
 
       if (res.status === 403) {
         setHistory([]);
@@ -207,25 +183,15 @@ export default function History() {
           ? data
           : [];
 
-      const sortedHistory =
-        [...rawData].sort(
-          (a, b) =>
-            new Date(
-              b.createdAt
-            ) -
-            new Date(
-              a.createdAt
-            )
-        );
+      const sortedHistory = [...rawData].sort(
+        (a, b) =>
+          new Date(b.createdAt) -
+          new Date(a.createdAt)
+      );
 
-      setHistory(
-        sortedHistory
-      );
+      setHistory(sortedHistory);
     } catch (err) {
-      console.error(
-        "History error:",
-        err
-      );
+      console.error("History error:", err);
 
       setHistory([]);
 
@@ -238,19 +204,20 @@ export default function History() {
     }
   }
 
+  // =====================================================
+  // INITIAL LOAD
+  // =====================================================
+
   useEffect(() => {
     async function loadPage() {
       try {
         setLoading(true);
         setError("");
 
-        const plan =
-          await fetchSubscription();
+        const plan = await fetchSubscription();
 
         const allowed =
-          checkHistoryAccess(
-            plan
-          );
+          checkHistoryAccess(plan);
 
         if (!allowed) {
           setAccessDenied(true);
@@ -278,38 +245,65 @@ export default function History() {
     loadPage();
   }, []);
 
+  // =====================================================
+  // LOAD SELECTED DEVICE HISTORY
+  // =====================================================
+
   useEffect(() => {
     if (
       selectedDevice &&
       !accessDenied
     ) {
-      fetchHistory(
-        selectedDevice
-      );
+      fetchHistory(selectedDevice);
     }
   }, [
     selectedDevice,
     accessDenied,
   ]);
 
+  // =====================================================
+  // FORMAT DATE
+  // =====================================================
+
   function formatDate(date) {
     if (!date) {
       return "Unknown time";
     }
 
-    const parsed =
-      new Date(date);
+    const parsed = new Date(date);
 
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
+    if (Number.isNaN(parsed.getTime())) {
       return "Unknown time";
     }
 
     return parsed.toLocaleString();
   }
+
+  // =====================================================
+  // FORMAT NUMBER
+  // =====================================================
+
+  function formatNumber(value, decimals = 1) {
+    if (
+      value === null ||
+      value === undefined ||
+      value === ""
+    ) {
+      return "--";
+    }
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+      return "--";
+    }
+
+    return number.toFixed(decimals);
+  }
+
+  // =====================================================
+  // THEME
+  // =====================================================
 
   const background = isDark
     ? "linear-gradient(135deg,#07111f,#0f2537)"
@@ -325,11 +319,15 @@ export default function History() {
 
   const cardBackground = isDark
     ? "rgba(255,255,255,0.08)"
-    : "rgba(255,255,255,0.8)";
+    : "rgba(255,255,255,0.82)";
 
   const border = isDark
     ? "rgba(255,255,255,0.08)"
     : "rgba(15,23,42,0.08)";
+
+  // =====================================================
+  // LOADING
+  // =====================================================
 
   if (loading) {
     return (
@@ -340,18 +338,10 @@ export default function History() {
           color: text,
         }}
       >
-        <div
-          style={styles.loadingPage}
-        >
-          <div
-            style={styles.spinner}
-          />
+        <div style={styles.loadingPage}>
+          <div style={styles.spinner} />
 
-          <p
-            style={{
-              color: muted,
-            }}
-          >
+          <p style={{ color: muted }}>
             Checking subscription...
           </p>
         </div>
@@ -360,6 +350,10 @@ export default function History() {
       </div>
     );
   }
+
+  // =====================================================
+  // ACCESS DENIED
+  // =====================================================
 
   if (accessDenied) {
     return (
@@ -370,9 +364,7 @@ export default function History() {
           color: text,
         }}
       >
-        <div
-          style={styles.header}
-        >
+        <div style={styles.header}>
           <div>
             <h1
               style={{
@@ -380,7 +372,7 @@ export default function History() {
                 marginBottom: 8,
               }}
             >
-              Sensor History
+              Brooder History
             </h1>
 
             <p
@@ -389,8 +381,7 @@ export default function History() {
                 margin: 0,
               }}
             >
-              Temperature and humidity
-              records
+              Historical brooder conditions
             </p>
           </div>
         </div>
@@ -398,23 +389,15 @@ export default function History() {
         <div
           style={{
             ...styles.subscriptionCard,
-            background:
-              cardBackground,
-            border:
-              `1px solid ${border}`,
+            background: cardBackground,
+            border: `1px solid ${border}`,
           }}
         >
-          <div
-            style={styles.lockIcon}
-          >
+          <div style={styles.lockIcon}>
             🔒
           </div>
 
-          <h2
-            style={
-              styles.subscriptionTitle
-            }
-          >
+          <h2 style={styles.subscriptionTitle}>
             History requires a paid plan
           </h2>
 
@@ -425,10 +408,7 @@ export default function History() {
             }}
           >
             Your current plan is{" "}
-            <strong>
-              {planName}
-            </strong>
-            .
+            <strong>{planName}</strong>.
           </p>
 
           <p
@@ -437,21 +417,18 @@ export default function History() {
               color: muted,
             }}
           >
-            Upgrade your ANTIMATE
-            subscription to access
-            sensor history,
-            historical temperature
-            and humidity records,
-            and longer-term monitoring.
+            Upgrade your ANTIMATE subscription
+            to access historical brooder
+            temperature, humidity, chicken
+            information and environmental
+            records.
           </p>
 
           <button
             onClick={() =>
               navigate("/plans")
             }
-            style={
-              styles.primaryButton
-            }
+            style={styles.primaryButton}
           >
             View Plans
           </button>
@@ -460,9 +437,7 @@ export default function History() {
             onClick={() =>
               navigate("/dashboard")
             }
-            style={
-              styles.secondaryButton
-            }
+            style={styles.secondaryButton}
           >
             Back to Dashboard
           </button>
@@ -473,17 +448,16 @@ export default function History() {
     );
   }
 
+  // =====================================================
+  // MAIN PAGE
+  // =====================================================
+
   return (
     <div
       style={{
-        minHeight: "100vh",
-        padding: "20px",
-        paddingBottom: "100px",
+        ...styles.page,
         background,
         color: text,
-        fontFamily:
-          "Inter, Arial, sans-serif",
-        position: "relative",
       }}
     >
       <style>
@@ -508,42 +482,42 @@ export default function History() {
             }
           }
 
-          @media (max-width: 600px) {
-            .history-row {
+          @media (max-width: 700px) {
+            .history-header {
               flex-direction: column;
               align-items: flex-start !important;
               gap: 14px;
             }
 
-            .history-right {
-              width: 100%;
-              text-align: left !important;
-            }
-
-            .history-header {
-              flex-direction: column;
-              align-items: flex-start !important;
-              gap: 12px;
-            }
-
             .analysis-button {
               width: 100%;
+            }
+
+            .history-grid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .history-row {
+              flex-direction: column;
+              align-items: stretch !important;
+            }
+
+            .history-right {
+              text-align: left !important;
             }
           }
         `}
       </style>
 
+      {/* LOADING BAR */}
+
       {historyLoading && (
-        <div
-          style={
-            styles.loadingContainer
-          }
-        >
-          <div
-            style={styles.loadingBar}
-          />
+        <div style={styles.loadingContainer}>
+          <div style={styles.loadingBar} />
         </div>
       )}
+
+      {/* HEADER */}
 
       <div
         className="history-header"
@@ -556,7 +530,7 @@ export default function History() {
               marginBottom: 8,
             }}
           >
-            Sensor History
+            Brooder History
           </h1>
 
           <p
@@ -565,8 +539,8 @@ export default function History() {
               margin: 0,
             }}
           >
-            Temperature and humidity
-            records
+            Historical conditions of your
+            brooder
           </p>
         </div>
 
@@ -575,22 +549,24 @@ export default function History() {
           onClick={() =>
             navigate("/analysis")
           }
-          style={
-            styles.analysisButton
-          }
+          style={styles.analysisButton}
         >
           📊 View Analysis
         </button>
       </div>
 
+      {/* DEVICE SELECTOR
+          Technical device ID is used internally
+          but NOT displayed as a customer-facing
+          telemetry field.
+      */}
+
       {devices.length > 0 && (
         <div
           style={{
             ...styles.selectorCard,
-            background:
-              cardBackground,
-            border:
-              `1px solid ${border}`,
+            background: cardBackground,
+            border: `1px solid ${border}`,
           }}
         >
           <label
@@ -599,13 +575,11 @@ export default function History() {
               color: muted,
             }}
           >
-            Select device
+            Select brooder
           </label>
 
           <select
-            value={
-              selectedDevice
-            }
+            value={selectedDevice}
             onChange={(e) =>
               setSelectedDevice(
                 e.target.value
@@ -613,44 +587,39 @@ export default function History() {
             }
             style={{
               ...styles.select,
-              background:
-                isDark
-                  ? "#172033"
-                  : "#ffffff",
+              background: isDark
+                ? "#172033"
+                : "#ffffff",
               color: text,
-              border:
-                `1px solid ${border}`,
+              border: `1px solid ${border}`,
             }}
           >
-            {devices.map(
-              (device) => (
-                <option
-                  key={
-                    device._id ||
-                    device.deviceId
-                  }
-                  value={
-                    device.deviceId
-                  }
-                >
-                  {
-                    device.deviceId
-                  }
-                </option>
-              )
-            )}
+            {devices.map((device) => (
+              <option
+                key={
+                  device._id ||
+                  device.deviceId
+                }
+                value={device.deviceId}
+              >
+                {device.name ||
+                  device.brooderName ||
+                  "My Brooder"}
+              </option>
+            ))}
           </select>
         </div>
       )}
+
+      {/* ERROR */}
 
       {error && (
         <div
           style={{
             ...styles.error,
-            background:
-              isDark
-                ? "rgba(239,68,68,0.12)"
-                : "rgba(239,68,68,0.08)",
+            background: isDark
+              ? "rgba(239,68,68,0.12)"
+              : "rgba(239,68,68,0.08)",
             border:
               "1px solid rgba(239,68,68,0.2)",
           }}
@@ -659,24 +628,23 @@ export default function History() {
         </div>
       )}
 
+      {/* NO DEVICE */}
+
       {!loading &&
         devices.length === 0 &&
         !error && (
           <div
             style={{
               ...styles.empty,
-              background:
-                cardBackground,
+              background: cardBackground,
             }}
           >
-            <div
-              style={styles.emptyIcon}
-            >
-              📡
+            <div style={styles.emptyIcon}>
+              🐣
             </div>
 
             <h3>
-              No device connected
+              No brooder connected
             </h3>
 
             <p
@@ -684,8 +652,9 @@ export default function History() {
                 color: muted,
               }}
             >
-              Connect a device to start
-              receiving sensor history.
+              Connect a Smart Brooder to
+              start collecting historical
+              data.
             </p>
 
             <button
@@ -694,14 +663,14 @@ export default function History() {
                   "/device-management"
                 )
               }
-              style={
-                styles.primaryButton
-              }
+              style={styles.primaryButton}
             >
-              Add Device
+              Add Brooder
             </button>
           </div>
         )}
+
+      {/* NO DATA */}
 
       {!loading &&
         !historyLoading &&
@@ -711,18 +680,15 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background:
-                cardBackground,
+              background: cardBackground,
             }}
           >
-            <div
-              style={styles.emptyIcon}
-            >
+            <div style={styles.emptyIcon}>
               📊
             </div>
 
             <h3>
-              No sensor data yet
+              No brooder data yet
             </h3>
 
             <p
@@ -730,31 +696,51 @@ export default function History() {
                 color: muted,
               }}
             >
-              Telemetry from this device
-              will appear here once the
-              device starts sending data.
+              Historical information will
+              appear here when your Smart
+              Brooder starts sending telemetry.
             </p>
           </div>
         )}
+
+      {/* HISTORY */}
 
       <div>
         {history.map(
           (item, index) => {
             const temperature =
-              item.temperature ??
-              "--";
+              item.temperature;
 
             const humidity =
-              item.humidity ??
-              "--";
+              item.humidity;
 
             const heater =
-              item.heater ||
-              "OFF";
+              item.heater || "OFF";
 
             const fan =
               item.fanSpeed ??
+              item.fan ??
               0;
+
+            const chicksAge =
+              item.chicksAge ??
+              item.chickAge ??
+              null;
+
+            const numberOfChickens =
+              item.numberOfChickens ??
+              item.chickenCount ??
+              null;
+
+            const broodingRoomArea =
+              item.broodingRoomArea ??
+              item.roomArea ??
+              null;
+
+            const chicksType =
+              item.chicksType ||
+              item.chickType ||
+              "--";
 
             return (
               <div
@@ -771,57 +757,174 @@ export default function History() {
                     `1px solid ${border}`,
                 }}
               >
-                <div>
-                  <div
-                    style={
-                      styles.temperature
-                    }
-                  >
-                    <span>
-                      🌡
-                    </span>
+                {/* =================================================
+                    ENVIRONMENT
+                ================================================= */}
+
+                <div style={styles.mainInfo}>
+                  <div style={styles.temperature}>
+                    <span>🌡️</span>
 
                     <strong>
-                      {
+                      {formatNumber(
                         temperature
-                      }°C
+                      )}
+                      °C
+                    </strong>
+                  </div>
+
+                  <div style={styles.humidity}>
+                    <span>💧</span>
+
+                    <span>
+                      {formatNumber(
+                        humidity
+                      )}
+                      %
+                    </span>
+                  </div>
+                </div>
+
+                {/* =================================================
+                    BROODER INFORMATION
+                ================================================= */}
+
+                <div
+                  className="history-grid"
+                  style={
+                    styles.historyGrid
+                  }
+                >
+                  <div
+                    style={
+                      styles.infoCard
+                    }
+                  >
+                    <span
+                      style={{
+                        ...styles.infoLabel,
+                        color: muted,
+                      }}
+                    >
+                      🐣 Chicks Age
+                    </span>
+
+                    <strong
+                      style={
+                        styles.infoValue
+                      }
+                    >
+                      {chicksAge !==
+                        null &&
+                      Number.isFinite(
+                        Number(
+                          chicksAge
+                        )
+                      )
+                        ? `${chicksAge} days`
+                        : "--"}
                     </strong>
                   </div>
 
                   <div
                     style={
-                      styles.humidity
+                      styles.infoCard
                     }
                   >
-                    <span>
-                      💧
+                    <span
+                      style={{
+                        ...styles.infoLabel,
+                        color: muted,
+                      }}
+                    >
+                      🐔 Chickens
                     </span>
 
-                    <span>
-                      {humidity}%
+                    <strong
+                      style={
+                        styles.infoValue
+                      }
+                    >
+                      {numberOfChickens !==
+                        null
+                        ? numberOfChickens
+                        : "--"}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={
+                      styles.infoCard
+                    }
+                  >
+                    <span
+                      style={{
+                        ...styles.infoLabel,
+                        color: muted,
+                      }}
+                    >
+                      📐 Room Area
                     </span>
+
+                    <strong
+                      style={
+                        styles.infoValue
+                      }
+                    >
+                      {broodingRoomArea !==
+                        null
+                        ? `${formatNumber(
+                            broodingRoomArea,
+                            2
+                          )} m²`
+                        : "--"}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={
+                      styles.infoCard
+                    }
+                  >
+                    <span
+                      style={{
+                        ...styles.infoLabel,
+                        color: muted,
+                      }}
+                    >
+                      🐓 Type
+                    </span>
+
+                    <strong
+                      style={{
+                        ...styles.infoValue,
+                        textTransform:
+                          "capitalize",
+                      }}
+                    >
+                      {chicksType}
+                    </strong>
                   </div>
                 </div>
 
+                {/* =================================================
+                    ACTUATORS + TIME
+                ================================================= */}
+
                 <div
                   className="history-right"
-                  style={
-                    styles.right
-                  }
+                  style={styles.right}
                 >
-                  <p
-                    style={
-                      styles.status
-                    }
-                  >
-                    🔥 {heater}
+                  <p style={styles.status}>
+                    🔥 Heater{" "}
+                    <strong>
+                      {String(
+                        heater
+                      ).toUpperCase()}
+                    </strong>
                   </p>
 
-                  <p
-                    style={
-                      styles.fan
-                    }
-                  >
+                  <p style={styles.fan}>
                     💨 Fan {fan}%
                   </p>
 
@@ -846,6 +949,10 @@ export default function History() {
     </div>
   );
 }
+
+// =======================================================
+// STYLES
+// =======================================================
 
 const styles = {
   page: {
@@ -898,8 +1005,7 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "22px",
   },
@@ -919,8 +1025,7 @@ const styles = {
     padding: "14px",
     borderRadius: "20px",
     marginBottom: "16px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   selectorLabel: {
@@ -947,23 +1052,26 @@ const styles = {
 
   row: {
     padding: "18px",
-    borderRadius: "20px",
+    borderRadius: "22px",
     marginBottom: "14px",
     display: "flex",
-    justifyContent:
-      "space-between",
+    justifyContent: "space-between",
     alignItems: "center",
-    backdropFilter:
-      "blur(12px)",
+    gap: "20px",
+    backdropFilter: "blur(12px)",
     boxShadow:
       "0 10px 25px rgba(0,0,0,0.08)",
+  },
+
+  mainInfo: {
+    minWidth: "110px",
   },
 
   temperature: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "18px",
+    fontSize: "20px",
   },
 
   humidity: {
@@ -974,13 +1082,41 @@ const styles = {
     fontSize: "14px",
   },
 
+  historyGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(2, minmax(110px, 1fr))",
+    gap: "8px",
+    flex: 1,
+  },
+
+  infoCard: {
+    padding: "10px 12px",
+    borderRadius: "14px",
+    background:
+      "rgba(148,163,184,0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+
+  infoLabel: {
+    fontSize: "10px",
+    fontWeight: 700,
+  },
+
+  infoValue: {
+    fontSize: "13px",
+  },
+
   right: {
+    minWidth: "125px",
     textAlign: "right",
   },
 
   status: {
     margin: 0,
-    fontSize: "14px",
+    fontSize: "13px",
   },
 
   fan: {
@@ -998,8 +1134,7 @@ const styles = {
     padding: "40px 20px",
     textAlign: "center",
     borderRadius: "24px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
 
   emptyIcon: {
@@ -1013,8 +1148,7 @@ const styles = {
     padding: "35px 25px",
     borderRadius: "28px",
     textAlign: "center",
-    backdropFilter:
-      "blur(14px)",
+    backdropFilter: "blur(14px)",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.18)",
   },

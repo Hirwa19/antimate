@@ -23,10 +23,6 @@ export default function Plan() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  // =====================================================
-  // AVAILABLE PLANS
-  // =====================================================
-
   const plans = [
     {
       name: "Free",
@@ -103,6 +99,7 @@ export default function Plan() {
         return;
       }
 
+      // 1. Try fetching from /api/payments/current
       const res = await fetch(`${API_URL}/api/payments/current`, {
         method: "GET",
         headers: {
@@ -113,20 +110,22 @@ export default function Plan() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        console.error("Failed to fetch current payment:", data?.message);
-        setCurrentPlan(null);
-        return;
+      let payment = data?.payment || data?.currentPayment || data;
+
+      // 2. Fallback: If /api/payments/current returned empty/failed, try /api/profile/me
+      if (!payment || payment.message === "No active subscription found" || !res.ok) {
+        const profileRes = await fetch(`${API_URL}/api/profile/me`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const profileData = await profileRes.json();
+        payment = profileData?.payment || profileData?.plan;
       }
 
-      const payment = data?.payment || data?.currentPayment || data;
-
-      if (!payment || payment.message === "No active subscription found") {
-        setCurrentPlan(null);
-        return;
-      }
-
-      setCurrentPlan(payment);
+      setCurrentPlan(payment || null);
     } catch (error) {
       console.error("Failed to fetch current subscription:", error);
       setCurrentPlan(null);
@@ -135,48 +134,34 @@ export default function Plan() {
     }
   }
 
-  // =====================================================
-  // GET CURRENT PLAN NAME
-  // =====================================================
+  // Helper to extract active plan name
+  function getActivePlanDetails() {
+    if (!currentPlan) return { name: "Free", status: "free", expiry: null };
 
-  function getCurrentPlanName() {
-    if (!currentPlan) return "Free";
+    const planName = currentPlan.planName || currentPlan.plan || currentPlan.name || "Free";
+    const rawStatus = String(currentPlan.status || "").toLowerCase().trim();
 
-    const planName = currentPlan.planName || currentPlan.plan || "Free";
-    if (planName === "Free") return "Free";
+    // Accept all common status variations from Paypack / webhook
+    const validStatuses = ["active", "paid", "completed", "success", "successful", "approved"];
+    const isActiveStatus = validStatuses.includes(rawStatus);
 
-    const status = String(currentPlan.status || "").toLowerCase();
-    const activeStatuses = ["active", "paid", "completed", "success", "successful"];
+    // Expiry check
+    const expiryDate = currentPlan.expiryDate ? new Date(currentPlan.expiryDate) : null;
+    const isExpired = expiryDate && expiryDate <= new Date();
 
-    if (!activeStatuses.includes(status)) return "Free";
-
-    if (currentPlan.expiryDate && new Date(currentPlan.expiryDate) <= new Date()) {
-      return "Free";
+    if (planName === "Free" || (!isActiveStatus && rawStatus !== "active") || isExpired) {
+      return {
+        name: "Free",
+        status: isExpired ? "expired" : rawStatus || "free",
+        expiry: null,
+      };
     }
 
-    return planName;
-  }
-
-  // =====================================================
-  // CHECK ACTIVE PAID PLAN
-  // =====================================================
-
-  function hasActivePaidPlan() {
-    if (!currentPlan) return false;
-
-    const planName = currentPlan.planName || currentPlan.plan || "Free";
-    if (planName === "Free") return false;
-
-    const status = String(currentPlan.status || "").toLowerCase();
-    const activeStatuses = ["active", "paid", "completed", "success", "successful"];
-
-    if (!activeStatuses.includes(status)) return false;
-
-    if (currentPlan.expiryDate && new Date(currentPlan.expiryDate) <= new Date()) {
-      return false;
-    }
-
-    return true;
+    return {
+      name: planName,
+      status: rawStatus || "active",
+      expiry: currentPlan.expiryDate,
+    };
   }
 
   useEffect(() => {
@@ -187,8 +172,8 @@ export default function Plan() {
     return <PageLoader />;
   }
 
-  const currentPlanName = getCurrentPlanName();
-  const paidPlanRunning = hasActivePaidPlan();
+  const { name: currentPlanName, status: currentStatus, expiry: expiryDate } = getActivePlanDetails();
+  const paidPlanRunning = currentPlanName !== "Free";
 
   return (
     <div
@@ -226,7 +211,7 @@ export default function Plan() {
         </p>
       </div>
 
-      {/* CURRENT PLAN */}
+      {/* CURRENT PLAN BOX */}
       <div style={styles.currentBox}>
         <div>
           <p
@@ -247,14 +232,14 @@ export default function Plan() {
             }}
           >
             Expires:{" "}
-            {currentPlanName !== "Free" && currentPlan?.expiryDate
-              ? new Date(currentPlan.expiryDate).toLocaleDateString()
+            {currentPlanName !== "Free" && expiryDate
+              ? new Date(expiryDate).toLocaleDateString()
               : "No expiry"}
           </p>
         </div>
 
         <span style={styles.activePill}>
-          {currentPlanName === "Free" ? "free" : currentPlan?.status || "active"}
+          {currentPlanName === "Free" ? "free" : currentStatus}
         </span>
       </div>
 
@@ -266,7 +251,7 @@ export default function Plan() {
       {/* PLANS GRID */}
       <div style={styles.grid}>
         {plans.map((plan) => {
-          const active = currentPlanName === plan.name;
+          const active = currentPlanName.toLowerCase() === plan.name.toLowerCase();
           const highlighted = plan.name === "Basic";
           const isFreePlan = plan.name === "Free";
           const blockedByActivePlan = paidPlanRunning && !active && !isFreePlan;
@@ -438,10 +423,6 @@ export default function Plan() {
     </div>
   );
 }
-
-// =======================================================
-// STYLES
-// =======================================================
 
 const styles = {
   page: {

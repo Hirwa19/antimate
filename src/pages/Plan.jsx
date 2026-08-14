@@ -12,7 +12,7 @@ const API_URL =
   "https://brooder-backend.onrender.com";
 
 export default function Plan() {
-  const { isDark, text: t } = useAppSettings();
+  const { isDark } = useAppSettings();
   const navigate = useNavigate();
 
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -211,12 +211,10 @@ export default function Plan() {
             color: isDark ? "#5eead4" : "#0f766e",
           }}
         >
-          {t?.smartBrooderPlans || "Smart Brooder Plans"}
+          Smart Brooder Plans
         </span>
 
-        <h1 style={styles.title}>
-          {t?.chooseBrooderPlan || "Choose your brooder plan"}
-        </h1>
+        <h1 style={styles.title}>Choose your brooder plan</h1>
 
         <p
           style={{
@@ -224,12 +222,11 @@ export default function Plan() {
             color: isDark ? "#a9b7c6" : "#64748b",
           }}
         >
-          {t?.manageSubscriptionSubtitle ||
-            "Manage your subscription, alerts, analytics, and monitoring level."}
+          Manage your subscription, alerts, analytics, and monitoring level.
         </p>
       </div>
 
-      {/* CURRENT PLAN BOX */}
+      {/* CURRENT PLAN */}
       <div style={styles.currentBox}>
         <div>
           <p
@@ -238,7 +235,7 @@ export default function Plan() {
               color: isDark ? "#94a3b8" : "#64748b",
             }}
           >
-            {t?.currentPlan || "Current Plan"}
+            Current Plan
           </p>
 
           <h2 style={styles.currentTitle}>{currentPlanName}</h2>
@@ -249,23 +246,21 @@ export default function Plan() {
               color: isDark ? "#cbd5e1" : "#475569",
             }}
           >
-            {t?.expires || "Expires"}:{" "}
+            Expires:{" "}
             {currentPlanName !== "Free" && currentPlan?.expiryDate
               ? new Date(currentPlan.expiryDate).toLocaleDateString()
-              : t?.noExpiry || "No expiry"}
+              : "No expiry"}
           </p>
         </div>
 
         <span style={styles.activePill}>
-          {currentPlanName === "Free"
-            ? "free"
-            : currentPlan?.status || "active"}
+          {currentPlanName === "Free" ? "free" : currentPlan?.status || "active"}
         </span>
       </div>
 
       {/* PAYMENT HISTORY */}
       <Link to="/payment" style={styles.paymentStatusLink}>
-        💳 {t?.paymentHistory || "Payment History"} →
+        💳 Payment History →
       </Link>
 
       {/* PLANS GRID */}
@@ -316,7 +311,7 @@ export default function Plan() {
                     color: isDark ? "#94a3b8" : "#64748b",
                   }}
                 >
-                  / {t?.month || "month"}
+                  / month
                 </span>
               </div>
 
@@ -341,9 +336,7 @@ export default function Plan() {
                     cursor: "not-allowed",
                   }}
                 >
-                  {active
-                    ? t?.currentFreePlan || "Current Free Plan"
-                    : t?.freePlan || "Free Plan"}
+                  {active ? "Current Free Plan" : "Free Plan"}
                 </button>
               ) : (
                 <button
@@ -373,12 +366,12 @@ export default function Plan() {
                   }}
                 >
                   {active
-                    ? t?.currentPlan || "Current Plan"
+                    ? "Current Plan"
                     : blockedByActivePlan
-                    ? t?.activePlanRunning || "Active Plan Running"
+                    ? "Active Plan Running"
                     : updating
-                    ? t?.updating || "Updating..."
-                    : t?.choosePlan || "Choose Plan"}
+                    ? "Updating..."
+                    : "Choose Plan"}
                 </button>
               )}
             </div>
@@ -388,15 +381,13 @@ export default function Plan() {
 
       <BottomNav />
 
-      {/* SUCCESS MODAL */}
       <SuccessModal
         open={successOpen}
-        title={t?.planActivated || "Plan Activated"}
-        message={`${t?.yourPlanIsNowActive || "Your"} ${currentPlanName} ${t?.planIsNowActive || "plan is now active."}`}
+        title="Plan Activated"
+        message={`Your ${currentPlanName} plan is now active.`}
         onClose={() => setSuccessOpen(false)}
       />
 
-      {/* PAYMENT MODAL */}
       <PaymentModal
         open={paymentOpen}
         plan={selectedPlan}

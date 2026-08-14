@@ -42,7 +42,7 @@ export default function History() {
     }
 
     const res = await fetch(
-      `${API_URL}/api/payments/my-payments`,
+      `${API_URL}/api/payments`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

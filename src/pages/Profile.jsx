@@ -13,6 +13,11 @@ export default function Profile() {
 
   const [profile, setProfile] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // =====================================================
+  // FETCH PROFILE
+  // =====================================================
 
   async function fetchProfile() {
     try {
@@ -24,20 +29,26 @@ export default function Profile() {
       }
 
       const res = await fetch(`${API_URL}/api/profile/me`, {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Failed to load profile");
+        throw new Error(
+          data.message || "Failed to load profile"
+        );
       }
 
       setProfile(data);
     } catch (err) {
-      console.error("Profile error:", err);
+      console.error("❌ Profile error:", err);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -45,23 +56,76 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
   }
 
+  // =====================================================
+  // PROFILE DATA
+  // =====================================================
+
   const user = profile?.user;
-  const devices = profile?.devices || [];
-  const plan = profile?.plan;
+
+  const devices = Array.isArray(profile?.devices)
+    ? profile.devices
+    : [];
+
+  // =====================================================
+  // PAYMENT / SUBSCRIPTION
+  // =====================================================
+
+  const payment = profile?.payment;
+  const fallbackPlan = profile?.plan;
+
+  // Plan name from active payment or fallback payload
+  const currentPlan =
+    payment?.planName ||
+    fallbackPlan?.planName ||
+    "Free";
+
+  // Status
+  const paymentStatus =
+    payment?.status ||
+    fallbackPlan?.status ||
+    "none";
+
+  // Expiry date
+  const expiryDate =
+    payment?.expiryDate ||
+    fallbackPlan?.expiryDate ||
+    null;
+
+  // Check Expiry
+  const isExpired =
+    expiryDate &&
+    new Date(expiryDate) <= new Date();
+
+  // Display Plan String
+  const displayPlan = isExpired ? "Expired" : currentPlan;
+
   const hasDevice = devices.length > 0;
+
+  // =====================================================
+  // THEME
+  // =====================================================
 
   const background = isDark
     ? "linear-gradient(135deg,#07111f,#0f2537)"
     : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
 
-  const text = isDark ? "#ffffff" : "#0f172a";
-  const muted = isDark ? "#94a3b8" : "#64748b";
+  const text = isDark
+    ? "#ffffff"
+    : "#0f172a";
+
+  const muted = isDark
+    ? "#94a3b8"
+    : "#64748b";
 
   const cardBackground = isDark
     ? "rgba(255,255,255,0.08)"
@@ -71,6 +135,33 @@ export default function Profile() {
     ? "1px solid rgba(255,255,255,0.10)"
     : "1px solid rgba(15,23,42,0.08)";
 
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          ...styles.page,
+          background,
+          color: text,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div style={styles.loading}>
+          {t?.loading || "Loading profile..."}
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
     <div
       style={{
@@ -79,6 +170,7 @@ export default function Profile() {
         color: text,
       }}
     >
+      {/* TOP BAR */}
       <div style={styles.topBar}>
         <div>
           <h2 style={styles.title}>
@@ -91,12 +183,15 @@ export default function Profile() {
               color: muted,
             }}
           >
-            {t?.accountOverview || "Account overview"}
+            {t?.accountOverview ||
+              "Account overview"}
           </p>
         </div>
 
         <button
-          onClick={() => setMenuOpen(!menuOpen)}
+          onClick={() =>
+            setMenuOpen(!menuOpen)
+          }
           style={{
             ...styles.menuBtn,
             background: cardBackground,
@@ -108,13 +203,17 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* MENU */}
       {menuOpen && (
         <div
           style={{
             ...styles.menu,
-            background: isDark ? "#111c2c" : "#ffffff",
+            background: isDark
+              ? "#111c2c"
+              : "#ffffff",
             border,
-            boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
+            boxShadow:
+              "0 18px 40px rgba(0,0,0,0.18)",
           }}
         >
           <MenuButton
@@ -175,6 +274,7 @@ export default function Profile() {
         </div>
       )}
 
+      {/* PROFILE CARD */}
       <div
         style={{
           ...styles.card,
@@ -183,7 +283,9 @@ export default function Profile() {
         }}
       >
         <div style={styles.avatar}>
-          {user?.fullName?.charAt(0)?.toUpperCase() || "U"}
+          {user?.fullName
+            ?.charAt(0)
+            ?.toUpperCase() || "U"}
         </div>
 
         <h3 style={styles.name}>
@@ -199,12 +301,12 @@ export default function Profile() {
           @{user?.username || "username"}
         </p>
 
+        {/* STATS */}
         <div style={styles.stats}>
           <div style={styles.statItem}>
             <strong style={styles.statValue}>
               {devices.length}
             </strong>
-
             <span
               style={{
                 ...styles.statLabel,
@@ -219,9 +321,8 @@ export default function Profile() {
 
           <div style={styles.statItem}>
             <strong style={styles.statValue}>
-              {plan?.planName || "Free"}
+              {displayPlan}
             </strong>
-
             <span
               style={{
                 ...styles.statLabel,
@@ -233,6 +334,28 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* PAYMENT STATUS */}
+        {currentPlan !== "Free" && (
+          <div
+            style={{
+              marginTop: "14px",
+              fontSize: "11px",
+              color: isExpired
+                ? "#ef4444"
+                : paymentStatus === "paid" ||
+                  paymentStatus === "completed" ||
+                  paymentStatus === "active"
+                ? "#22c55e"
+                : muted,
+            }}
+          >
+            {isExpired
+              ? "⚠ Subscription expired"
+              : `● ${paymentStatus.toUpperCase()}`}
+          </div>
+        )}
+
+        {/* BR SYSTEM BUTTON */}
         <button
           onClick={() => navigate("/systems")}
           style={styles.systemButton}
@@ -240,6 +363,7 @@ export default function Profile() {
           🐔 {t?.system || t?.brSystem || "BR System"}
         </button>
 
+        {/* PLANS BUTTON */}
         <button
           onClick={() => navigate("/plans")}
           style={styles.planButton}
@@ -248,6 +372,7 @@ export default function Profile() {
         </button>
       </div>
 
+      {/* DEVICES */}
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div>
@@ -286,15 +411,10 @@ export default function Profile() {
                 }}
               >
                 <div style={styles.deviceInfo}>
-                  <div style={styles.deviceIcon}>
-                    📡
-                  </div>
+                  <div style={styles.deviceIcon}>📡</div>
 
                   <div>
-                    <strong>
-                      {device.deviceId}
-                    </strong>
-
+                    <strong>{device.deviceId}</strong>
                     <p
                       style={{
                         ...styles.deviceStatus,
@@ -308,9 +428,7 @@ export default function Profile() {
                 </div>
 
                 <button
-                  onClick={() =>
-                    navigate("/device-management")
-                  }
+                  onClick={() => navigate("/device-management")}
                   style={styles.smallBtn}
                 >
                   {t?.manage || "Manage"}
@@ -326,9 +444,7 @@ export default function Profile() {
               border,
             }}
           >
-            <div style={styles.emptyIcon}>
-              📡
-            </div>
+            <div style={styles.emptyIcon}>📡</div>
 
             <strong>
               {t?.noDeviceLinked || "No device linked"}
@@ -345,13 +461,10 @@ export default function Profile() {
             </p>
 
             <button
-              onClick={() =>
-                navigate("/device-management")
-              }
+              onClick={() => navigate("/device-management")}
               style={styles.primaryBtn}
             >
-              {t?.deviceManagement ||
-                "Device Management"}
+              {t?.deviceManagement || "Device Management"}
             </button>
           </div>
         )}
@@ -362,12 +475,11 @@ export default function Profile() {
   );
 }
 
-function MenuButton({
-  label,
-  icon,
-  onClick,
-  color,
-}) {
+// =====================================================
+// MENU BUTTON
+// =====================================================
+
+function MenuButton({ label, icon, onClick, color }) {
   return (
     <button
       onClick={onClick}
@@ -376,14 +488,15 @@ function MenuButton({
         color,
       }}
     >
-      <span style={styles.menuIcon}>
-        {icon}
-      </span>
-
+      <span style={styles.menuIcon}>{icon}</span>
       <span>{label}</span>
     </button>
   );
 }
+
+// =====================================================
+// STYLES
+// =====================================================
 
 const styles = {
   page: {
@@ -392,6 +505,11 @@ const styles = {
     paddingBottom: "110px",
     fontFamily: "Inter, Arial, sans-serif",
     position: "relative",
+  },
+
+  loading: {
+    fontSize: "14px",
+    fontWeight: 600,
   },
 
   topBar: {
@@ -465,8 +583,7 @@ const styles = {
     width: "76px",
     height: "76px",
     borderRadius: "24px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     display: "flex",
     justifyContent: "center",
@@ -474,8 +591,7 @@ const styles = {
     fontSize: "28px",
     fontWeight: 700,
     margin: "0 auto 12px",
-    boxShadow:
-      "0 12px 28px rgba(37,99,235,0.25)",
+    boxShadow: "0 12px 28px rgba(37,99,235,0.25)",
   },
 
   name: {
@@ -513,8 +629,7 @@ const styles = {
   statDivider: {
     width: "1px",
     height: "34px",
-    background:
-      "rgba(148,163,184,0.25)",
+    background: "rgba(148,163,184,0.25)",
   },
 
   systemButton: {
@@ -523,8 +638,7 @@ const styles = {
     padding: "12px",
     border: "none",
     borderRadius: "15px",
-    background:
-      "linear-gradient(135deg,#06b6d4,#2563eb)",
+    background: "linear-gradient(135deg,#06b6d4,#2563eb)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -537,8 +651,7 @@ const styles = {
     padding: "12px",
     border: "none",
     borderRadius: "15px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -565,8 +678,7 @@ const styles = {
     border: "none",
     borderRadius: "12px",
     padding: "9px 13px",
-    background:
-      "linear-gradient(135deg,#22c55e,#14b8a6)",
+    background: "linear-gradient(135deg,#22c55e,#14b8a6)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",
@@ -594,8 +706,7 @@ const styles = {
     borderRadius: "14px",
     display: "grid",
     placeItems: "center",
-    background:
-      "rgba(37,99,235,0.12)",
+    background: "rgba(37,99,235,0.12)",
     fontSize: "19px",
   },
 
@@ -631,8 +742,7 @@ const styles = {
     border: "none",
     borderRadius: "13px",
     padding: "11px 15px",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 700,
     cursor: "pointer",

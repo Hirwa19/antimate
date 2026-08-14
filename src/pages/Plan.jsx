@@ -1,31 +1,31 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
 import BottomNav from "../components/BottomNav";
 import PageLoader from "../components/PageLoader";
 import { useAppSettings } from "../context/AppSettingsContext";
 import SuccessModal from "../components/SuccessModal";
 import PaymentModal from "../components/PaymentModal";
-import { useNavigate } from "react-router-dom";
 
 const API_URL =
-  import.meta.env.VITE_API_URL || "https://brooder-backend.onrender.com";
+  import.meta.env.VITE_API_URL ||
+  "https://brooder-backend.onrender.com";
 
 export default function Plan() {
   const { isDark } = useAppSettings();
+  const navigate = useNavigate();
+
   const [currentPlan, setCurrentPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+
   const [successOpen, setSuccessOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const navigate = useNavigate();
 
-<button
-  onClick={() => navigate("/payment")}
-  style={styles.paymentButton}
->
-  💳 Payment History
-</button>
+  // =====================================================
+  // AVAILABLE PLANS
+  // =====================================================
 
   const plans = [
     {
@@ -42,6 +42,7 @@ export default function Plan() {
         "Limited history",
       ],
     },
+
     {
       name: "Basic",
       price: 3000,
@@ -57,6 +58,7 @@ export default function Plan() {
         "Notification history",
       ],
     },
+
     {
       name: "Pro",
       price: 7000,
@@ -72,6 +74,7 @@ export default function Plan() {
         "Device health alerts",
       ],
     },
+
     {
       name: "Premium",
       price: 15000,
@@ -89,32 +92,128 @@ export default function Plan() {
     },
   ];
 
+  // =====================================================
+  // FETCH CURRENT SUBSCRIPTION
+  //
+  // IMPORTANT:
+  // This no longer uses /api/plans.
+  // Subscription data comes from payments collection.
+  // =====================================================
+
   async function fetchCurrentPlan() {
     try {
       setLoading(true);
 
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`${API_URL}/api/plans`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      const res = await fetch(
+        `${API_URL}/api/payments/current`,
+        {
+          method: "GET",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const data = await res.json();
-      setCurrentPlan(data);
+
+      if (!res.ok) {
+        console.error(
+          "Failed to fetch current payment:",
+          data?.message
+        );
+
+        setCurrentPlan(null);
+        return;
+      }
+
+      /*
+       * Backend can return either:
+       *
+       * {
+       *   payment: {...}
+       * }
+       *
+       * or directly:
+       *
+       * {...}
+       *
+       * Support both.
+       */
+
+      const payment =
+        data?.payment ||
+        data?.currentPayment ||
+        data;
+
+      if (
+        !payment ||
+        payment.message === "No active subscription found"
+      ) {
+        setCurrentPlan(null);
+        return;
+      }
+
+      setCurrentPlan(payment);
     } catch (error) {
-      console.error("Failed to fetch plan:", error);
+      console.error(
+        "Failed to fetch current subscription:",
+        error
+      );
+
       setCurrentPlan(null);
     } finally {
       setLoading(false);
     }
   }
 
-  function getCurrentPlanName() {
-    if (!currentPlan) return "Free";
+  // =====================================================
+  // GET CURRENT PLAN NAME
+  // =====================================================
 
-    if (currentPlan.status !== "active") return "Free";
+  function getCurrentPlanName() {
+    if (!currentPlan) {
+      return "Free";
+    }
+
+    const planName =
+      currentPlan.planName ||
+      currentPlan.plan ||
+      "Free";
+
+    if (planName === "Free") {
+      return "Free";
+    }
+
+    const status =
+      String(
+        currentPlan.status || ""
+      ).toLowerCase();
+
+    /*
+     * Accept common successful payment/subscription
+     * statuses.
+     */
+
+    const activeStatuses = [
+      "active",
+      "paid",
+      "completed",
+      "success",
+      "successful",
+    ];
+
+    if (!activeStatuses.includes(status)) {
+      return "Free";
+    }
 
     if (
       currentPlan.expiryDate &&
@@ -123,203 +222,390 @@ export default function Plan() {
       return "Free";
     }
 
-    return currentPlan.planName || "Free";
+    return planName;
   }
+
+  // =====================================================
+  // CHECK ACTIVE PAID PLAN
+  // =====================================================
 
   function hasActivePaidPlan() {
-    if (!currentPlan) return false;
+    if (!currentPlan) {
+      return false;
+    }
 
-    const isPaidPlan = currentPlan.planName !== "Free";
-    const isActive = currentPlan.status === "active";
+    const planName =
+      currentPlan.planName ||
+      currentPlan.plan ||
+      "Free";
 
-    const notExpired =
-      currentPlan.expiryDate && new Date(currentPlan.expiryDate) > new Date();
+    if (planName === "Free") {
+      return false;
+    }
 
-    return isPaidPlan && isActive && notExpired;
+    const status =
+      String(
+        currentPlan.status || ""
+      ).toLowerCase();
+
+    const activeStatuses = [
+      "active",
+      "paid",
+      "completed",
+      "success",
+      "successful",
+    ];
+
+    if (!activeStatuses.includes(status)) {
+      return false;
+    }
+
+    if (
+      currentPlan.expiryDate &&
+      new Date(currentPlan.expiryDate) <= new Date()
+    ) {
+      return false;
+    }
+
+    return true;
   }
+
+  // =====================================================
+  // LOAD CURRENT PLAN
+  // =====================================================
 
   useEffect(() => {
     fetchCurrentPlan();
   }, []);
 
-  if (loading) return <PageLoader />;
+  // =====================================================
+  // LOADING
+  // =====================================================
 
-  const currentPlanName = getCurrentPlanName();
-  const paidPlanRunning = hasActivePaidPlan();
+  if (loading) {
+    return <PageLoader />;
+  }
+
+  const currentPlanName =
+    getCurrentPlanName();
+
+  const paidPlanRunning =
+    hasActivePaidPlan();
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <div
       style={{
         ...styles.page,
+
         background: isDark
           ? "linear-gradient(135deg, #07111f, #0f2537)"
           : "linear-gradient(135deg, #f8fafc, #e2e8f0)",
-        color: isDark ? "#fff" : "#0f172a",
+
+        color: isDark
+          ? "#fff"
+          : "#0f172a",
       }}
     >
+      {/* =================================================
+          HERO
+      ================================================= */}
+
       <div style={styles.hero}>
         <span
           style={{
             ...styles.heroBadge,
+
             background: isDark
               ? "rgba(45,212,191,0.12)"
               : "rgba(15,118,110,0.09)",
-            color: isDark ? "#5eead4" : "#0f766e",
+
+            color: isDark
+              ? "#5eead4"
+              : "#0f766e",
           }}
         >
           Smart Brooder Plans
         </span>
 
-        <h1 style={styles.title}>Choose your brooder plan</h1>
+        <h1 style={styles.title}>
+          Choose your brooder plan
+        </h1>
 
         <p
           style={{
             ...styles.subtitle,
-            color: isDark ? "#a9b7c6" : "#64748b",
+
+            color: isDark
+              ? "#a9b7c6"
+              : "#64748b",
           }}
         >
-          Manage your subscription, alerts, analytics, and monitoring level.
+          Manage your subscription, alerts,
+          analytics, and monitoring level.
         </p>
       </div>
+
+      {/* =================================================
+          CURRENT PLAN
+      ================================================= */}
 
       <div style={styles.currentBox}>
         <div>
           <p
             style={{
               ...styles.smallText,
-              color: isDark ? "#94a3b8" : "#64748b",
+
+              color: isDark
+                ? "#94a3b8"
+                : "#64748b",
             }}
           >
             Current Plan
           </p>
 
-          <h2 style={styles.currentTitle}>{currentPlanName}</h2>
+          <h2 style={styles.currentTitle}>
+            {currentPlanName}
+          </h2>
 
           <p
             style={{
               ...styles.expiry,
-              color: isDark ? "#cbd5e1" : "#475569",
+
+              color: isDark
+                ? "#cbd5e1"
+                : "#475569",
             }}
           >
             Expires:{" "}
-            {currentPlanName !== "Free" && currentPlan?.expiryDate
-              ? new Date(currentPlan.expiryDate).toLocaleDateString()
+            {currentPlanName !== "Free" &&
+            currentPlan?.expiryDate
+              ? new Date(
+                  currentPlan.expiryDate
+                ).toLocaleDateString()
               : "No expiry"}
           </p>
         </div>
 
         <span style={styles.activePill}>
-          {currentPlanName === "Free" ? "free" : currentPlan?.status || "active"}
+          {currentPlanName === "Free"
+            ? "free"
+            : currentPlan?.status ||
+              "active"}
         </span>
       </div>
 
-      <Link to="/payment" style={styles.paymentStatusLink}>
-        View payment status →
+      {/* =================================================
+          PAYMENT HISTORY
+      ================================================= */}
+
+      <Link
+        to="/payment"
+        style={styles.paymentStatusLink}
+      >
+        💳 Payment History →
       </Link>
+
+      {/* =================================================
+          PLANS
+      ================================================= */}
 
       <div style={styles.grid}>
         {plans.map((plan) => {
-          const active = currentPlanName === plan.name;
-          const highlighted = plan.name === "Basic";
+          const active =
+            currentPlanName === plan.name;
 
-          const isFreePlan = plan.name === "Free";
+          const highlighted =
+            plan.name === "Basic";
+
+          const isFreePlan =
+            plan.name === "Free";
+
+          /*
+           * Do not allow changing from an active
+           * paid subscription directly to another
+           * paid subscription.
+           */
 
           const blockedByActivePlan =
-            paidPlanRunning && !active && !isFreePlan;
+            paidPlanRunning &&
+            !active &&
+            !isFreePlan;
 
           return (
             <div
               key={plan.name}
               style={{
                 ...styles.card,
+
                 background: isDark
                   ? "rgba(255,255,255,0.08)"
                   : "rgba(255,255,255,0.78)",
+
                 border: active
                   ? "1px solid #2dd4bf"
                   : isDark
                   ? "1px solid rgba(255,255,255,0.12)"
                   : "1px solid rgba(15,23,42,0.08)",
-                transform: highlighted ? "translateY(-6px)" : "none",
+
+                transform: highlighted
+                  ? "translateY(-6px)"
+                  : "none",
               }}
             >
+              {/* =========================================
+                  CARD TOP
+              ========================================= */}
+
               <div style={styles.cardTop}>
                 <div>
-                  <h2 style={styles.planName}>{plan.name}</h2>
+                  <h2 style={styles.planName}>
+                    {plan.name}
+                  </h2>
 
                   <p
                     style={{
                       ...styles.description,
-                      color: isDark ? "#a9b7c6" : "#64748b",
+
+                      color: isDark
+                        ? "#a9b7c6"
+                        : "#64748b",
                     }}
                   >
                     {plan.description}
                   </p>
                 </div>
 
-                <span style={styles.tag}>{plan.tag}</span>
+                <span style={styles.tag}>
+                  {plan.tag}
+                </span>
               </div>
 
+              {/* =========================================
+                  PRICE
+              ========================================= */}
+
               <div style={styles.priceBox}>
-                <strong style={styles.price}>{plan.displayPrice}</strong>
+                <strong style={styles.price}>
+                  {plan.displayPrice}
+                </strong>
 
                 <span
                   style={{
                     ...styles.perMonth,
-                    color: isDark ? "#94a3b8" : "#64748b",
+
+                    color: isDark
+                      ? "#94a3b8"
+                      : "#64748b",
                   }}
                 >
                   / month
                 </span>
               </div>
 
+              {/* =========================================
+                  FEATURES
+              ========================================= */}
+
               <div style={styles.features}>
-                {plan.features.map((feature) => (
-                  <div key={feature} style={styles.featureItem}>
-                    <span style={styles.check}>✓</span>
-                    <span>{feature}</span>
-                  </div>
-                ))}
+                {plan.features.map(
+                  (feature) => (
+                    <div
+                      key={feature}
+                      style={
+                        styles.featureItem
+                      }
+                    >
+                      <span
+                        style={
+                          styles.check
+                        }
+                      >
+                        ✓
+                      </span>
+
+                      <span>
+                        {feature}
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
+
+              {/* =========================================
+                  FREE PLAN
+              ========================================= */}
 
               {isFreePlan ? (
                 <button
                   disabled
                   style={{
                     ...styles.button,
+
                     background: active
                       ? "rgba(34,197,94,0.18)"
                       : "rgba(148,163,184,0.18)",
-                    color: active ? "#22c55e" : "#94a3b8",
+
+                    color: active
+                      ? "#22c55e"
+                      : "#94a3b8",
+
                     cursor: "not-allowed",
                   }}
                 >
-                  {active ? "Current Free Plan" : "Free Plan"}
+                  {active
+                    ? "Current Free Plan"
+                    : "Free Plan"}
                 </button>
               ) : (
+                /* =========================================
+                   PAID PLAN
+                ========================================= */
+
                 <button
-                  disabled={active || updating || blockedByActivePlan}
+                  disabled={
+                    active ||
+                    updating ||
+                    blockedByActivePlan
+                  }
                   onClick={() => {
-                    if (blockedByActivePlan || active) return;
+                    if (
+                      blockedByActivePlan ||
+                      active
+                    ) {
+                      return;
+                    }
 
                     setSelectedPlan(plan);
                     setPaymentOpen(true);
                   }}
                   style={{
                     ...styles.button,
-                    opacity: updating || blockedByActivePlan ? 0.65 : 1,
+
+                    opacity:
+                      updating ||
+                      blockedByActivePlan
+                        ? 0.65
+                        : 1,
+
                     background: active
                       ? "rgba(34,197,94,0.18)"
                       : blockedByActivePlan
                       ? "rgba(148,163,184,0.18)"
                       : "linear-gradient(135deg, #7c3aed, #2563eb)",
+
                     color: active
                       ? "#22c55e"
                       : blockedByActivePlan
                       ? "#94a3b8"
                       : "#fff",
+
                     cursor:
-                      active || blockedByActivePlan
+                      active ||
+                      blockedByActivePlan
                         ? "not-allowed"
                         : "pointer",
                   }}
@@ -338,43 +624,114 @@ export default function Plan() {
         })}
       </div>
 
+      {/* =================================================
+          BOTTOM NAV
+      ================================================= */}
+
       <BottomNav />
+
+      {/* =================================================
+          SUCCESS MODAL
+      ================================================= */}
 
       <SuccessModal
         open={successOpen}
         title="Plan Activated"
         message={`Your ${currentPlanName} plan is now active.`}
-        onClose={() => setSuccessOpen(false)}
+        onClose={() =>
+          setSuccessOpen(false)
+        }
       />
+
+      {/* =================================================
+          PAYMENT MODAL
+      ================================================= */}
 
       <PaymentModal
         open={paymentOpen}
         plan={selectedPlan}
-        onClose={() => setPaymentOpen(false)}
+        onClose={() =>
+          setPaymentOpen(false)
+        }
         onConfirm={async ({ plan }) => {
-          const token = localStorage.getItem("token");
+          const token =
+            localStorage.getItem(
+              "token"
+            );
+
+          if (!token) {
+            navigate("/login");
+            return;
+          }
+
           setUpdating(true);
 
           try {
-            const res = await fetch(`${API_URL}/api/payments/start`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                planName: plan.name,
-              }),
-            });
+            const res =
+              await fetch(
+                `${API_URL}/api/payments/start`,
+                {
+                  method: "POST",
 
-            const data = await res.json();
+                  headers: {
+                    "Content-Type":
+                      "application/json",
 
-            if (data.paymentLink) {
-              window.open(data.paymentLink, "_self");
+                    Authorization:
+                      `Bearer ${token}`,
+                  },
+
+                  body: JSON.stringify({
+                    planName:
+                      plan.name,
+                  }),
+                }
+              );
+
+            const data =
+              await res.json();
+
+            if (!res.ok) {
+              throw new Error(
+                data?.message ||
+                  "Failed to start payment"
+              );
             }
 
+            /*
+             * Paypack payment link.
+             */
+
+            if (
+              data.paymentLink
+            ) {
+              window.open(
+                data.paymentLink,
+                "_self"
+              );
+
+              return;
+            }
+
+            /*
+             * If backend doesn't return
+             * paymentLink, close modal and
+             * refresh payment information.
+             */
+
             setPaymentOpen(false);
+
             await fetchCurrentPlan();
+          } catch (error) {
+            console.error(
+              "Payment start error:",
+              error
+            );
+
+            alert(
+              error.message ||
+                "Failed to start payment"
+            );
           } finally {
             setUpdating(false);
           }
@@ -384,12 +741,17 @@ export default function Plan() {
   );
 }
 
+// =======================================================
+// STYLES
+// =======================================================
+
 const styles = {
   page: {
     minHeight: "100vh",
     padding: "30px",
     paddingBottom: "120px",
-    fontFamily: "Inter, Arial, sans-serif",
+    fontFamily:
+      "Inter, Arial, sans-serif",
   },
 
   hero: {
@@ -421,15 +783,19 @@ const styles = {
 
   currentBox: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     maxWidth: "850px",
     padding: "18px 20px",
     borderRadius: "24px",
-    marginBottom: "28px",
+    marginBottom: "18px",
+
     background:
       "linear-gradient(135deg, rgba(45,212,191,0.15), rgba(59,130,246,0.12))",
-    border: "1px solid rgba(45,212,191,0.25)",
+
+    border:
+      "1px solid rgba(45,212,191,0.25)",
   },
 
   smallText: {
@@ -453,9 +819,14 @@ const styles = {
     borderRadius: "999px",
     fontWeight: "800",
     fontSize: "13px",
-    background: "rgba(34,197,94,0.16)",
+
+    background:
+      "rgba(34,197,94,0.16)",
+
     color: "#22c55e",
-    textTransform: "capitalize",
+
+    textTransform:
+      "capitalize",
   },
 
   paymentStatusLink: {
@@ -469,7 +840,8 @@ const styles = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "22px",
   },
 
@@ -477,15 +849,19 @@ const styles = {
     borderRadius: "28px",
     padding: "24px",
     backdropFilter: "blur(16px)",
-    boxShadow: "0 20px 45px rgba(0,0,0,0.18)",
-    transition: "all 0.25s ease",
+    boxShadow:
+      "0 20px 45px rgba(0,0,0,0.18)",
+    transition:
+      "all 0.25s ease",
   },
 
   cardTop: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     gap: "14px",
-    alignItems: "flex-start",
+    alignItems:
+      "flex-start",
   },
 
   planName: {
@@ -504,7 +880,10 @@ const styles = {
     borderRadius: "999px",
     fontSize: "11px",
     fontWeight: "900",
-    background: "linear-gradient(135deg, #2dd4bf, #38bdf8)",
+
+    background:
+      "linear-gradient(135deg, #2dd4bf, #38bdf8)",
+
     color: "#06221f",
     whiteSpace: "nowrap",
   },
@@ -512,7 +891,8 @@ const styles = {
   priceBox: {
     marginTop: "20px",
     display: "flex",
-    alignItems: "flex-end",
+    alignItems:
+      "flex-end",
     gap: "6px",
   },
 
@@ -533,7 +913,8 @@ const styles = {
 
   featureItem: {
     display: "flex",
-    alignItems: "center",
+    alignItems:
+      "center",
     gap: "10px",
     fontSize: "14px",
   },
@@ -542,11 +923,17 @@ const styles = {
     width: "22px",
     height: "22px",
     borderRadius: "50%",
-    background: "rgba(45,212,191,0.16)",
+
+    background:
+      "rgba(45,212,191,0.16)",
+
     color: "#2dd4bf",
+
     display: "inline-flex",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent:
+      "center",
+
     fontWeight: "900",
   },
 
@@ -559,17 +946,4 @@ const styles = {
     border: "none",
     fontSize: "14px",
   },
-
-  paymentButton: {
-  width: "100%",
-  marginBottom: "18px",
-  padding: "13px 18px",
-  border: "1px solid rgba(37,99,235,0.2)",
-  borderRadius: "15px",
-  background: "rgba(37,99,235,0.1)",
-  color: "#2563eb",
-  fontWeight: 800,
-  cursor: "pointer",
-},
-
 };

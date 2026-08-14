@@ -1,137 +1,164 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
 import BottomNav from "../components/BottomNav";
-import { useAppSettings } from "../context/AppSettingsContext";
+
+import {
+  useAppSettings,
+} from "../context/AppSettingsContext";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
 export default function History() {
-  const { isDark } = useAppSettings();
-  const navigate = useNavigate();
+  const { isDark } =
+    useAppSettings();
 
-  const [profile, setProfile] = useState(null);
-  const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState("");
-  const [history, setHistory] = useState([]);
+  const navigate =
+    useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [accessDenied, setAccessDenied] = useState(false);
+  const [planName, setPlanName] =
+    useState("Free");
 
-  async function fetchProfile() {
-    const token = localStorage.getItem("token");
+  const [devices, setDevices] =
+    useState([]);
+
+  const [selectedDevice, setSelectedDevice] =
+    useState("");
+
+  const [history, setHistory] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [historyLoading, setHistoryLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [accessDenied, setAccessDenied] =
+    useState(false);
+
+  async function fetchSubscription() {
+    const token =
+      localStorage.getItem("token");
 
     if (!token) {
-      setError("You are not logged in.");
-      setLoading(false);
-      return null;
+      throw new Error(
+        "You are not logged in."
+      );
     }
 
-    try {
-      const res = await fetch(`${API_URL}/api/profile/me`, {
+    const res = await fetch(
+      `${API_URL}/api/payments/my-payments`,
+      {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.message || "Failed to load profile"
-        );
       }
+    );
 
-      setProfile(data);
-      return data;
-    } catch (err) {
-      console.error("Profile error:", err);
-      setError(err.message || "Failed to load profile");
-      return null;
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to load payment information"
+      );
     }
+
+    const currentPlan =
+      data.currentPlan ||
+      "Free";
+
+    setPlanName(
+      String(currentPlan)
+    );
+
+    return String(currentPlan);
   }
 
-  function checkHistoryAccess(profileData) {
-    const plan = profileData?.plan;
-
-    if (!plan) {
-      return false;
-    }
-
-    const planName = String(
-      plan.planName || plan.name || "Free"
-    ).toLowerCase();
-
-    return planName !== "free";
+  function checkHistoryAccess(plan) {
+    return String(plan)
+      .toLowerCase() !== "free";
   }
 
   async function fetchDevices() {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token");
 
     if (!token) {
-      setError("You are not logged in.");
-      setLoading(false);
-      return;
+      throw new Error(
+        "You are not logged in."
+      );
     }
 
-    try {
-      setLoading(true);
-      setError("");
-
-      const res = await fetch(
-        `${API_URL}/api/devices/my-devices`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.message || "Failed to load devices"
-        );
+    const res = await fetch(
+      `${API_URL}/api/devices/my-devices`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
+    );
 
-      const deviceList = Array.isArray(data)
+    const data =
+      await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to load devices"
+      );
+    }
+
+    const deviceList =
+      Array.isArray(data)
         ? data
         : Array.isArray(data.data)
         ? data.data
         : [];
 
-      setDevices(deviceList);
+    setDevices(deviceList);
 
-      if (deviceList.length > 0) {
-        setSelectedDevice(
-          deviceList[0].deviceId || ""
-        );
-      }
-    } catch (err) {
-      console.error("Devices error:", err);
-      setDevices([]);
-      setError(
-        err.message || "Failed to load devices"
+    if (
+      deviceList.length > 0
+    ) {
+      setSelectedDevice(
+        deviceList[0].deviceId ||
+          ""
       );
-    } finally {
-      setLoading(false);
     }
   }
 
-  async function fetchHistory(deviceId) {
-    if (!deviceId || accessDenied) {
+  async function fetchHistory(
+    deviceId
+  ) {
+    if (
+      !deviceId ||
+      accessDenied
+    ) {
       setHistory([]);
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token");
 
     if (!token) {
-      setError("You are not logged in.");
+      setError(
+        "You are not logged in."
+      );
       return;
     }
 
@@ -139,26 +166,30 @@ export default function History() {
       setHistoryLoading(true);
       setError("");
 
-      const res = await fetch(
-        `${API_URL}/api/telemetry/history/${encodeURIComponent(
-          deviceId
-        )}?limit=100`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res =
+        await fetch(
+          `${API_URL}/api/telemetry/history/${encodeURIComponent(
+            deviceId
+          )}?limit=100`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      const data = await res.json();
+      const data =
+        await res.json();
 
       if (res.status === 403) {
         setHistory([]);
         setAccessDenied(true);
+
         setError(
           data.message ||
             "Your current subscription does not include sensor history."
         );
+
         return;
       }
 
@@ -169,22 +200,35 @@ export default function History() {
         );
       }
 
-      const rawData = Array.isArray(data.data)
-        ? data.data
-        : Array.isArray(data)
-        ? data
-        : [];
+      const rawData =
+        Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
 
-      const sortedHistory = [...rawData].sort(
-        (a, b) =>
-          new Date(b.createdAt) -
-          new Date(a.createdAt)
+      const sortedHistory =
+        [...rawData].sort(
+          (a, b) =>
+            new Date(
+              b.createdAt
+            ) -
+            new Date(
+              a.createdAt
+            )
+        );
+
+      setHistory(
+        sortedHistory
+      );
+    } catch (err) {
+      console.error(
+        "History error:",
+        err
       );
 
-      setHistory(sortedHistory);
-    } catch (err) {
-      console.error("History error:", err);
       setHistory([]);
+
       setError(
         err.message ||
           "Failed to load sensor history"
@@ -196,23 +240,39 @@ export default function History() {
 
   useEffect(() => {
     async function loadPage() {
-      const profileData = await fetchProfile();
+      try {
+        setLoading(true);
+        setError("");
 
-      if (!profileData) {
+        const plan =
+          await fetchSubscription();
+
+        const allowed =
+          checkHistoryAccess(
+            plan
+          );
+
+        if (!allowed) {
+          setAccessDenied(true);
+          return;
+        }
+
+        setAccessDenied(false);
+
+        await fetchDevices();
+      } catch (err) {
+        console.error(
+          "History page error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Failed to load history"
+        );
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const allowed =
-        checkHistoryAccess(profileData);
-
-      if (!allowed) {
-        setAccessDenied(true);
-        setLoading(false);
-        return;
-      }
-
-      await fetchDevices();
     }
 
     loadPage();
@@ -223,18 +283,28 @@ export default function History() {
       selectedDevice &&
       !accessDenied
     ) {
-      fetchHistory(selectedDevice);
+      fetchHistory(
+        selectedDevice
+      );
     }
-  }, [selectedDevice, accessDenied]);
+  }, [
+    selectedDevice,
+    accessDenied,
+  ]);
 
   function formatDate(date) {
     if (!date) {
       return "Unknown time";
     }
 
-    const parsed = new Date(date);
+    const parsed =
+      new Date(date);
 
-    if (Number.isNaN(parsed.getTime())) {
+    if (
+      Number.isNaN(
+        parsed.getTime()
+      )
+    ) {
       return "Unknown time";
     }
 
@@ -261,7 +331,7 @@ export default function History() {
     ? "rgba(255,255,255,0.08)"
     : "rgba(15,23,42,0.08)";
 
-  if (loading && !profile) {
+  if (loading) {
     return (
       <div
         style={{
@@ -270,10 +340,18 @@ export default function History() {
           color: text,
         }}
       >
-        <div style={styles.loadingPage}>
-          <div style={styles.spinner} />
+        <div
+          style={styles.loadingPage}
+        >
+          <div
+            style={styles.spinner}
+          />
 
-          <p style={{ color: muted }}>
+          <p
+            style={{
+              color: muted,
+            }}
+          >
             Checking subscription...
           </p>
         </div>
@@ -284,9 +362,6 @@ export default function History() {
   }
 
   if (accessDenied) {
-    const currentPlan =
-      profile?.plan?.planName || "Free";
-
     return (
       <div
         style={{
@@ -295,7 +370,9 @@ export default function History() {
           color: text,
         }}
       >
-        <div style={styles.header}>
+        <div
+          style={styles.header}
+        >
           <div>
             <h1
               style={{
@@ -312,7 +389,8 @@ export default function History() {
                 margin: 0,
               }}
             >
-              Temperature and humidity records
+              Temperature and humidity
+              records
             </p>
           </div>
         </div>
@@ -320,15 +398,23 @@ export default function History() {
         <div
           style={{
             ...styles.subscriptionCard,
-            background: cardBackground,
-            border: `1px solid ${border}`,
+            background:
+              cardBackground,
+            border:
+              `1px solid ${border}`,
           }}
         >
-          <div style={styles.lockIcon}>
+          <div
+            style={styles.lockIcon}
+          >
             🔒
           </div>
 
-          <h2 style={styles.subscriptionTitle}>
+          <h2
+            style={
+              styles.subscriptionTitle
+            }
+          >
             History requires a paid plan
           </h2>
 
@@ -339,7 +425,10 @@ export default function History() {
             }}
           >
             Your current plan is{" "}
-            <strong>{currentPlan}</strong>.
+            <strong>
+              {planName}
+            </strong>
+            .
           </p>
 
           <p
@@ -348,15 +437,21 @@ export default function History() {
               color: muted,
             }}
           >
-            Upgrade your ANTIMATE subscription
-            to access sensor history,
-            historical temperature and humidity
-            records, and longer-term monitoring.
+            Upgrade your ANTIMATE
+            subscription to access
+            sensor history,
+            historical temperature
+            and humidity records,
+            and longer-term monitoring.
           </p>
 
           <button
-            onClick={() => navigate("/plans")}
-            style={styles.primaryButton}
+            onClick={() =>
+              navigate("/plans")
+            }
+            style={
+              styles.primaryButton
+            }
           >
             View Plans
           </button>
@@ -365,7 +460,9 @@ export default function History() {
             onClick={() =>
               navigate("/dashboard")
             }
-            style={styles.secondaryButton}
+            style={
+              styles.secondaryButton
+            }
           >
             Back to Dashboard
           </button>
@@ -384,7 +481,8 @@ export default function History() {
         paddingBottom: "100px",
         background,
         color: text,
-        fontFamily: "Inter, Arial, sans-serif",
+        fontFamily:
+          "Inter, Arial, sans-serif",
         position: "relative",
       }}
     >
@@ -436,8 +534,14 @@ export default function History() {
       </style>
 
       {historyLoading && (
-        <div style={styles.loadingContainer}>
-          <div style={styles.loadingBar} />
+        <div
+          style={
+            styles.loadingContainer
+          }
+        >
+          <div
+            style={styles.loadingBar}
+          />
         </div>
       )}
 
@@ -461,7 +565,8 @@ export default function History() {
               margin: 0,
             }}
           >
-            Temperature and humidity records
+            Temperature and humidity
+            records
           </p>
         </div>
 
@@ -470,7 +575,9 @@ export default function History() {
           onClick={() =>
             navigate("/analysis")
           }
-          style={styles.analysisButton}
+          style={
+            styles.analysisButton
+          }
         >
           📊 View Analysis
         </button>
@@ -480,8 +587,10 @@ export default function History() {
         <div
           style={{
             ...styles.selectorCard,
-            background: cardBackground,
-            border: `1px solid ${border}`,
+            background:
+              cardBackground,
+            border:
+              `1px solid ${border}`,
           }}
         >
           <label
@@ -494,30 +603,42 @@ export default function History() {
           </label>
 
           <select
-            value={selectedDevice}
+            value={
+              selectedDevice
+            }
             onChange={(e) =>
-              setSelectedDevice(e.target.value)
+              setSelectedDevice(
+                e.target.value
+              )
             }
             style={{
               ...styles.select,
-              background: isDark
-                ? "#172033"
-                : "#ffffff",
+              background:
+                isDark
+                  ? "#172033"
+                  : "#ffffff",
               color: text,
-              border: `1px solid ${border}`,
+              border:
+                `1px solid ${border}`,
             }}
           >
-            {devices.map((device) => (
-              <option
-                key={
-                  device._id ||
-                  device.deviceId
-                }
-                value={device.deviceId}
-              >
-                {device.deviceId}
-              </option>
-            ))}
+            {devices.map(
+              (device) => (
+                <option
+                  key={
+                    device._id ||
+                    device.deviceId
+                  }
+                  value={
+                    device.deviceId
+                  }
+                >
+                  {
+                    device.deviceId
+                  }
+                </option>
+              )
+            )}
           </select>
         </div>
       )}
@@ -526,9 +647,10 @@ export default function History() {
         <div
           style={{
             ...styles.error,
-            background: isDark
-              ? "rgba(239,68,68,0.12)"
-              : "rgba(239,68,68,0.08)",
+            background:
+              isDark
+                ? "rgba(239,68,68,0.12)"
+                : "rgba(239,68,68,0.08)",
             border:
               "1px solid rgba(239,68,68,0.2)",
           }}
@@ -543,18 +665,27 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background: cardBackground,
+              background:
+                cardBackground,
             }}
           >
-            <div style={styles.emptyIcon}>
+            <div
+              style={styles.emptyIcon}
+            >
               📡
             </div>
 
-            <h3>No device connected</h3>
+            <h3>
+              No device connected
+            </h3>
 
-            <p style={{ color: muted }}>
-              Connect a device to start receiving
-              sensor history.
+            <p
+              style={{
+                color: muted,
+              }}
+            >
+              Connect a device to start
+              receiving sensor history.
             </p>
 
             <button
@@ -563,7 +694,9 @@ export default function History() {
                   "/device-management"
                 )
               }
-              style={styles.primaryButton}
+              style={
+                styles.primaryButton
+              }
             >
               Add Device
             </button>
@@ -578,99 +711,135 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background: cardBackground,
+              background:
+                cardBackground,
             }}
           >
-            <div style={styles.emptyIcon}>
+            <div
+              style={styles.emptyIcon}
+            >
               📊
             </div>
 
-            <h3>No sensor data yet</h3>
+            <h3>
+              No sensor data yet
+            </h3>
 
-            <p style={{ color: muted }}>
-              Telemetry from this device will
-              appear here once the device starts
-              sending data.
+            <p
+              style={{
+                color: muted,
+              }}
+            >
+              Telemetry from this device
+              will appear here once the
+              device starts sending data.
             </p>
           </div>
         )}
 
       <div>
-        {history.map((item, index) => {
-          const temperature =
-            item.temperature ?? "--";
+        {history.map(
+          (item, index) => {
+            const temperature =
+              item.temperature ??
+              "--";
 
-          const humidity =
-            item.humidity ?? "--";
+            const humidity =
+              item.humidity ??
+              "--";
 
-          const heater =
-            item.heater || "OFF";
+            const heater =
+              item.heater ||
+              "OFF";
 
-          const fan =
-            item.fanSpeed ?? 0;
+            const fan =
+              item.fanSpeed ??
+              0;
 
-          return (
-            <div
-              className="history-row"
-              key={
-                item._id ||
-                `${item.createdAt}-${index}`
-              }
-              style={{
-                ...styles.row,
-                background: cardBackground,
-                border:
-                  `1px solid ${border}`,
-              }}
-            >
-              <div>
-                <div
-                  style={styles.temperature}
-                >
-                  <span>🌡</span>
-
-                  <strong>
-                    {temperature}°C
-                  </strong>
-                </div>
-
-                <div
-                  style={styles.humidity}
-                >
-                  <span>💧</span>
-
-                  <span>
-                    {humidity}%
-                  </span>
-                </div>
-              </div>
-
+            return (
               <div
-                className="history-right"
-                style={styles.right}
+                className="history-row"
+                key={
+                  item._id ||
+                  `${item.createdAt}-${index}`
+                }
+                style={{
+                  ...styles.row,
+                  background:
+                    cardBackground,
+                  border:
+                    `1px solid ${border}`,
+                }}
               >
-                <p style={styles.status}>
-                  🔥 {heater}
-                </p>
+                <div>
+                  <div
+                    style={
+                      styles.temperature
+                    }
+                  >
+                    <span>
+                      🌡
+                    </span>
 
-                <p style={styles.fan}>
-                  💨 Fan {fan}%
-                </p>
+                    <strong>
+                      {
+                        temperature
+                      }°C
+                    </strong>
+                  </div>
 
-                <p
-                  style={{
-                    ...styles.date,
-                    color: muted,
-                  }}
+                  <div
+                    style={
+                      styles.humidity
+                    }
+                  >
+                    <span>
+                      💧
+                    </span>
+
+                    <span>
+                      {humidity}%
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className="history-right"
+                  style={
+                    styles.right
+                  }
                 >
-                  {formatDate(
-                    item.createdAt
-                  )}
-                </p>
+                  <p
+                    style={
+                      styles.status
+                    }
+                  >
+                    🔥 {heater}
+                  </p>
+
+                  <p
+                    style={
+                      styles.fan
+                    }
+                  >
+                    💨 Fan {fan}%
+                  </p>
+
+                  <p
+                    style={{
+                      ...styles.date,
+                      color: muted,
+                    }}
+                  >
+                    {formatDate(
+                      item.createdAt
+                    )}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          }
+        )}
       </div>
 
       <BottomNav />
@@ -683,7 +852,8 @@ const styles = {
     minHeight: "100vh",
     padding: "20px",
     paddingBottom: "100px",
-    fontFamily: "Inter, Arial, sans-serif",
+    fontFamily:
+      "Inter, Arial, sans-serif",
   },
 
   loadingPage: {
@@ -701,7 +871,8 @@ const styles = {
     borderRadius: "50%",
     border:
       "3px solid rgba(148,163,184,0.25)",
-    borderTop: "3px solid #2563eb",
+    borderTop:
+      "3px solid #2563eb",
     animation:
       "spin 0.8s linear infinite",
   },
@@ -727,7 +898,8 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     marginBottom: "22px",
   },
@@ -741,15 +913,14 @@ const styles = {
     color: "#fff",
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow:
-      "0 8px 20px rgba(37,99,235,0.22)",
   },
 
   selectorCard: {
     padding: "14px",
     borderRadius: "20px",
     marginBottom: "16px",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
   },
 
   selectorLabel: {
@@ -779,9 +950,11 @@ const styles = {
     borderRadius: "20px",
     marginBottom: "14px",
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
     boxShadow:
       "0 10px 25px rgba(0,0,0,0.08)",
   },
@@ -825,7 +998,8 @@ const styles = {
     padding: "40px 20px",
     textAlign: "center",
     borderRadius: "24px",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
   },
 
   emptyIcon: {
@@ -839,7 +1013,8 @@ const styles = {
     padding: "35px 25px",
     borderRadius: "28px",
     textAlign: "center",
-    backdropFilter: "blur(14px)",
+    backdropFilter:
+      "blur(14px)",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.18)",
   },

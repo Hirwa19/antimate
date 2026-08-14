@@ -42,6 +42,7 @@ export default function Plan() {
         "Limited history",
       ],
     },
+
     {
       name: "Basic",
       price: 3000,
@@ -57,6 +58,7 @@ export default function Plan() {
         "Notification history",
       ],
     },
+
     {
       name: "Pro",
       price: 7000,
@@ -72,6 +74,7 @@ export default function Plan() {
         "Device health alerts",
       ],
     },
+
     {
       name: "Premium",
       price: 15000,
@@ -90,39 +93,87 @@ export default function Plan() {
   ];
 
   // =====================================================
-  // FETCH CURRENT SUBSCRIPTION
+  // GET TOKEN
+  // =====================================================
+
+  function getToken() {
+    return localStorage.getItem("token");
+  }
+
+  // =====================================================
+  // FETCH CURRENT PAYMENT
   // =====================================================
 
   async function fetchCurrentPlan() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
+
+      const token = getToken();
 
       if (!token) {
         navigate("/login");
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/payments/current`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${API_URL}/api/payments/current`,
+        {
+          method: "GET",
 
-      const data = await res.json();
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (!res.ok) {
-        console.error("Failed to fetch current payment:", data?.message);
+      const data = await response.json();
+
+      // ================================================
+      // AUTH ERROR
+      // ================================================
+
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        navigate("/login");
+        return;
+      }
+
+      // ================================================
+      // OTHER ERROR
+      // ================================================
+
+      if (!response.ok) {
+        console.error(
+          "Failed to fetch current payment:",
+          data?.message
+        );
+
         setCurrentPlan(null);
         return;
       }
 
+      // ================================================
+      // BACKEND RESPONSE
+      //
+      // Expected:
+      //
+      // {
+      //   payment: {
+      //      planName: "Basic",
+      //      amount: 3000,
+      //      status: "paid",
+      //      expiryDate: "...",
+      //   }
+      // }
+      // ================================================
+
       const payment =
         data?.payment ||
         data?.currentPayment ||
-        (data?.planName || data?.plan ? data : null);
+        null;
 
       if (!payment) {
         setCurrentPlan(null);
@@ -131,7 +182,11 @@ export default function Plan() {
 
       setCurrentPlan(payment);
     } catch (error) {
-      console.error("Failed to fetch current subscription:", error);
+      console.error(
+        "❌ Failed to fetch current subscription:",
+        error
+      );
+
       setCurrentPlan(null);
     } finally {
       setLoading(false);
@@ -139,31 +194,60 @@ export default function Plan() {
   }
 
   // =====================================================
-  // HELPER: VALIDATE ACTIVE PAYMENT
-  // Database statuses: "pending", "paid", "failed"
+  // CHECK PAYMENT STATUS
+  //
+  // payments collection is the source of truth.
+  //
+  // Active paid subscription:
+  //
+  // status = "paid"
+  //
+  // and expiryDate is still valid.
   // =====================================================
 
   function isPaymentActive(payment) {
-    if (!payment) return false;
-
-    const planName = payment.planName || payment.plan || "Free";
-    if (planName === "Free") return false;
-
-    const status = String(payment.status || "")
-      .toLowerCase()
-      .trim();
-
-    // Valid successful statuses from DB
-    const validStatuses = ["paid", "active", "completed", "success", "successful"];
-    if (!validStatuses.includes(status)) {
+    if (!payment) {
       return false;
     }
 
-    // Check expiration date if present
+    const planName =
+      payment.planName ||
+      payment.plan ||
+      "Free";
+
+    // Free is not a paid subscription
+    if (planName === "Free") {
+      return false;
+    }
+
+    const status = String(
+      payment.status || ""
+    )
+      .toLowerCase()
+      .trim();
+
+    // ================================================
+    // ONLY PAID PAYMENT IS ACTIVE
+    // ================================================
+
+    if (status !== "paid") {
+      return false;
+    }
+
+    // ================================================
+    // CHECK EXPIRY
+    // ================================================
+
     if (payment.expiryDate) {
-      const exp = new Date(payment.expiryDate);
-      if (!isNaN(exp.getTime()) && exp <= new Date()) {
-        return false; // Expired
+      const expiry = new Date(
+        payment.expiryDate
+      );
+
+      if (
+        !Number.isNaN(expiry.getTime()) &&
+        expiry <= new Date()
+      ) {
+        return false;
       }
     }
 
@@ -171,90 +255,142 @@ export default function Plan() {
   }
 
   // =====================================================
-  // GET CURRENT PLAN NAME
+  // CURRENT PLAN NAME
   // =====================================================
 
   function getCurrentPlanName() {
     if (!isPaymentActive(currentPlan)) {
       return "Free";
     }
-    return currentPlan.planName || currentPlan.plan || "Free";
+
+    return (
+      currentPlan?.planName ||
+      currentPlan?.plan ||
+      "Free"
+    );
   }
 
   // =====================================================
-  // LOAD CURRENT PLAN
+  // LOAD CURRENT PAYMENT
   // =====================================================
 
   useEffect(() => {
     fetchCurrentPlan();
   }, []);
 
+  // =====================================================
+  // LOADING
+  // =====================================================
+
   if (loading) {
     return <PageLoader />;
   }
 
-  const currentPlanName = getCurrentPlanName();
-  const paidPlanRunning = isPaymentActive(currentPlan);
+  // =====================================================
+  // CURRENT STATE
+  // =====================================================
+
+  const currentPlanName =
+    getCurrentPlanName();
+
+  const paidPlanRunning =
+    isPaymentActive(currentPlan);
+
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
     <div
       style={{
         ...styles.page,
+
         background: isDark
           ? "linear-gradient(135deg, #07111f, #0f2537)"
           : "linear-gradient(135deg, #f8fafc, #e2e8f0)",
-        color: isDark ? "#fff" : "#0f172a",
+
+        color: isDark
+          ? "#fff"
+          : "#0f172a",
       }}
     >
-      {/* HERO */}
+      {/* =================================================
+          HERO
+      ================================================= */}
+
       <div style={styles.hero}>
         <span
           style={{
             ...styles.heroBadge,
+
             background: isDark
               ? "rgba(45,212,191,0.12)"
               : "rgba(15,118,110,0.09)",
-            color: isDark ? "#5eead4" : "#0f766e",
+
+            color: isDark
+              ? "#5eead4"
+              : "#0f766e",
           }}
         >
           Smart Brooder Plans
         </span>
 
-        <h1 style={styles.title}>Choose your brooder plan</h1>
+        <h1 style={styles.title}>
+          Choose your brooder plan
+        </h1>
 
         <p
           style={{
             ...styles.subtitle,
-            color: isDark ? "#a9b7c6" : "#64748b",
+
+            color: isDark
+              ? "#a9b7c6"
+              : "#64748b",
           }}
         >
-          Manage your subscription, alerts, analytics, and monitoring level.
+          Manage your subscription,
+          alerts, analytics, and
+          monitoring level.
         </p>
       </div>
 
-      {/* CURRENT PLAN BOX */}
+      {/* =================================================
+          CURRENT PLAN
+      ================================================= */}
+
       <div style={styles.currentBox}>
         <div>
           <p
             style={{
               ...styles.smallText,
-              color: isDark ? "#94a3b8" : "#64748b",
+
+              color: isDark
+                ? "#94a3b8"
+                : "#64748b",
             }}
           >
             Current Plan
           </p>
 
-          <h2 style={styles.currentTitle}>{currentPlanName}</h2>
+          <h2 style={styles.currentTitle}>
+            {currentPlanName}
+          </h2>
 
           <p
             style={{
               ...styles.expiry,
-              color: isDark ? "#cbd5e1" : "#475569",
+
+              color: isDark
+                ? "#cbd5e1"
+                : "#475569",
             }}
           >
             Expires:{" "}
-            {currentPlanName !== "Free" && currentPlan?.expiryDate
-              ? new Date(currentPlan.expiryDate).toLocaleDateString()
+            {currentPlanName !== "Free" &&
+            currentPlan?.expiryDate
+              ? new Date(
+                  currentPlan.expiryDate
+                ).toLocaleDateString()
               : currentPlanName !== "Free"
               ? "Active (No Expiry Date)"
               : "No expiry"}
@@ -264,122 +400,241 @@ export default function Plan() {
         <span
           style={{
             ...styles.activePill,
+
             background:
               currentPlanName === "Free"
                 ? "rgba(148,163,184,0.16)"
                 : "rgba(34,197,94,0.16)",
-            color: currentPlanName === "Free" ? "#94a3b8" : "#22c55e",
+
+            color:
+              currentPlanName === "Free"
+                ? "#94a3b8"
+                : "#22c55e",
           }}
         >
           {currentPlanName === "Free"
             ? "free"
-            : currentPlan?.status?.toLowerCase() || "paid"}
+            : currentPlan?.status ||
+              "paid"}
         </span>
       </div>
 
-      {/* PAYMENT HISTORY */}
-      <Link to="/payment" style={styles.paymentStatusLink}>
+      {/* =================================================
+          PAYMENT HISTORY
+      ================================================= */}
+
+      <Link
+        to="/payment"
+        style={styles.paymentStatusLink}
+      >
         💳 Payment History →
       </Link>
 
-      {/* PLANS GRID */}
+      {/* =================================================
+          PLANS
+      ================================================= */}
+
       <div style={styles.grid}>
         {plans.map((plan) => {
-          const active = currentPlanName === plan.name;
-          const highlighted = plan.name === "Basic";
-          const isFreePlan = plan.name === "Free";
-          const blockedByActivePlan = paidPlanRunning && !active && !isFreePlan;
+          const active =
+            currentPlanName ===
+            plan.name;
+
+          const highlighted =
+            plan.name === "Basic";
+
+          const isFreePlan =
+            plan.name === "Free";
+
+          const blockedByActivePlan =
+            paidPlanRunning &&
+            !active &&
+            !isFreePlan;
 
           return (
             <div
               key={plan.name}
               style={{
                 ...styles.card,
+
                 background: isDark
                   ? "rgba(255,255,255,0.08)"
                   : "rgba(255,255,255,0.78)",
+
                 border: active
                   ? "1px solid #2dd4bf"
                   : isDark
                   ? "1px solid rgba(255,255,255,0.12)"
                   : "1px solid rgba(15,23,42,0.08)",
-                transform: highlighted ? "translateY(-6px)" : "none",
+
+                transform: highlighted
+                  ? "translateY(-6px)"
+                  : "none",
               }}
             >
+              {/* =========================================
+                  CARD HEADER
+              ========================================= */}
+
               <div style={styles.cardTop}>
                 <div>
-                  <h2 style={styles.planName}>{plan.name}</h2>
+                  <h2
+                    style={styles.planName}
+                  >
+                    {plan.name}
+                  </h2>
+
                   <p
                     style={{
                       ...styles.description,
-                      color: isDark ? "#a9b7c6" : "#64748b",
+
+                      color: isDark
+                        ? "#a9b7c6"
+                        : "#64748b",
                     }}
                   >
                     {plan.description}
                   </p>
                 </div>
 
-                <span style={styles.tag}>{plan.tag}</span>
+                <span style={styles.tag}>
+                  {plan.tag}
+                </span>
               </div>
 
+              {/* =========================================
+                  PRICE
+              ========================================= */}
+
               <div style={styles.priceBox}>
-                <strong style={styles.price}>{plan.displayPrice}</strong>
+                <strong
+                  style={styles.price}
+                >
+                  {plan.displayPrice}
+                </strong>
+
                 <span
                   style={{
                     ...styles.perMonth,
-                    color: isDark ? "#94a3b8" : "#64748b",
+
+                    color: isDark
+                      ? "#94a3b8"
+                      : "#64748b",
                   }}
                 >
                   / month
                 </span>
               </div>
 
+              {/* =========================================
+                  FEATURES
+              ========================================= */}
+
               <div style={styles.features}>
-                {plan.features.map((feature) => (
-                  <div key={feature} style={styles.featureItem}>
-                    <span style={styles.check}>✓</span>
-                    <span>{feature}</span>
-                  </div>
-                ))}
+                {plan.features.map(
+                  (feature) => (
+                    <div
+                      key={feature}
+                      style={
+                        styles.featureItem
+                      }
+                    >
+                      <span
+                        style={
+                          styles.check
+                        }
+                      >
+                        ✓
+                      </span>
+
+                      <span>
+                        {feature}
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
+
+              {/* =========================================
+                  FREE PLAN
+              ========================================= */}
 
               {isFreePlan ? (
                 <button
                   disabled
                   style={{
                     ...styles.button,
+
                     background: active
                       ? "rgba(34,197,94,0.18)"
                       : "rgba(148,163,184,0.18)",
-                    color: active ? "#22c55e" : "#94a3b8",
-                    cursor: "not-allowed",
+
+                    color: active
+                      ? "#22c55e"
+                      : "#94a3b8",
+
+                    cursor:
+                      "not-allowed",
                   }}
                 >
-                  {active ? "Current Free Plan" : "Free Plan"}
+                  {active
+                    ? "Current Free Plan"
+                    : "Free Plan"}
                 </button>
               ) : (
+                /* =======================================
+                   PAID PLAN
+                ======================================= */
+
                 <button
-                  disabled={active || updating || blockedByActivePlan}
+                  disabled={
+                    active ||
+                    updating ||
+                    blockedByActivePlan
+                  }
+
                   onClick={() => {
-                    if (blockedByActivePlan || active) return;
-                    setSelectedPlan(plan);
-                    setPaymentOpen(true);
+                    if (
+                      active ||
+                      blockedByActivePlan ||
+                      updating
+                    ) {
+                      return;
+                    }
+
+                    setSelectedPlan(
+                      plan
+                    );
+
+                    setPaymentOpen(
+                      true
+                    );
                   }}
+
                   style={{
                     ...styles.button,
-                    opacity: updating || blockedByActivePlan ? 0.65 : 1,
+
+                    opacity:
+                      updating ||
+                      blockedByActivePlan
+                        ? 0.65
+                        : 1,
+
                     background: active
                       ? "rgba(34,197,94,0.18)"
                       : blockedByActivePlan
                       ? "rgba(148,163,184,0.18)"
                       : "linear-gradient(135deg, #7c3aed, #2563eb)",
+
                     color: active
                       ? "#22c55e"
                       : blockedByActivePlan
                       ? "#94a3b8"
                       : "#fff",
+
                     cursor:
-                      active || blockedByActivePlan
+                      active ||
+                      blockedByActivePlan
                         ? "not-allowed"
                         : "pointer",
                   }}
@@ -398,57 +653,142 @@ export default function Plan() {
         })}
       </div>
 
+      {/* =================================================
+          BOTTOM NAV
+      ================================================= */}
+
       <BottomNav />
+
+      {/* =================================================
+          SUCCESS MODAL
+      ================================================= */}
 
       <SuccessModal
         open={successOpen}
         title="Plan Activated"
         message={`Your ${currentPlanName} plan is now active.`}
-        onClose={() => setSuccessOpen(false)}
+        onClose={() =>
+          setSuccessOpen(false)
+        }
       />
+
+      {/* =================================================
+          PAYMENT MODAL
+      ================================================= */}
 
       <PaymentModal
         open={paymentOpen}
         plan={selectedPlan}
-        onClose={() => setPaymentOpen(false)}
-        onConfirm={async ({ plan }) => {
-          const token = localStorage.getItem("token");
+        onClose={() =>
+          setPaymentOpen(false)
+        }
+        onConfirm={async ({
+          plan,
+        }) => {
+          const token =
+            getToken();
 
           if (!token) {
             navigate("/login");
             return;
           }
 
+          if (!plan) {
+            console.error(
+              "No plan selected"
+            );
+            return;
+          }
+
           setUpdating(true);
 
           try {
-            const res = await fetch(`${API_URL}/api/payments/start`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                planName: plan.name,
-              }),
-            });
+            const response =
+              await fetch(
+                `${API_URL}/api/payments/start`,
+                {
+                  method: "POST",
 
-            const data = await res.json();
+                  headers: {
+                    "Content-Type":
+                      "application/json",
 
-            if (!res.ok) {
-              throw new Error(data?.message || "Failed to start payment");
-            }
+                    Authorization: `Bearer ${token}`,
+                  },
 
-            if (data.paymentLink) {
-              window.open(data.paymentLink, "_self");
+                  body: JSON.stringify({
+                    planName:
+                      plan.name,
+                  }),
+                }
+              );
+
+            const data =
+              await response.json();
+
+            // ==========================================
+            // AUTH ERROR
+            // ==========================================
+
+            if (
+              response.status ===
+              401
+            ) {
+              localStorage.removeItem(
+                "token"
+              );
+
+              localStorage.removeItem(
+                "user"
+              );
+
+              navigate("/login");
               return;
             }
 
-            setPaymentOpen(false);
+            // ==========================================
+            // PAYMENT ERROR
+            // ==========================================
+
+            if (!response.ok) {
+              throw new Error(
+                data?.message ||
+                  "Failed to start payment"
+              );
+            }
+
+            // ==========================================
+            // REDIRECT TO PAYMENT
+            // ==========================================
+
+            if (
+              data?.paymentLink
+            ) {
+              window.location.href =
+                data.paymentLink;
+
+              return;
+            }
+
+            // ==========================================
+            // NO PAYMENT LINK
+            // ==========================================
+
+            setPaymentOpen(
+              false
+            );
+
             await fetchCurrentPlan();
           } catch (error) {
-            console.error("Payment start error:", error);
-            alert(error.message || "Failed to start payment");
+            console.error(
+              "❌ Payment start error:",
+              error
+            );
+
+            alert(
+              error.message ||
+                "Failed to start payment"
+            );
           } finally {
             setUpdating(false);
           }
@@ -467,12 +807,15 @@ const styles = {
     minHeight: "100vh",
     padding: "30px",
     paddingBottom: "120px",
-    fontFamily: "Inter, Arial, sans-serif",
+    fontFamily:
+      "Inter, Arial, sans-serif",
   },
+
   hero: {
     maxWidth: "850px",
     marginBottom: "26px",
   },
+
   heroBadge: {
     display: "inline-flex",
     padding: "8px 13px",
@@ -481,49 +824,62 @@ const styles = {
     fontSize: "13px",
     marginBottom: "14px",
   },
+
   title: {
     margin: 0,
     fontSize: "38px",
     lineHeight: "1.1",
   },
+
   subtitle: {
     maxWidth: "680px",
     marginTop: "12px",
     fontSize: "15px",
     lineHeight: "1.7",
   },
+
   currentBox: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     maxWidth: "850px",
     padding: "18px 20px",
     borderRadius: "24px",
     marginBottom: "18px",
+
     background:
       "linear-gradient(135deg, rgba(45,212,191,0.15), rgba(59,130,246,0.12))",
-    border: "1px solid rgba(45,212,191,0.25)",
+
+    border:
+      "1px solid rgba(45,212,191,0.25)",
   },
+
   smallText: {
     margin: 0,
     fontSize: "13px",
     fontWeight: "700",
   },
+
   currentTitle: {
     margin: "4px 0 0",
     fontSize: "24px",
   },
+
   expiry: {
     margin: "6px 0 0",
     fontSize: "13px",
   },
+
   activePill: {
     padding: "8px 13px",
     borderRadius: "999px",
     fontWeight: "800",
     fontSize: "13px",
-    textTransform: "capitalize",
+    textTransform:
+      "capitalize",
   },
+
   paymentStatusLink: {
     display: "inline-block",
     marginBottom: "22px",
@@ -532,77 +888,108 @@ const styles = {
     fontSize: "14px",
     textDecoration: "none",
   },
+
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(260px, 1fr))",
     gap: "22px",
   },
+
   card: {
     borderRadius: "28px",
     padding: "24px",
-    backdropFilter: "blur(16px)",
-    boxShadow: "0 20px 45px rgba(0,0,0,0.18)",
-    transition: "all 0.25s ease",
+    backdropFilter:
+      "blur(16px)",
+    boxShadow:
+      "0 20px 45px rgba(0,0,0,0.18)",
+    transition:
+      "all 0.25s ease",
   },
+
   cardTop: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     gap: "14px",
-    alignItems: "flex-start",
+    alignItems:
+      "flex-start",
   },
+
   planName: {
     margin: 0,
     fontSize: "25px",
   },
+
   description: {
     marginTop: "8px",
     lineHeight: "1.5",
     fontSize: "14px",
   },
+
   tag: {
     padding: "7px 10px",
     borderRadius: "999px",
     fontSize: "11px",
     fontWeight: "900",
-    background: "linear-gradient(135deg, #2dd4bf, #38bdf8)",
+
+    background:
+      "linear-gradient(135deg, #2dd4bf, #38bdf8)",
+
     color: "#06221f",
     whiteSpace: "nowrap",
   },
+
   priceBox: {
     marginTop: "20px",
     display: "flex",
-    alignItems: "flex-end",
+    alignItems:
+      "flex-end",
     gap: "6px",
   },
+
   price: {
     fontSize: "30px",
   },
+
   perMonth: {
     fontSize: "13px",
     marginBottom: "5px",
   },
+
   features: {
     marginTop: "22px",
     display: "grid",
     gap: "12px",
   },
+
   featureItem: {
     display: "flex",
-    alignItems: "center",
+    alignItems:
+      "center",
     gap: "10px",
     fontSize: "14px",
   },
+
   check: {
     width: "22px",
     height: "22px",
     borderRadius: "50%",
-    background: "rgba(45,212,191,0.16)",
+
+    background:
+      "rgba(45,212,191,0.16)",
+
     color: "#2dd4bf",
+
     display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems:
+      "center",
+    justifyContent:
+      "center",
+
     fontWeight: "900",
   },
+
   button: {
     width: "100%",
     marginTop: "24px",

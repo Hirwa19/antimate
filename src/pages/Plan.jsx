@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import BottomNav from "../components/BottomNav";
@@ -15,7 +15,7 @@ export default function Plan() {
   const { isDark } = useAppSettings();
   const navigate = useNavigate();
 
-  const [currentPlan, setCurrentPlan] = useState(null);
+  const [currentPayment, setCurrentPayment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -24,7 +24,7 @@ export default function Plan() {
   const [selectedPlan, setSelectedPlan] = useState(null);
 
   // =====================================================
-  // AVAILABLE PLANS
+  // PLANS
   // =====================================================
 
   const plans = [
@@ -93,29 +93,30 @@ export default function Plan() {
   ];
 
   // =====================================================
-  // GET TOKEN
+  // FETCH LATEST/CURRENT PAYMENT
   // =====================================================
 
-  function getToken() {
-    return localStorage.getItem("token");
-  }
-
-  // =====================================================
-  // FETCH CURRENT PAYMENT
-  // =====================================================
-
-  async function fetchCurrentPlan() {
+  const fetchCurrentPayment = useCallback(async () => {
     try {
       setLoading(true);
 
-      const token = getToken();
+      const token = localStorage.getItem("token");
 
       if (!token) {
         navigate("/login");
         return;
       }
 
-      const response = await fetch(
+      /*
+       * IMPORTANT:
+       *
+       * This endpoint must return the user's latest/current
+       * payment from the Payment collection.
+       *
+       * GET /api/payments/current
+       */
+
+      const res = await fetch(
         `${API_URL}/api/payments/current`,
         {
           method: "GET",
@@ -127,82 +128,45 @@ export default function Plan() {
         }
       );
 
-      const data = await response.json();
+      const data = await res.json();
 
-      // ================================================
-      // AUTH ERROR
-      // ================================================
+      console.log("💳 CURRENT PAYMENT:", data);
 
-      if (response.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-
-        navigate("/login");
-        return;
-      }
-
-      // ================================================
-      // OTHER ERROR
-      // ================================================
-
-      if (!response.ok) {
+      if (!res.ok) {
         console.error(
-          "Failed to fetch current payment:",
+          "Current payment error:",
           data?.message
         );
 
-        setCurrentPlan(null);
+        setCurrentPayment(null);
         return;
       }
 
-      // ================================================
-      // BACKEND RESPONSE
-      //
-      // Expected:
-      //
-      // {
-      //   payment: {
-      //      planName: "Basic",
-      //      amount: 3000,
-      //      status: "paid",
-      //      expiryDate: "...",
-      //   }
-      // }
-      // ================================================
+      /*
+       * Support different backend response formats.
+       */
 
       const payment =
         data?.payment ||
         data?.currentPayment ||
+        data?.latestPayment ||
         null;
 
-      if (!payment) {
-        setCurrentPlan(null);
-        return;
-      }
-
-      setCurrentPlan(payment);
+      setCurrentPayment(payment);
     } catch (error) {
       console.error(
-        "❌ Failed to fetch current subscription:",
+        "FETCH CURRENT PAYMENT ERROR:",
         error
       );
 
-      setCurrentPlan(null);
+      setCurrentPayment(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, [navigate]);
 
   // =====================================================
-  // CHECK PAYMENT STATUS
-  //
-  // payments collection is the source of truth.
-  //
-  // Active paid subscription:
-  //
-  // status = "paid"
-  //
-  // and expiryDate is still valid.
+  // CHECK IF PAYMENT IS ACTIVE
   // =====================================================
 
   function isPaymentActive(payment) {
@@ -211,37 +175,37 @@ export default function Plan() {
     }
 
     const planName =
-      payment.planName ||
-      payment.plan ||
-      "Free";
+      payment.planName || "Free";
 
-    // Free is not a paid subscription
     if (planName === "Free") {
       return false;
     }
 
-    const status = String(
-      payment.status || ""
-    )
-      .toLowerCase()
-      .trim();
+    const status =
+      String(payment.status || "")
+        .toLowerCase()
+        .trim();
 
-    // ================================================
-    // ONLY PAID PAYMENT IS ACTIVE
-    // ================================================
+    /*
+     * Payment collection:
+     *
+     * pending
+     * paid
+     * failed
+     * cancelled
+     */
 
     if (status !== "paid") {
       return false;
     }
 
-    // ================================================
-    // CHECK EXPIRY
-    // ================================================
+    // -----------------------------------------------
+    // EXPIRY
+    // -----------------------------------------------
 
     if (payment.expiryDate) {
-      const expiry = new Date(
-        payment.expiryDate
-      );
+      const expiry =
+        new Date(payment.expiryDate);
 
       if (
         !Number.isNaN(expiry.getTime()) &&
@@ -259,24 +223,43 @@ export default function Plan() {
   // =====================================================
 
   function getCurrentPlanName() {
-    if (!isPaymentActive(currentPlan)) {
+    /*
+     * Only a PAID and non-expired payment
+     * is considered an active subscription.
+     */
+
+    if (!isPaymentActive(currentPayment)) {
       return "Free";
     }
 
     return (
-      currentPlan?.planName ||
-      currentPlan?.plan ||
+      currentPayment.planName ||
       "Free"
     );
   }
 
   // =====================================================
-  // LOAD CURRENT PAYMENT
+  // CURRENT PAYMENT STATUS
+  // =====================================================
+
+  function getPaymentStatus() {
+    if (!currentPayment) {
+      return "No Payment";
+    }
+
+    return (
+      currentPayment.status ||
+      "pending"
+    );
+  }
+
+  // =====================================================
+  // LOAD PAYMENT
   // =====================================================
 
   useEffect(() => {
-    fetchCurrentPlan();
-  }, []);
+    fetchCurrentPayment();
+  }, [fetchCurrentPayment]);
 
   // =====================================================
   // LOADING
@@ -287,14 +270,17 @@ export default function Plan() {
   }
 
   // =====================================================
-  // CURRENT STATE
+  // CURRENT VALUES
   // =====================================================
 
   const currentPlanName =
     getCurrentPlanName();
 
   const paidPlanRunning =
-    isPaymentActive(currentPlan);
+    isPaymentActive(currentPayment);
+
+  const paymentStatus =
+    getPaymentStatus();
 
   // =====================================================
   // RENDER
@@ -385,15 +371,35 @@ export default function Plan() {
                 : "#475569",
             }}
           >
-            Expires:{" "}
             {currentPlanName !== "Free" &&
-            currentPlan?.expiryDate
-              ? new Date(
-                  currentPlan.expiryDate
-                ).toLocaleDateString()
+            currentPayment?.expiryDate
+              ? `Expires: ${new Date(
+                  currentPayment.expiryDate
+                ).toLocaleDateString()}`
               : currentPlanName !== "Free"
-              ? "Active (No Expiry Date)"
-              : "No expiry"}
+              ? "Active subscription"
+              : "No active paid subscription"}
+          </p>
+
+          {/* PAYMENT STATUS */}
+
+          <p
+            style={{
+              ...styles.paymentStatus,
+
+              color:
+                paymentStatus === "paid"
+                  ? "#22c55e"
+                  : paymentStatus ===
+                    "pending"
+                  ? "#f59e0b"
+                  : "#94a3b8",
+            }}
+          >
+            Payment status:{" "}
+            <strong>
+              {paymentStatus.toUpperCase()}
+            </strong>
           </p>
         </div>
 
@@ -414,8 +420,7 @@ export default function Plan() {
         >
           {currentPlanName === "Free"
             ? "free"
-            : currentPlan?.status ||
-              "paid"}
+            : "active"}
         </span>
       </div>
 
@@ -437,14 +442,19 @@ export default function Plan() {
       <div style={styles.grid}>
         {plans.map((plan) => {
           const active =
-            currentPlanName ===
-            plan.name;
+            currentPlanName === plan.name;
 
           const highlighted =
             plan.name === "Basic";
 
           const isFreePlan =
             plan.name === "Free";
+
+          /*
+           * If a paid plan is currently active,
+           * don't allow another paid plan until
+           * current subscription expires.
+           */
 
           const blockedByActivePlan =
             paidPlanRunning &&
@@ -472,15 +482,11 @@ export default function Plan() {
                   : "none",
               }}
             >
-              {/* =========================================
-                  CARD HEADER
-              ========================================= */}
+              {/* CARD HEADER */}
 
               <div style={styles.cardTop}>
                 <div>
-                  <h2
-                    style={styles.planName}
-                  >
+                  <h2 style={styles.planName}>
                     {plan.name}
                   </h2>
 
@@ -502,14 +508,10 @@ export default function Plan() {
                 </span>
               </div>
 
-              {/* =========================================
-                  PRICE
-              ========================================= */}
+              {/* PRICE */}
 
               <div style={styles.priceBox}>
-                <strong
-                  style={styles.price}
-                >
+                <strong style={styles.price}>
                   {plan.displayPrice}
                 </strong>
 
@@ -526,9 +528,7 @@ export default function Plan() {
                 </span>
               </div>
 
-              {/* =========================================
-                  FEATURES
-              ========================================= */}
+              {/* FEATURES */}
 
               <div style={styles.features}>
                 {plan.features.map(
@@ -540,9 +540,7 @@ export default function Plan() {
                       }
                     >
                       <span
-                        style={
-                          styles.check
-                        }
+                        style={styles.check}
                       >
                         ✓
                       </span>
@@ -555,9 +553,9 @@ export default function Plan() {
                 )}
               </div>
 
-              {/* =========================================
-                  FREE PLAN
-              ========================================= */}
+              {/* =================================================
+                  FREE
+              ================================================= */}
 
               {isFreePlan ? (
                 <button
@@ -582,9 +580,9 @@ export default function Plan() {
                     : "Free Plan"}
                 </button>
               ) : (
-                /* =======================================
+                /* =================================================
                    PAID PLAN
-                ======================================= */
+                ================================================= */
 
                 <button
                   disabled={
@@ -592,7 +590,6 @@ export default function Plan() {
                     updating ||
                     blockedByActivePlan
                   }
-
                   onClick={() => {
                     if (
                       active ||
@@ -606,11 +603,8 @@ export default function Plan() {
                       plan
                     );
 
-                    setPaymentOpen(
-                      true
-                    );
+                    setPaymentOpen(true);
                   }}
-
                   style={{
                     ...styles.button,
 
@@ -644,7 +638,7 @@ export default function Plan() {
                     : blockedByActivePlan
                     ? "Active Plan Running"
                     : updating
-                    ? "Updating..."
+                    ? "Starting Payment..."
                     : "Choose Plan"}
                 </button>
               )}
@@ -654,7 +648,7 @@ export default function Plan() {
       </div>
 
       {/* =================================================
-          BOTTOM NAV
+          NAVIGATION
       ================================================= */}
 
       <BottomNav />
@@ -686,24 +680,23 @@ export default function Plan() {
           plan,
         }) => {
           const token =
-            getToken();
+            localStorage.getItem(
+              "token"
+            );
 
           if (!token) {
             navigate("/login");
             return;
           }
 
-          if (!plan) {
-            console.error(
-              "No plan selected"
-            );
-            return;
-          }
-
           setUpdating(true);
 
           try {
-            const response =
+            /*
+             * CREATE PENDING PAYMENT
+             */
+
+            const res =
               await fetch(
                 `${API_URL}/api/payments/start`,
                 {
@@ -724,64 +717,52 @@ export default function Plan() {
               );
 
             const data =
-              await response.json();
+              await res.json();
 
-            // ==========================================
-            // AUTH ERROR
-            // ==========================================
+            console.log(
+              "💳 PAYMENT START:",
+              data
+            );
 
-            if (
-              response.status ===
-              401
-            ) {
-              localStorage.removeItem(
-                "token"
-              );
-
-              localStorage.removeItem(
-                "user"
-              );
-
-              navigate("/login");
-              return;
-            }
-
-            // ==========================================
-            // PAYMENT ERROR
-            // ==========================================
-
-            if (!response.ok) {
+            if (!res.ok) {
               throw new Error(
                 data?.message ||
                   "Failed to start payment"
               );
             }
 
-            // ==========================================
-            // REDIRECT TO PAYMENT
-            // ==========================================
+            /*
+             * PAYPACK PAYMENT LINK
+             */
 
             if (
-              data?.paymentLink
+              data.paymentLink
             ) {
+              /*
+               * We intentionally don't mark
+               * the payment as paid here.
+               *
+               * Backend must verify payment
+               * before status becomes "paid".
+               */
+
               window.location.href =
                 data.paymentLink;
 
               return;
             }
 
-            // ==========================================
-            // NO PAYMENT LINK
-            // ==========================================
+            /*
+             * FREE PLAN / INTERNAL
+             */
 
-            setPaymentOpen(
-              false
-            );
+            setPaymentOpen(false);
 
-            await fetchCurrentPlan();
+            await fetchCurrentPayment();
+
           } catch (error) {
             console.error(
-              "❌ Payment start error:",
+              "PAYMENT START ERROR:",
               error
             );
 
@@ -871,6 +852,11 @@ const styles = {
     fontSize: "13px",
   },
 
+  paymentStatus: {
+    margin: "7px 0 0",
+    fontSize: "13px",
+  },
+
   activePill: {
     padding: "8px 13px",
     borderRadius: "999px",
@@ -937,7 +923,8 @@ const styles = {
       "linear-gradient(135deg, #2dd4bf, #38bdf8)",
 
     color: "#06221f",
-    whiteSpace: "nowrap",
+    whiteSpace:
+      "nowrap",
   },
 
   priceBox: {
@@ -975,19 +962,16 @@ const styles = {
     width: "22px",
     height: "22px",
     borderRadius: "50%",
-
     background:
       "rgba(45,212,191,0.16)",
-
     color: "#2dd4bf",
-
     display: "inline-flex",
     alignItems:
       "center",
     justifyContent:
       "center",
-
     fontWeight: "900",
+    flexShrink: 0,
   },
 
   button: {

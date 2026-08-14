@@ -77,7 +77,7 @@ export default function Plan() {
       price: 15000,
       displayPrice: "15,000 FRW",
       paymentLink:
-        "https://payments.paypack.rw/link/plink_svUthapHeXpEIoJfdmsQ",
+        "https://payments.paypack.rw/link/plink_aOyQzpAVFiEHPSlecei5",
       tag: "Business",
       description: "For commercial farms.",
       features: [

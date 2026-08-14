@@ -20,44 +20,86 @@ export default function History() {
   const [planName, setPlanName] = useState("Free");
 
   const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState("");
+  const [selectedDevice, setSelectedDevice] =
+    useState("");
+
+  const [selectedDeviceData, setSelectedDeviceData] =
+    useState(null);
 
   const [history, setHistory] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] =
+    useState(false);
 
   const [error, setError] = useState("");
-  const [accessDenied, setAccessDenied] = useState(false);
+  const [accessDenied, setAccessDenied] =
+    useState(false);
+
+  // =====================================================
+  // TOKEN
+  // =====================================================
+
+  function getToken() {
+    const token =
+      localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error(
+        "You are not logged in."
+      );
+    }
+
+    return token;
+  }
 
   // =====================================================
   // SUBSCRIPTION
   // =====================================================
 
   async function fetchSubscription() {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("You are not logged in.");
-    }
+    const token = getToken();
 
     const res = await fetch(
       `${API_URL}/api/payments/latest`,
       {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type":
+            "application/json",
         },
       }
     );
 
-    const data = await res.json();
+    let data = {};
+
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
 
     if (!res.ok) {
       throw new Error(
         data.message ||
-          "Failed to load payment information"
+          "Failed to load subscription"
       );
     }
+
+    /*
+     * Expected examples:
+     *
+     * {
+     *   currentPlan: "Pro"
+     * }
+     *
+     * OR
+     *
+     * {
+     *   planName: "Pro"
+     * }
+     */
 
     const currentPlan =
       data.currentPlan ||
@@ -65,9 +107,12 @@ export default function History() {
       data.plan ||
       "Free";
 
-    setPlanName(String(currentPlan));
+    const normalizedPlan =
+      String(currentPlan).trim();
 
-    return String(currentPlan);
+    setPlanName(normalizedPlan);
+
+    return normalizedPlan;
   }
 
   // =====================================================
@@ -75,7 +120,12 @@ export default function History() {
   // =====================================================
 
   function checkHistoryAccess(plan) {
-    return String(plan).toLowerCase() !== "free";
+    const normalized =
+      String(plan || "")
+        .trim()
+        .toLowerCase();
+
+    return normalized !== "free";
   }
 
   // =====================================================
@@ -83,22 +133,27 @@ export default function History() {
   // =====================================================
 
   async function fetchDevices() {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("You are not logged in.");
-    }
+    const token = getToken();
 
     const res = await fetch(
       `${API_URL}/api/devices/my-devices`,
       {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type":
+            "application/json",
         },
       }
     );
 
-    const data = await res.json();
+    let data = {};
+
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
 
     if (!res.ok) {
       throw new Error(
@@ -112,50 +167,108 @@ export default function History() {
         ? data
         : Array.isArray(data.data)
         ? data.data
+        : Array.isArray(data.devices)
+        ? data.devices
         : [];
 
     setDevices(deviceList);
 
     if (deviceList.length > 0) {
+      const firstDevice =
+        deviceList[0];
+
+      const firstDeviceId =
+        firstDevice.deviceId ||
+        "";
+
       setSelectedDevice(
-        deviceList[0].deviceId || ""
+        firstDeviceId
       );
+
+      setSelectedDeviceData(
+        firstDevice
+      );
+    } else {
+      setSelectedDevice("");
+      setSelectedDeviceData(null);
     }
+
+    return deviceList;
   }
+
+  // =====================================================
+  // SELECTED DEVICE
+  // =====================================================
+
+  useEffect(() => {
+    if (!selectedDevice) {
+      setSelectedDeviceData(null);
+      return;
+    }
+
+    const device =
+      devices.find(
+        (item) =>
+          item.deviceId ===
+          selectedDevice
+      );
+
+    setSelectedDeviceData(
+      device || null
+    );
+  }, [
+    selectedDevice,
+    devices,
+  ]);
 
   // =====================================================
   // HISTORY
   // =====================================================
 
   async function fetchHistory(deviceId) {
-    if (!deviceId || accessDenied) {
+    if (
+      !deviceId ||
+      accessDenied
+    ) {
       setHistory([]);
       return;
     }
 
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setError("You are not logged in.");
-      return;
-    }
-
     try {
+      const token = getToken();
+
       setHistoryLoading(true);
       setError("");
 
+      const url =
+        `${API_URL}/api/telemetry/history/` +
+        `${encodeURIComponent(deviceId)}` +
+        `?limit=100`;
+
       const res = await fetch(
-        `${API_URL}/api/telemetry/history/${encodeURIComponent(
-          deviceId
-        )}?limit=100`,
+        url,
         {
+          method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
+            "Content-Type":
+              "application/json",
           },
         }
       );
 
-      const data = await res.json();
+      let data = {};
+
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      // =================================================
+      // PLAN RESTRICTION
+      // =================================================
 
       if (res.status === 403) {
         setHistory([]);
@@ -172,26 +285,46 @@ export default function History() {
       if (!res.ok) {
         throw new Error(
           data.message ||
-            "Failed to load sensor history"
+            `Failed to load sensor history (${res.status})`
         );
       }
+
+      // =================================================
+      // NORMALIZE RESPONSE
+      // =================================================
 
       const rawData =
         Array.isArray(data.data)
           ? data.data
+          : Array.isArray(data.history)
+          ? data.history
           : Array.isArray(data)
           ? data
           : [];
 
-      const sortedHistory = [...rawData].sort(
-        (a, b) =>
-          new Date(b.createdAt) -
-          new Date(a.createdAt)
-      );
+      const sortedHistory =
+        [...rawData].sort(
+          (a, b) =>
+            new Date(
+              b.createdAt ||
+                b.timestamp ||
+                0
+            ) -
+            new Date(
+              a.createdAt ||
+                a.timestamp ||
+                0
+            )
+        );
 
-      setHistory(sortedHistory);
+      setHistory(
+        sortedHistory
+      );
     } catch (err) {
-      console.error("History error:", err);
+      console.error(
+        "History error:",
+        err
+      );
 
       setHistory([]);
 
@@ -209,12 +342,24 @@ export default function History() {
   // =====================================================
 
   useEffect(() => {
+    let mounted = true;
+
     async function loadPage() {
       try {
         setLoading(true);
         setError("");
+        setAccessDenied(false);
 
-        const plan = await fetchSubscription();
+        // -----------------------------------------------
+        // 1. CURRENT PAYMENT / PLAN
+        // -----------------------------------------------
+
+        const plan =
+          await fetchSubscription();
+
+        if (!mounted) {
+          return;
+        }
 
         const allowed =
           checkHistoryAccess(plan);
@@ -224,7 +369,9 @@ export default function History() {
           return;
         }
 
-        setAccessDenied(false);
+        // -----------------------------------------------
+        // 2. DEVICES
+        // -----------------------------------------------
 
         await fetchDevices();
       } catch (err) {
@@ -233,32 +380,46 @@ export default function History() {
           err
         );
 
+        if (!mounted) {
+          return;
+        }
+
         setError(
           err.message ||
             "Failed to load history"
         );
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadPage();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // =====================================================
-  // LOAD SELECTED DEVICE HISTORY
+  // LOAD HISTORY WHEN DEVICE CHANGES
   // =====================================================
 
   useEffect(() => {
     if (
       selectedDevice &&
-      !accessDenied
+      !accessDenied &&
+      !loading
     ) {
-      fetchHistory(selectedDevice);
+      fetchHistory(
+        selectedDevice
+      );
     }
   }, [
     selectedDevice,
     accessDenied,
+    loading,
   ]);
 
   // =====================================================
@@ -270,9 +431,14 @@ export default function History() {
       return "Unknown time";
     }
 
-    const parsed = new Date(date);
+    const parsed =
+      new Date(date);
 
-    if (Number.isNaN(parsed.getTime())) {
+    if (
+      Number.isNaN(
+        parsed.getTime()
+      )
+    ) {
       return "Unknown time";
     }
 
@@ -283,7 +449,10 @@ export default function History() {
   // FORMAT NUMBER
   // =====================================================
 
-  function formatNumber(value, decimals = 1) {
+  function formatNumber(
+    value,
+    decimals = 1
+  ) {
     if (
       value === null ||
       value === undefined ||
@@ -292,14 +461,43 @@ export default function History() {
       return "--";
     }
 
-    const number = Number(value);
+    const number =
+      Number(value);
 
-    if (!Number.isFinite(number)) {
+    if (
+      !Number.isFinite(number)
+    ) {
       return "--";
     }
 
-    return number.toFixed(decimals);
+    return number.toFixed(
+      decimals
+    );
   }
+
+  // =====================================================
+  // DEVICE CONFIGURATION
+  // =====================================================
+
+  const chicksAge =
+    selectedDeviceData?.chicksAge ??
+    selectedDeviceData?.chickAge ??
+    null;
+
+  const numberOfChickens =
+    selectedDeviceData?.numberOfChickens ??
+    selectedDeviceData?.chickenCount ??
+    null;
+
+  const broodingRoomArea =
+    selectedDeviceData?.broodingRoomArea ??
+    selectedDeviceData?.roomArea ??
+    null;
+
+  const chicksType =
+    selectedDeviceData?.chicksType ??
+    selectedDeviceData?.chickType ??
+    "--";
 
   // =====================================================
   // THEME
@@ -338,10 +536,20 @@ export default function History() {
           color: text,
         }}
       >
-        <div style={styles.loadingPage}>
-          <div style={styles.spinner} />
+        <div
+          style={
+            styles.loadingPage
+          }
+        >
+          <div
+            style={styles.spinner}
+          />
 
-          <p style={{ color: muted }}>
+          <p
+            style={{
+              color: muted,
+            }}
+          >
             Checking subscription...
           </p>
         </div>
@@ -364,7 +572,9 @@ export default function History() {
           color: text,
         }}
       >
-        <div style={styles.header}>
+        <div
+          style={styles.header}
+        >
           <div>
             <h1
               style={{
@@ -381,7 +591,8 @@ export default function History() {
                 margin: 0,
               }}
             >
-              Historical brooder conditions
+              Historical brooder
+              conditions
             </p>
           </div>
         </div>
@@ -389,16 +600,25 @@ export default function History() {
         <div
           style={{
             ...styles.subscriptionCard,
-            background: cardBackground,
-            border: `1px solid ${border}`,
+            background:
+              cardBackground,
+            border:
+              `1px solid ${border}`,
           }}
         >
-          <div style={styles.lockIcon}>
+          <div
+            style={styles.lockIcon}
+          >
             🔒
           </div>
 
-          <h2 style={styles.subscriptionTitle}>
-            History requires a paid plan
+          <h2
+            style={
+              styles.subscriptionTitle
+            }
+          >
+            History requires a paid
+            plan
           </h2>
 
           <p
@@ -408,7 +628,10 @@ export default function History() {
             }}
           >
             Your current plan is{" "}
-            <strong>{planName}</strong>.
+            <strong>
+              {planName}
+            </strong>
+            .
           </p>
 
           <p
@@ -417,27 +640,32 @@ export default function History() {
               color: muted,
             }}
           >
-            Upgrade your ANTIMATE subscription
-            to access historical brooder
-            temperature, humidity, chicken
-            information and environmental
-            records.
+            Upgrade your ANTIMATE
+            subscription to access
+            historical brooder
+            telemetry.
           </p>
 
           <button
             onClick={() =>
               navigate("/plans")
             }
-            style={styles.primaryButton}
+            style={
+              styles.primaryButton
+            }
           >
             View Plans
           </button>
 
           <button
             onClick={() =>
-              navigate("/dashboard")
+              navigate(
+                "/dashboard"
+              )
             }
-            style={styles.secondaryButton}
+            style={
+              styles.secondaryButton
+            }
           >
             Back to Dashboard
           </button>
@@ -449,7 +677,7 @@ export default function History() {
   }
 
   // =====================================================
-  // MAIN PAGE
+  // MAIN
   // =====================================================
 
   return (
@@ -493,13 +721,13 @@ export default function History() {
               width: 100%;
             }
 
-            .history-grid {
-              grid-template-columns: 1fr !important;
-            }
-
             .history-row {
               flex-direction: column;
               align-items: stretch !important;
+            }
+
+            .history-grid {
+              grid-template-columns: 1fr !important;
             }
 
             .history-right {
@@ -512,8 +740,16 @@ export default function History() {
       {/* LOADING BAR */}
 
       {historyLoading && (
-        <div style={styles.loadingContainer}>
-          <div style={styles.loadingBar} />
+        <div
+          style={
+            styles.loadingContainer
+          }
+        >
+          <div
+            style={
+              styles.loadingBar
+            }
+          />
         </div>
       )}
 
@@ -539,8 +775,8 @@ export default function History() {
               margin: 0,
             }}
           >
-            Historical conditions of your
-            brooder
+            Historical conditions of
+            your brooder
           </p>
         </div>
 
@@ -549,24 +785,24 @@ export default function History() {
           onClick={() =>
             navigate("/analysis")
           }
-          style={styles.analysisButton}
+          style={
+            styles.analysisButton
+          }
         >
           📊 View Analysis
         </button>
       </div>
 
-      {/* DEVICE SELECTOR
-          Technical device ID is used internally
-          but NOT displayed as a customer-facing
-          telemetry field.
-      */}
+      {/* DEVICE SELECTOR */}
 
       {devices.length > 0 && (
         <div
           style={{
             ...styles.selectorCard,
-            background: cardBackground,
-            border: `1px solid ${border}`,
+            background:
+              cardBackground,
+            border:
+              `1px solid ${border}`,
           }}
         >
           <label
@@ -579,7 +815,9 @@ export default function History() {
           </label>
 
           <select
-            value={selectedDevice}
+            value={
+              selectedDevice
+            }
             onChange={(e) =>
               setSelectedDevice(
                 e.target.value
@@ -587,27 +825,130 @@ export default function History() {
             }
             style={{
               ...styles.select,
-              background: isDark
-                ? "#172033"
-                : "#ffffff",
+              background:
+                isDark
+                  ? "#172033"
+                  : "#ffffff",
               color: text,
-              border: `1px solid ${border}`,
+              border:
+                `1px solid ${border}`,
             }}
           >
-            {devices.map((device) => (
-              <option
-                key={
-                  device._id ||
-                  device.deviceId
-                }
-                value={device.deviceId}
-              >
-                {device.name ||
-                  device.brooderName ||
-                  "My Brooder"}
-              </option>
-            ))}
+            {devices.map(
+              (device) => (
+                <option
+                  key={
+                    device._id ||
+                    device.deviceId
+                  }
+                  value={
+                    device.deviceId
+                  }
+                >
+                  {device.deviceName ||
+                    device.name ||
+                    device.brooderName ||
+                    "My Brooder"}
+                </option>
+              )
+            )}
           </select>
+        </div>
+      )}
+
+      {/* DEVICE CONFIG */}
+
+      {selectedDeviceData && (
+        <div
+          style={{
+            ...styles.configCard,
+            background:
+              cardBackground,
+            border:
+              `1px solid ${border}`,
+          }}
+        >
+          <div
+            style={styles.configItem}
+          >
+            <span
+              style={{
+                ...styles.infoLabel,
+                color: muted,
+              }}
+            >
+              🐣 Age
+            </span>
+
+            <strong>
+              {chicksAge !== null
+                ? `${chicksAge} days`
+                : "--"}
+            </strong>
+          </div>
+
+          <div
+            style={styles.configItem}
+          >
+            <span
+              style={{
+                ...styles.infoLabel,
+                color: muted,
+              }}
+            >
+              🐔 Chickens
+            </span>
+
+            <strong>
+              {numberOfChickens ??
+                "--"}
+            </strong>
+          </div>
+
+          <div
+            style={styles.configItem}
+          >
+            <span
+              style={{
+                ...styles.infoLabel,
+                color: muted,
+              }}
+            >
+              📐 Room
+            </span>
+
+            <strong>
+              {broodingRoomArea !==
+              null
+                ? `${formatNumber(
+                    broodingRoomArea,
+                    2
+                  )} m²`
+                : "--"}
+            </strong>
+          </div>
+
+          <div
+            style={styles.configItem}
+          >
+            <span
+              style={{
+                ...styles.infoLabel,
+                color: muted,
+              }}
+            >
+              🐓 Type
+            </span>
+
+            <strong
+              style={{
+                textTransform:
+                  "capitalize",
+              }}
+            >
+              {chicksType}
+            </strong>
+          </div>
         </div>
       )}
 
@@ -617,9 +958,10 @@ export default function History() {
         <div
           style={{
             ...styles.error,
-            background: isDark
-              ? "rgba(239,68,68,0.12)"
-              : "rgba(239,68,68,0.08)",
+            background:
+              isDark
+                ? "rgba(239,68,68,0.12)"
+                : "rgba(239,68,68,0.08)",
             border:
               "1px solid rgba(239,68,68,0.2)",
           }}
@@ -636,10 +978,15 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background: cardBackground,
+              background:
+                cardBackground,
             }}
           >
-            <div style={styles.emptyIcon}>
+            <div
+              style={
+                styles.emptyIcon
+              }
+            >
               🐣
             </div>
 
@@ -652,9 +999,9 @@ export default function History() {
                 color: muted,
               }}
             >
-              Connect a Smart Brooder to
-              start collecting historical
-              data.
+              Connect a Smart Brooder
+              to start collecting
+              historical data.
             </p>
 
             <button
@@ -663,7 +1010,9 @@ export default function History() {
                   "/device-management"
                 )
               }
-              style={styles.primaryButton}
+              style={
+                styles.primaryButton
+              }
             >
               Add Brooder
             </button>
@@ -680,10 +1029,15 @@ export default function History() {
           <div
             style={{
               ...styles.empty,
-              background: cardBackground,
+              background:
+                cardBackground,
             }}
           >
-            <div style={styles.emptyIcon}>
+            <div
+              style={
+                styles.emptyIcon
+              }
+            >
               📊
             </div>
 
@@ -696,254 +1050,171 @@ export default function History() {
                 color: muted,
               }}
             >
-              Historical information will
-              appear here when your Smart
-              Brooder starts sending telemetry.
+              Historical telemetry
+              will appear here when
+              your Smart Brooder starts
+              sending data.
             </p>
           </div>
         )}
 
       {/* HISTORY */}
 
-      <div>
-        {history.map(
-          (item, index) => {
-            const temperature =
-              item.temperature;
+      {history.map(
+        (item, index) => {
+          const temperature =
+            item.temperature;
 
-            const humidity =
-              item.humidity;
+          const humidity =
+            item.humidity;
 
-            const heater =
-              item.heater || "OFF";
+          const heater =
+            item.heater || "OFF";
 
-            const fan =
+          const fanSpeed =
+            Number(
               item.fanSpeed ??
-              item.fan ??
-              0;
+                0
+            );
 
-            const chicksAge =
-              item.chicksAge ??
-              item.chickAge ??
-              null;
+          const fan =
+            item.fan || "OFF";
 
-            const numberOfChickens =
-              item.numberOfChickens ??
-              item.chickenCount ??
-              null;
+          return (
+            <div
+              className="history-row"
+              key={
+                item._id ||
+                `${item.createdAt}-${index}`
+              }
+              style={{
+                ...styles.row,
+                background:
+                  cardBackground,
+                border:
+                  `1px solid ${border}`,
+              }}
+            >
+              {/* ENVIRONMENT */}
 
-            const broodingRoomArea =
-              item.broodingRoomArea ??
-              item.roomArea ??
-              null;
-
-            const chicksType =
-              item.chicksType ||
-              item.chickType ||
-              "--";
-
-            return (
               <div
-                className="history-row"
-                key={
-                  item._id ||
-                  `${item.createdAt}-${index}`
+                style={
+                  styles.mainInfo
                 }
-                style={{
-                  ...styles.row,
-                  background:
-                    cardBackground,
-                  border:
-                    `1px solid ${border}`,
-                }}
               >
-                {/* =================================================
-                    ENVIRONMENT
-                ================================================= */}
-
-                <div style={styles.mainInfo}>
-                  <div style={styles.temperature}>
-                    <span>🌡️</span>
-
-                    <strong>
-                      {formatNumber(
-                        temperature
-                      )}
-                      °C
-                    </strong>
-                  </div>
-
-                  <div style={styles.humidity}>
-                    <span>💧</span>
-
-                    <span>
-                      {formatNumber(
-                        humidity
-                      )}
-                      %
-                    </span>
-                  </div>
-                </div>
-
-                {/* =================================================
-                    BROODER INFORMATION
-                ================================================= */}
-
                 <div
-                  className="history-grid"
                   style={
-                    styles.historyGrid
+                    styles.temperature
                   }
                 >
-                  <div
-                    style={
-                      styles.infoCard
-                    }
-                  >
-                    <span
-                      style={{
-                        ...styles.infoLabel,
-                        color: muted,
-                      }}
-                    >
-                      🐣 Chicks Age
-                    </span>
+                  <span>
+                    🌡️
+                  </span>
 
-                    <strong
-                      style={
-                        styles.infoValue
-                      }
-                    >
-                      {chicksAge !==
-                        null &&
-                      Number.isFinite(
-                        Number(
-                          chicksAge
-                        )
-                      )
-                        ? `${chicksAge} days`
-                        : "--"}
-                    </strong>
-                  </div>
-
-                  <div
-                    style={
-                      styles.infoCard
-                    }
-                  >
-                    <span
-                      style={{
-                        ...styles.infoLabel,
-                        color: muted,
-                      }}
-                    >
-                      🐔 Chickens
-                    </span>
-
-                    <strong
-                      style={
-                        styles.infoValue
-                      }
-                    >
-                      {numberOfChickens !==
-                        null
-                        ? numberOfChickens
-                        : "--"}
-                    </strong>
-                  </div>
-
-                  <div
-                    style={
-                      styles.infoCard
-                    }
-                  >
-                    <span
-                      style={{
-                        ...styles.infoLabel,
-                        color: muted,
-                      }}
-                    >
-                      📐 Room Area
-                    </span>
-
-                    <strong
-                      style={
-                        styles.infoValue
-                      }
-                    >
-                      {broodingRoomArea !==
-                        null
-                        ? `${formatNumber(
-                            broodingRoomArea,
-                            2
-                          )} m²`
-                        : "--"}
-                    </strong>
-                  </div>
-
-                  <div
-                    style={
-                      styles.infoCard
-                    }
-                  >
-                    <span
-                      style={{
-                        ...styles.infoLabel,
-                        color: muted,
-                      }}
-                    >
-                      🐓 Type
-                    </span>
-
-                    <strong
-                      style={{
-                        ...styles.infoValue,
-                        textTransform:
-                          "capitalize",
-                      }}
-                    >
-                      {chicksType}
-                    </strong>
-                  </div>
+                  <strong>
+                    {formatNumber(
+                      temperature
+                    )}
+                    °C
+                  </strong>
                 </div>
-
-                {/* =================================================
-                    ACTUATORS + TIME
-                ================================================= */}
 
                 <div
-                  className="history-right"
-                  style={styles.right}
+                  style={
+                    styles.humidity
+                  }
                 >
-                  <p style={styles.status}>
-                    🔥 Heater{" "}
-                    <strong>
-                      {String(
-                        heater
-                      ).toUpperCase()}
-                    </strong>
-                  </p>
+                  <span>
+                    💧
+                  </span>
 
-                  <p style={styles.fan}>
-                    💨 Fan {fan}%
-                  </p>
-
-                  <p
-                    style={{
-                      ...styles.date,
-                      color: muted,
-                    }}
-                  >
-                    {formatDate(
-                      item.createdAt
+                  <span>
+                    {formatNumber(
+                      humidity
                     )}
-                  </p>
+                    %
+                  </span>
                 </div>
               </div>
-            );
-          }
-        )}
-      </div>
+
+              {/* OUTSIDE ENVIRONMENT */}
+
+              <div
+                style={
+                  styles.outside
+                }
+              >
+                <span
+                  style={{
+                    color: muted,
+                  }}
+                >
+                  Outside
+                </span>
+
+                <strong>
+                  {formatNumber(
+                    item.outsideTemperature
+                  )}
+                  °C
+                </strong>
+
+                <span>
+                  💧{" "}
+                  {formatNumber(
+                    item.outsideHumidity
+                  )}
+                  %
+                </span>
+              </div>
+
+              {/* ACTUATORS */}
+
+              <div
+                className="history-right"
+                style={styles.right}
+              >
+                <p
+                  style={
+                    styles.status
+                  }
+                >
+                  🔥 Heater{" "}
+                  <strong>
+                    {String(
+                      heater
+                    ).toUpperCase()}
+                  </strong>
+                </p>
+
+                <p
+                  style={
+                    styles.fan
+                  }
+                >
+                  💨 Fan{" "}
+                  {fanSpeed}%
+                  {" "}
+                  ({String(
+                    fan
+                  ).toUpperCase()})
+                </p>
+
+                <p
+                  style={{
+                    ...styles.date,
+                    color: muted,
+                  }}
+                >
+                  {formatDate(
+                    item.createdAt
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        }
+      )}
 
       <BottomNav />
     </div>
@@ -1005,7 +1276,8 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     marginBottom: "22px",
   },
@@ -1025,7 +1297,8 @@ const styles = {
     padding: "14px",
     borderRadius: "20px",
     marginBottom: "16px",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
   },
 
   selectorLabel: {
@@ -1043,6 +1316,33 @@ const styles = {
     fontSize: "14px",
   },
 
+  configCard: {
+    padding: "14px",
+    borderRadius: "20px",
+    marginBottom: "16px",
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(4,1fr)",
+    gap: "10px",
+    backdropFilter:
+      "blur(12px)",
+  },
+
+  configItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "5px",
+    padding: "10px",
+    borderRadius: "14px",
+    background:
+      "rgba(148,163,184,0.08)",
+  },
+
+  infoLabel: {
+    fontSize: "10px",
+    fontWeight: 700,
+  },
+
   error: {
     padding: "14px",
     borderRadius: "16px",
@@ -1055,10 +1355,12 @@ const styles = {
     borderRadius: "22px",
     marginBottom: "14px",
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     gap: "20px",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
     boxShadow:
       "0 10px 25px rgba(0,0,0,0.08)",
   },
@@ -1082,35 +1384,16 @@ const styles = {
     fontSize: "14px",
   },
 
-  historyGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, minmax(110px, 1fr))",
-    gap: "8px",
-    flex: 1,
-  },
-
-  infoCard: {
-    padding: "10px 12px",
-    borderRadius: "14px",
-    background:
-      "rgba(148,163,184,0.08)",
+  outside: {
+    minWidth: "130px",
     display: "flex",
     flexDirection: "column",
     gap: "4px",
-  },
-
-  infoLabel: {
-    fontSize: "10px",
-    fontWeight: 700,
-  },
-
-  infoValue: {
-    fontSize: "13px",
+    fontSize: "12px",
   },
 
   right: {
-    minWidth: "125px",
+    minWidth: "145px",
     textAlign: "right",
   },
 
@@ -1134,7 +1417,8 @@ const styles = {
     padding: "40px 20px",
     textAlign: "center",
     borderRadius: "24px",
-    backdropFilter: "blur(12px)",
+    backdropFilter:
+      "blur(12px)",
   },
 
   emptyIcon: {
@@ -1148,7 +1432,8 @@ const styles = {
     padding: "35px 25px",
     borderRadius: "28px",
     textAlign: "center",
-    backdropFilter: "blur(14px)",
+    backdropFilter:
+      "blur(14px)",
     boxShadow:
       "0 20px 50px rgba(0,0,0,0.18)",
   },

@@ -23,6 +23,10 @@ export default function Plan() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
+  // =====================================================
+  // AVAILABLE PLANS
+  // =====================================================
+
   const plans = [
     {
       name: "Free",
@@ -99,7 +103,6 @@ export default function Plan() {
         return;
       }
 
-      // 1. Try fetching from /api/payments/current
       const res = await fetch(`${API_URL}/api/payments/current`, {
         method: "GET",
         headers: {
@@ -110,22 +113,23 @@ export default function Plan() {
 
       const data = await res.json();
 
-      let payment = data?.payment || data?.currentPayment || data;
-
-      // 2. Fallback: If /api/payments/current returned empty/failed, try /api/profile/me
-      if (!payment || payment.message === "No active subscription found" || !res.ok) {
-        const profileRes = await fetch(`${API_URL}/api/profile/me`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const profileData = await profileRes.json();
-        payment = profileData?.payment || profileData?.plan;
+      if (!res.ok) {
+        console.error("Failed to fetch current payment:", data?.message);
+        setCurrentPlan(null);
+        return;
       }
 
-      setCurrentPlan(payment || null);
+      const payment =
+        data?.payment ||
+        data?.currentPayment ||
+        (data?.planName || data?.plan ? data : null);
+
+      if (!payment) {
+        setCurrentPlan(null);
+        return;
+      }
+
+      setCurrentPlan(payment);
     } catch (error) {
       console.error("Failed to fetch current subscription:", error);
       setCurrentPlan(null);
@@ -134,35 +138,52 @@ export default function Plan() {
     }
   }
 
-  // Helper to extract active plan name
-  function getActivePlanDetails() {
-    if (!currentPlan) return { name: "Free", status: "free", expiry: null };
+  // =====================================================
+  // HELPER: VALIDATE ACTIVE PAYMENT
+  // Database statuses: "pending", "paid", "failed"
+  // =====================================================
 
-    const planName = currentPlan.planName || currentPlan.plan || currentPlan.name || "Free";
-    const rawStatus = String(currentPlan.status || "").toLowerCase().trim();
+  function isPaymentActive(payment) {
+    if (!payment) return false;
 
-    // Accept all common status variations from Paypack / webhook
-    const validStatuses = ["active", "paid", "completed", "success", "successful", "approved"];
-    const isActiveStatus = validStatuses.includes(rawStatus);
+    const planName = payment.planName || payment.plan || "Free";
+    if (planName === "Free") return false;
 
-    // Expiry check
-    const expiryDate = currentPlan.expiryDate ? new Date(currentPlan.expiryDate) : null;
-    const isExpired = expiryDate && expiryDate <= new Date();
+    const status = String(payment.status || "")
+      .toLowerCase()
+      .trim();
 
-    if (planName === "Free" || (!isActiveStatus && rawStatus !== "active") || isExpired) {
-      return {
-        name: "Free",
-        status: isExpired ? "expired" : rawStatus || "free",
-        expiry: null,
-      };
+    // Valid successful statuses from DB
+    const validStatuses = ["paid", "active", "completed", "success", "successful"];
+    if (!validStatuses.includes(status)) {
+      return false;
     }
 
-    return {
-      name: planName,
-      status: rawStatus || "active",
-      expiry: currentPlan.expiryDate,
-    };
+    // Check expiration date if present
+    if (payment.expiryDate) {
+      const exp = new Date(payment.expiryDate);
+      if (!isNaN(exp.getTime()) && exp <= new Date()) {
+        return false; // Expired
+      }
+    }
+
+    return true;
   }
+
+  // =====================================================
+  // GET CURRENT PLAN NAME
+  // =====================================================
+
+  function getCurrentPlanName() {
+    if (!isPaymentActive(currentPlan)) {
+      return "Free";
+    }
+    return currentPlan.planName || currentPlan.plan || "Free";
+  }
+
+  // =====================================================
+  // LOAD CURRENT PLAN
+  // =====================================================
 
   useEffect(() => {
     fetchCurrentPlan();
@@ -172,8 +193,8 @@ export default function Plan() {
     return <PageLoader />;
   }
 
-  const { name: currentPlanName, status: currentStatus, expiry: expiryDate } = getActivePlanDetails();
-  const paidPlanRunning = currentPlanName !== "Free";
+  const currentPlanName = getCurrentPlanName();
+  const paidPlanRunning = isPaymentActive(currentPlan);
 
   return (
     <div
@@ -232,14 +253,27 @@ export default function Plan() {
             }}
           >
             Expires:{" "}
-            {currentPlanName !== "Free" && expiryDate
-              ? new Date(expiryDate).toLocaleDateString()
+            {currentPlanName !== "Free" && currentPlan?.expiryDate
+              ? new Date(currentPlan.expiryDate).toLocaleDateString()
+              : currentPlanName !== "Free"
+              ? "Active (No Expiry Date)"
               : "No expiry"}
           </p>
         </div>
 
-        <span style={styles.activePill}>
-          {currentPlanName === "Free" ? "free" : currentStatus}
+        <span
+          style={{
+            ...styles.activePill,
+            background:
+              currentPlanName === "Free"
+                ? "rgba(148,163,184,0.16)"
+                : "rgba(34,197,94,0.16)",
+            color: currentPlanName === "Free" ? "#94a3b8" : "#22c55e",
+          }}
+        >
+          {currentPlanName === "Free"
+            ? "free"
+            : currentPlan?.status?.toLowerCase() || "paid"}
         </span>
       </div>
 
@@ -251,7 +285,7 @@ export default function Plan() {
       {/* PLANS GRID */}
       <div style={styles.grid}>
         {plans.map((plan) => {
-          const active = currentPlanName.toLowerCase() === plan.name.toLowerCase();
+          const active = currentPlanName === plan.name;
           const highlighted = plan.name === "Basic";
           const isFreePlan = plan.name === "Free";
           const blockedByActivePlan = paidPlanRunning && !active && !isFreePlan;
@@ -424,6 +458,10 @@ export default function Plan() {
   );
 }
 
+// =======================================================
+// STYLES
+// =======================================================
+
 const styles = {
   page: {
     minHeight: "100vh",
@@ -484,8 +522,6 @@ const styles = {
     borderRadius: "999px",
     fontWeight: "800",
     fontSize: "13px",
-    background: "rgba(34,197,94,0.16)",
-    color: "#22c55e",
     textTransform: "capitalize",
   },
   paymentStatusLink: {

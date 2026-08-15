@@ -430,7 +430,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={() =>
-                navigate("/devices")
+                navigate("/device-management")
               }
               style={styles.deviceManagementButton}
             >

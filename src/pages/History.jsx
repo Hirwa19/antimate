@@ -61,7 +61,7 @@ export default function History() {
     const token = getToken();
 
     const res = await fetch(
-      `${API_URL}/api/payments/latest`,
+      `${API_URL}/api/payments/current`,
       {
         method: "GET",
         headers: {

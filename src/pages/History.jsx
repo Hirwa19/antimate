@@ -1,17 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   History as HistoryIcon,
   RefreshCw,
-  Server,
-  Cpu,
-  Radio,
+  Search,
+  Filter,
+  CalendarDays,
   Settings,
-  Activity,
-  AlertTriangle,
+  Thermometer,
+  Droplets,
+  Fan,
+  Flame,
+  Wifi,
+  WifiOff,
+  ChevronDown,
+  Clock3,
   CheckCircle2,
-  Info,
-  ShieldCheck,
-  Trash2,
+  XCircle,
+  Activity,
 } from "lucide-react";
 
 import BottomNav from "../components/BottomNav";
@@ -26,17 +31,12 @@ export default function History() {
     text,
   } = useAppSettings();
 
-  const [history, setHistory] =
-    useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [deleting, setDeleting] =
-    useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
 
   // =====================================================
   // THEME
@@ -62,6 +62,10 @@ export default function History() {
     ? "rgba(255,255,255,0.1)"
     : "rgba(15,23,42,0.08)";
 
+  const inputBackground = isDark
+    ? "rgba(15,23,42,0.8)"
+    : "#ffffff";
+
   // =====================================================
   // FETCH HISTORY
   // =====================================================
@@ -71,24 +75,33 @@ export default function History() {
       setLoading(true);
       setError("");
 
-      const res =
-        await API.get("/history");
+      /*
+       * Expected backend response:
+       *
+       * {
+       *   success: true,
+       *   data: [...]
+       * }
+       *
+       * or directly:
+       *
+       * [...]
+       */
 
-      const data =
-        Array.isArray(
-          res.data?.data
-        )
-          ? res.data.data
-          : Array.isArray(
-              res.data
-            )
-          ? res.data
-          : [];
+      const res = await API.get("/history");
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data?.history)
+        ? res.data.history
+        : [];
 
       setHistory(data);
     } catch (err) {
       console.error(
-        "History error:",
+        "History loading error:",
         err
       );
 
@@ -96,11 +109,9 @@ export default function History() {
 
       setError(
         err.response?.data?.message ||
-          (
-            language === "rw"
-              ? "History ntishoboye kuboneka."
-              : "Failed to load history."
-          )
+          (language === "rw"
+            ? "Ntibyashobotse kubona amateka."
+            : "Failed to load history.")
       );
     } finally {
       setLoading(false);
@@ -112,178 +123,490 @@ export default function History() {
   }, []);
 
   // =====================================================
-  // DELETE
+  // NORMALIZE HISTORY TYPE
   // =====================================================
 
-  async function deleteHistory(id) {
-    try {
-      setDeleting(id);
+  function getHistoryType(item) {
+    const raw =
+      item.type ||
+      item.eventType ||
+      item.action ||
+      item.event ||
+      item.category ||
+      "";
 
-      await API.delete(
-        `/history/${id}`
-      );
+    const value = String(raw)
+      .toLowerCase()
+      .trim();
 
-      setHistory((prev) =>
-        prev.filter(
-          (item) =>
-            item._id !== id
-        )
-      );
-    } catch (err) {
-      console.error(
-        "Delete history error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          (
-            language === "rw"
-              ? "History ntiyasibwe."
-              : "Failed to delete history."
-          )
-      );
-    } finally {
-      setDeleting(null);
+    if (
+      value.includes("temperature") ||
+      value.includes("temp")
+    ) {
+      return "temperature";
     }
+
+    if (
+      value.includes("humidity") ||
+      value.includes("humid")
+    ) {
+      return "humidity";
+    }
+
+    if (
+      value.includes("heater") ||
+      value.includes("heat")
+    ) {
+      return "heater";
+    }
+
+    if (
+      value.includes("fan") ||
+      value.includes("ventilation")
+    ) {
+      return "fan";
+    }
+
+    if (
+      value.includes("online") ||
+      value.includes("connected") ||
+      value.includes("connect")
+    ) {
+      return "online";
+    }
+
+    if (
+      value.includes("offline") ||
+      value.includes("disconnect")
+    ) {
+      return "offline";
+    }
+
+    if (
+      value.includes("config") ||
+      value.includes("setting")
+    ) {
+      return "configuration";
+    }
+
+    if (
+      value.includes("system")
+    ) {
+      return "system";
+    }
+
+    return "activity";
+  }
+
+  // =====================================================
+  // FILTER HISTORY
+  // =====================================================
+
+  const filteredHistory = useMemo(() => {
+    let result = [...history];
+
+    if (filter !== "all") {
+      result = result.filter(
+        (item) =>
+          getHistoryType(item) ===
+          filter
+      );
+    }
+
+    if (search.trim()) {
+      const query =
+        search
+          .toLowerCase()
+          .trim();
+
+      result = result.filter(
+        (item) => {
+          const searchable = [
+            item.title,
+            item.description,
+            item.message,
+            item.deviceId,
+            item.gatewayId,
+            item.systemName,
+            item.type,
+            item.eventType,
+            item.action,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return searchable.includes(
+            query
+          );
+        }
+      );
+    }
+
+    return result;
+  }, [
+    history,
+    filter,
+    search,
+  ]);
+
+  // =====================================================
+  // DATE FORMAT
+  // =====================================================
+
+  function formatDate(value) {
+    if (!value) {
+      return "--";
+    }
+
+    const date =
+      new Date(value);
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return "--";
+    }
+
+    return date.toLocaleDateString(
+      language === "rw"
+        ? "rw-RW"
+        : "en-US",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    );
+  }
+
+  function formatTime(value) {
+    if (!value) {
+      return "--";
+    }
+
+    const date =
+      new Date(value);
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return "--";
+    }
+
+    return date.toLocaleTimeString(
+      language === "rw"
+        ? "rw-RW"
+        : "en-US",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
+  }
+
+  // =====================================================
+  // GET TITLE
+  // =====================================================
+
+  function getTitle(item) {
+    if (item.title) {
+      return item.title;
+    }
+
+    const type =
+      getHistoryType(item);
+
+    const titles = {
+      temperature:
+        language === "rw"
+          ? "Temperature yahindutse"
+          : "Temperature updated",
+
+      humidity:
+        language === "rw"
+          ? "Humidity yahindutse"
+          : "Humidity updated",
+
+      heater:
+        language === "rw"
+          ? "Heater yahinduwe"
+          : "Heater changed",
+
+      fan:
+        language === "rw"
+          ? "Fan yahinduwe"
+          : "Fan changed",
+
+      online:
+        language === "rw"
+          ? "System iri online"
+          : "System came online",
+
+      offline:
+        language === "rw"
+          ? "System yagiye offline"
+          : "System went offline",
+
+      configuration:
+        language === "rw"
+          ? "Configuration yahinduwe"
+          : "Configuration updated",
+
+      system:
+        language === "rw"
+          ? "System event"
+          : "System event",
+
+      activity:
+        language === "rw"
+          ? "Igikorwa cya system"
+          : "System activity",
+    };
+
+    return titles[type];
+  }
+
+  // =====================================================
+  // GET DESCRIPTION
+  // =====================================================
+
+  function getDescription(item) {
+    if (
+      item.description
+    ) {
+      return item.description;
+    }
+
+    if (
+      item.message
+    ) {
+      return item.message;
+    }
+
+    const type =
+      getHistoryType(item);
+
+    if (
+      type === "temperature" &&
+      item.value !== undefined
+    ) {
+      return `${item.value}°C`;
+    }
+
+    if (
+      type === "humidity" &&
+      item.value !== undefined
+    ) {
+      return `${item.value}%`;
+    }
+
+    if (
+      type === "heater" &&
+      item.status
+    ) {
+      return String(
+        item.status
+      ).toUpperCase();
+    }
+
+    if (
+      type === "fan" &&
+      item.status
+    ) {
+      return String(
+        item.status
+      ).toUpperCase();
+    }
+
+    return language === "rw"
+      ? "Nta bisobanuro bihari."
+      : "No additional information.";
   }
 
   // =====================================================
   // ICON
   // =====================================================
 
-  function getTypeIcon(type) {
+  function getIcon(type) {
     switch (type) {
-      case "SYSTEM":
+      case "temperature":
         return (
-          <Server size={19} />
+          <Thermometer size={19} />
         );
 
-      case "DEVICE":
+      case "humidity":
         return (
-          <Cpu size={19} />
+          <Droplets size={19} />
         );
 
-      case "GATEWAY":
+      case "heater":
         return (
-          <Radio size={19} />
+          <Flame size={19} />
         );
 
-      case "CONFIGURATION":
+      case "fan":
+        return (
+          <Fan size={19} />
+        );
+
+      case "online":
+        return (
+          <Wifi size={19} />
+        );
+
+      case "offline":
+        return (
+          <WifiOff size={19} />
+        );
+
+      case "configuration":
         return (
           <Settings size={19} />
         );
 
-      case "COMMAND":
+      case "system":
         return (
           <Activity size={19} />
         );
 
-      case "SECURITY":
-        return (
-          <ShieldCheck
-            size={19}
-          />
-        );
-
-      case "ALERT":
-        return (
-          <AlertTriangle
-            size={19}
-          />
-        );
-
       default:
         return (
-          <Info size={19} />
+          <HistoryIcon size={19} />
         );
     }
   }
 
   // =====================================================
-  // STATUS ICON
+  // ICON BACKGROUND
   // =====================================================
 
-  function getStatusIcon(status) {
-    switch (status) {
-      case "SUCCESS":
-        return (
-          <CheckCircle2
-            size={14}
-          />
-        );
+  function getIconStyle(type) {
+    switch (type) {
+      case "temperature":
+        return {
+          background:
+            "rgba(239,68,68,.12)",
+          color: "#ef4444",
+        };
 
-      case "FAILED":
-        return (
-          <AlertTriangle
-            size={14}
-          />
-        );
+      case "humidity":
+        return {
+          background:
+            "rgba(59,130,246,.12)",
+          color: "#3b82f6",
+        };
 
-      case "WARNING":
-        return (
-          <AlertTriangle
-            size={14}
-          />
-        );
+      case "heater":
+        return {
+          background:
+            "rgba(249,115,22,.12)",
+          color: "#f97316",
+        };
+
+      case "fan":
+        return {
+          background:
+            "rgba(14,165,233,.12)",
+          color: "#0ea5e9",
+        };
+
+      case "online":
+        return {
+          background:
+            "rgba(34,197,94,.12)",
+          color: "#22c55e",
+        };
+
+      case "offline":
+        return {
+          background:
+            "rgba(239,68,68,.12)",
+          color: "#ef4444",
+        };
+
+      case "configuration":
+        return {
+          background:
+            "rgba(124,58,237,.12)",
+          color: "#7c3aed",
+        };
 
       default:
-        return (
-          <Info size={14} />
-        );
+        return {
+          background:
+            "rgba(37,99,235,.12)",
+          color: "#2563eb",
+        };
     }
   }
 
   // =====================================================
-  // STATUS COLOR
+  // FILTER LABEL
   // =====================================================
 
-  function getStatusColor(status) {
-    switch (status) {
-      case "SUCCESS":
-        return "#22c55e";
-
-      case "FAILED":
-        return "#ef4444";
-
-      case "WARNING":
-        return "#f59e0b";
-
-      default:
-        return "#3b82f6";
-    }
-  }
-
-  // =====================================================
-  // DATE
-  // =====================================================
-
-  function formatDate(date) {
-    if (!date) {
-      return "--";
-    }
-
-    const parsed =
-      new Date(date);
-
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
-      return "--";
-    }
-
-    return parsed.toLocaleString(
-      language === "rw"
-        ? "rw-RW"
-        : "en-US",
-      {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }
-    );
-  }
+  const filters = [
+    {
+      id: "all",
+      label:
+        language === "rw"
+          ? "Byose"
+          : "All",
+    },
+    {
+      id: "configuration",
+      label:
+        language === "rw"
+          ? "Configuration"
+          : "Configuration",
+    },
+    {
+      id: "temperature",
+      label:
+        language === "rw"
+          ? "Temperature"
+          : "Temperature",
+    },
+    {
+      id: "humidity",
+      label:
+        language === "rw"
+          ? "Humidity"
+          : "Humidity",
+    },
+    {
+      id: "heater",
+      label:
+        language === "rw"
+          ? "Heater"
+          : "Heater",
+    },
+    {
+      id: "fan",
+      label:
+        language === "rw"
+          ? "Fan"
+          : "Fan",
+    },
+    {
+      id: "online",
+      label:
+        language === "rw"
+          ? "Online"
+          : "Online",
+    },
+    {
+      id: "offline",
+      label:
+        language === "rw"
+          ? "Offline"
+          : "Offline",
+    },
+  ];
 
   // =====================================================
   // UI
@@ -299,14 +622,14 @@ export default function History() {
     >
       <AppHeader
         title={
-          language === "rw"
+          text.history ||
+          (language === "rw"
             ? "Amateka"
-            : "History"
+            : "History")
         }
       />
 
       <main style={styles.content}>
-
         {/* =================================================
             HEADER
         ================================================= */}
@@ -322,15 +645,11 @@ export default function History() {
               ANTIMATE
             </p>
 
-            <h1
-              style={{
-                ...styles.title,
-                color: textColor,
-              }}
-            >
-              {language === "rw"
-                ? "Amateka ya System"
-                : "System History"}
+            <h1 style={styles.title}>
+              {text.history ||
+                (language === "rw"
+                  ? "Amateka"
+                  : "History")}
             </h1>
 
             <p
@@ -340,12 +659,14 @@ export default function History() {
               }}
             >
               {language === "rw"
-                ? "Reba ibikorwa n'impinduka zabaye kuri ANTIMATE."
-                : "View activities and events from your ANTIMATE systems."}
+                ? "Reba ibikorwa byabaye kuri system yawe."
+                : "View activities and events from your systems."}
             </p>
           </div>
 
-          <div style={styles.headerIcon}>
+          <div
+            style={styles.headerIcon}
+          >
             <HistoryIcon
               size={21}
             />
@@ -357,48 +678,175 @@ export default function History() {
         ================================================= */}
 
         {error && (
-          <div
-            style={styles.errorBox}
-          >
-            {error}
+          <div style={styles.errorBox}>
+            <XCircle
+              size={16}
+            />
+
+            <span>
+              {error}
+            </span>
           </div>
         )}
 
         {/* =================================================
-            TOOLBAR
+            SEARCH
         ================================================= */}
 
-        <div
+        <section
           style={{
-            ...styles.toolbar,
+            ...styles.searchCard,
             background:
               cardBackground,
             border:
               `1px solid ${border}`,
           }}
         >
+          <div
+            style={
+              styles.searchBox
+            }
+          >
+            <Search
+              size={17}
+              color={muted}
+            />
+
+            <input
+              value={search}
+              onChange={(e) =>
+                setSearch(
+                  e.target.value
+                )
+              }
+              placeholder={
+                language === "rw"
+                  ? "Shakisha amateka..."
+                  : "Search history..."
+              }
+              style={{
+                ...styles.searchInput,
+                color: textColor,
+              }}
+            />
+
+            {search && (
+              <button
+                onClick={() =>
+                  setSearch("")
+                }
+                style={
+                  styles.clearButton
+                }
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* =================================================
+            FILTERS
+        ================================================= */}
+
+        <section
+          style={
+            styles.filterSection
+          }
+        >
+          <div
+            style={
+              styles.filterHeader
+            }
+          >
+            <div
+              style={
+                styles.filterTitle
+              }
+            >
+              <Filter
+                size={15}
+              />
+
+              <span>
+                {language === "rw"
+                  ? "Shungura"
+                  : "Filter"}
+              </span>
+            </div>
+
+            <span
+              style={{
+                ...styles.resultCount,
+                color: muted,
+              }}
+            >
+              {filteredHistory.length}{" "}
+              {language === "rw"
+                ? "ibikorwa"
+                : "events"}
+            </span>
+          </div>
+
+          <div
+            style={
+              styles.filterList
+            }
+          >
+            {filters.map(
+              (item) => (
+                <button
+                  key={item.id}
+                  onClick={() =>
+                    setFilter(
+                      item.id
+                    )
+                  }
+                  style={{
+                    ...styles.filterButton,
+                    ...(filter ===
+                    item.id
+                      ? styles.filterActive
+                      : {}),
+                  }}
+                >
+                  {item.label}
+                </button>
+              )
+            )}
+          </div>
+        </section>
+
+        {/* =================================================
+            HISTORY HEADER
+        ================================================= */}
+
+        <div
+          style={
+            styles.historyHeader
+          }
+        >
           <div>
             <h2
               style={{
-                ...styles.toolbarTitle,
+                ...styles.sectionTitle,
                 color: textColor,
               }}
             >
               {language === "rw"
-                ? "Ibikorwa"
-                : "Activity"}
+                ? "Ibikorwa bya system"
+                : "System activity"}
             </h2>
 
             <p
               style={{
-                ...styles.toolbarText,
+                ...styles.sectionSubtitle,
                 color: muted,
               }}
             >
-              {history.length}{" "}
               {language === "rw"
-                ? "byanditswe"
-                : "events"}
+                ? "Ibikorwa biheruka kugaragara."
+                : "Recent system events and activities."}
             </p>
           </div>
 
@@ -407,12 +855,13 @@ export default function History() {
             disabled={loading}
             style={{
               ...styles.refreshButton,
-              opacity:
-                loading ? 0.6 : 1,
+              opacity: loading
+                ? 0.55
+                : 1,
             }}
           >
             <RefreshCw
-              size={15}
+              size={14}
               style={
                 loading
                   ? {
@@ -434,228 +883,229 @@ export default function History() {
         ================================================= */}
 
         {loading &&
-        history.length === 0 ? (
-          <div
-            style={{
-              ...styles.empty,
-              background:
-                cardBackground,
-              border:
-                `1px solid ${border}`,
-            }}
-          >
-            <RefreshCw
-              size={28}
-              style={{
-                animation:
-                  "spin 1s linear infinite",
-                color: "#6366f1",
-              }}
-            />
-
-            <p
-              style={{
-                color: muted,
-              }}
-            >
-              {language === "rw"
-                ? "Turimo gushaka history..."
-                : "Loading history..."}
-            </p>
-          </div>
-        ) : history.length === 0 ? (
-          /* =================================================
-             EMPTY
-          ================================================= */
-
-          <div
-            style={{
-              ...styles.empty,
-              background:
-                cardBackground,
-              border:
-                `1px solid ${border}`,
-            }}
-          >
+          history.length === 0 && (
             <div
-              style={styles.emptyIcon}
+              style={{
+                ...styles.loadingCard,
+                background:
+                  cardBackground,
+                border:
+                  `1px solid ${border}`,
+              }}
             >
-              <HistoryIcon
-                size={30}
+              <RefreshCw
+                size={25}
+                style={{
+                  animation:
+                    "spin 1s linear infinite",
+                }}
               />
+
+              <p
+                style={{
+                  color: muted,
+                }}
+              >
+                {language === "rw"
+                  ? "Turimo gushaka amateka..."
+                  : "Loading history..."}
+              </p>
             </div>
+          )}
 
-            <h3
+        {/* =================================================
+            EMPTY
+        ================================================= */}
+
+        {!loading &&
+          filteredHistory.length ===
+            0 && (
+            <div
               style={{
-                ...styles.emptyTitle,
-                color: textColor,
+                ...styles.empty,
+                background:
+                  cardBackground,
+                border:
+                  `1px solid ${border}`,
               }}
             >
-              {language === "rw"
-                ? "Nta history iraboneka"
-                : "No history yet"}
-            </h3>
+              <div
+                style={
+                  styles.emptyIcon
+                }
+              >
+                <HistoryIcon
+                  size={30}
+                />
+              </div>
 
-            <p
-              style={{
-                ...styles.emptyText,
-                color: muted,
-              }}
-            >
-              {language === "rw"
-                ? "Ibikorwa bya ANTIMATE bizagaragara hano."
-                : "ANTIMATE activities will appear here."}
-            </p>
-          </div>
-        ) : (
-          /* =================================================
-             HISTORY LIST
-          ================================================= */
+              <h3
+                style={{
+                  ...styles.emptyTitle,
+                  color: textColor,
+                }}
+              >
+                {language === "rw"
+                  ? search ||
+                    filter !== "all"
+                    ? "Nta byabonetse"
+                    : "Nta mateka ahari"
+                  : search ||
+                    filter !== "all"
+                  ? "No results found"
+                  : "No history yet"}
+              </h3>
 
-          <div style={styles.timeline}>
-            {history.map(
+              <p
+                style={{
+                  ...styles.emptyText,
+                  color: muted,
+                }}
+              >
+                {language === "rw"
+                  ? search ||
+                    filter !== "all"
+                    ? "Gerageza guhindura search cyangwa filter."
+                    : "Ibikorwa bya system bizagaragara hano."
+                  : search ||
+                    filter !== "all"
+                  ? "Try changing your search or filter."
+                  : "System activities will appear here."}
+              </p>
+            </div>
+          )}
+
+        {/* =================================================
+            HISTORY LIST
+        ================================================= */}
+
+        {filteredHistory.length >
+          0 && (
+          <div
+            style={
+              styles.historyList
+            }
+          >
+            {filteredHistory.map(
               (item, index) => {
-                const statusColor =
-                  getStatusColor(
-                    item.status
+                const type =
+                  getHistoryType(
+                    item
                   );
+
+                const iconStyle =
+                  getIconStyle(
+                    type
+                  );
+
+                const timestamp =
+                  item.createdAt ||
+                  item.timestamp ||
+                  item.date ||
+                  item.time ||
+                  item.updatedAt;
 
                 return (
                   <div
                     key={
                       item._id ||
-                      index
+                      item.id ||
+                      `${timestamp}-${index}`
                     }
-                    style={styles.timelineItem}
+                    style={{
+                      ...styles.historyCard,
+                      background:
+                        cardBackground,
+                      border:
+                        `1px solid ${border}`,
+                    }}
                   >
-                    {/* LINE */}
-
-                    {index !==
-                      history.length -
-                        1 && (
-                      <div
-                        style={{
-                          ...styles.timelineLine,
-                          background:
-                            border,
-                        }}
-                      />
-                    )}
-
                     {/* ICON */}
 
                     <div
                       style={{
-                        ...styles.eventIcon,
-                        background:
-                          cardBackground,
-                        border:
-                          `1px solid ${border}`,
-                        color:
-                          statusColor,
+                        ...styles.historyIcon,
+                        ...iconStyle,
                       }}
                     >
-                      {getTypeIcon(
-                        item.type
+                      {getIcon(
+                        type
                       )}
                     </div>
 
-                    {/* CARD */}
+                    {/* CONTENT */}
 
                     <div
-                      style={{
-                        ...styles.eventCard,
-                        background:
-                          cardBackground,
-                        border:
-                          `1px solid ${border}`,
-                      }}
+                      style={
+                        styles.historyContent
+                      }
                     >
                       <div
                         style={
-                          styles.eventTop
+                          styles.historyTop
                         }
                       >
-                        <div
-                          style={
-                            styles.eventMain
-                          }
-                        >
-                          <h3
-                            style={{
-                              ...styles.eventTitle,
-                              color:
-                                textColor,
-                            }}
-                          >
-                            {item.title}
-                          </h3>
-
-                          <p
-                            style={{
-                              ...styles.eventDate,
-                              color:
-                                muted,
-                            }}
-                          >
-                            {formatDate(
-                              item.createdAt
-                            )}
-                          </p>
-                        </div>
-
-                        <div
+                        <h3
                           style={{
-                            ...styles.statusBadge,
-                            color:
-                              statusColor,
-                            background:
-                              `${statusColor}15`,
+                            ...styles.historyTitle,
+                            color: textColor,
                           }}
                         >
-                          {getStatusIcon(
-                            item.status
+                          {getTitle(
+                            item
                           )}
+                        </h3>
 
-                          {item.status}
-                        </div>
+                        {item.success !==
+                          undefined && (
+                          item.success ? (
+                            <CheckCircle2
+                              size={
+                                15
+                              }
+                              color="#22c55e"
+                            />
+                          ) : (
+                            <XCircle
+                              size={
+                                15
+                              }
+                              color="#ef4444"
+                            />
+                          )
+                        )}
                       </div>
 
-                      {item.description && (
-                        <p
-                          style={{
-                            ...styles.description,
-                            color: muted,
-                          }}
-                        >
-                          {
-                            item.description
-                          }
-                        </p>
-                      )}
+                      <p
+                        style={{
+                          ...styles.historyDescription,
+                          color: muted,
+                        }}
+                      >
+                        {getDescription(
+                          item
+                        )}
+                      </p>
 
                       {/* DEVICE */}
 
                       {(item.deviceId ||
                         item.gatewayId ||
-                        item.systemId) && (
+                        item.systemName) && (
                         <div
                           style={
-                            styles.meta
+                            styles.metaRow
                           }
                         >
-                          {item.deviceId && (
-                            <span
-                              style={{
-                                ...styles.metaItem,
-                                color:
-                                  muted,
-                              }}
-                            >
-                              <Cpu
-                                size={12}
-                              />
+                          {item.systemName && (
+                            <span>
+                              {item.systemName}
+                            </span>
+                          )}
 
+                          {item.deviceId && (
+                            <span>
+                              Device:{" "}
                               {
                                 item.deviceId
                               }
@@ -663,84 +1113,50 @@ export default function History() {
                           )}
 
                           {item.gatewayId && (
-                            <span
-                              style={{
-                                ...styles.metaItem,
-                                color:
-                                  muted,
-                              }}
-                            >
-                              <Radio
-                                size={12}
-                              />
-
+                            <span>
+                              Gateway:{" "}
                               {
                                 item.gatewayId
-                              }
-                            </span>
-                          )}
-
-                          {item.systemId?.name && (
-                            <span
-                              style={{
-                                ...styles.metaItem,
-                                color:
-                                  muted,
-                              }}
-                            >
-                              <Server
-                                size={12}
-                              />
-
-                              {
-                                item
-                                  .systemId
-                                  .name
                               }
                             </span>
                           )}
                         </div>
                       )}
 
-                      {/* ACTION */}
+                      {/* DATE */}
 
                       <div
                         style={
-                          styles.eventBottom
+                          styles.timeRow
                         }
                       >
                         <span
-                          style={{
-                            ...styles.typeLabel,
-                            color: muted,
-                          }}
-                        >
-                          {item.type}
-                        </span>
-
-                        <button
-                          onClick={() =>
-                            deleteHistory(
-                              item._id
-                            )
-                          }
-                          disabled={
-                            deleting ===
-                            item._id
-                          }
                           style={
-                            styles.deleteButton
+                            styles.timeItem
                           }
                         >
-                          <Trash2
-                            size={13}
+                          <CalendarDays
+                            size={12}
                           />
 
-                          {language ===
-                          "rw"
-                            ? "Siba"
-                            : "Delete"}
-                        </button>
+                          {formatDate(
+                            timestamp
+                          )}
+                        </span>
+
+                        <span
+                          style={
+                            styles.timeItem
+                          }
+                        >
+                          <Clock3
+                            size={12}
+                          />
+
+                          {formatTime(
+                            timestamp
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -751,36 +1167,31 @@ export default function History() {
         )}
 
         {/* =================================================
-            FOOTER
+            FOOTER INFO
         ================================================= */}
 
         <section
-          style={styles.appInfo}
+          style={
+            styles.footerInfo
+          }
         >
-          <div
-            style={styles.appLogo}
-          >
-            A
-          </div>
+          <Activity
+            size={16}
+          />
 
-          <div>
-            <strong>
-              ANTIMATE
-            </strong>
-
-            <p
-              style={{
-                color: muted,
-              }}
-            >
-              Smart agriculture
-              technology
-            </p>
-          </div>
+          <span>
+            {language === "rw"
+              ? "ANTIMATE ibika ibikorwa bya system kugirango ubashe gukurikirana imikorere yayo."
+              : "ANTIMATE keeps system activity records so you can monitor system operation."}
+          </span>
         </section>
       </main>
 
       <BottomNav />
+
+      {/* =================================================
+          ANIMATION
+      ================================================= */}
 
       <style>
         {`
@@ -819,13 +1230,17 @@ const styles = {
     boxSizing: "border-box",
   },
 
+  // ===================================================
+  // HEADER
+  // ===================================================
+
   header: {
     display: "flex",
     justifyContent:
       "space-between",
     alignItems: "center",
     marginTop: "14px",
-    marginBottom: "25px",
+    marginBottom: "24px",
     gap: "15px",
   },
 
@@ -860,10 +1275,17 @@ const styles = {
     flexShrink: 0,
   },
 
+  // ===================================================
+  // ERROR
+  // ===================================================
+
   errorBox: {
     marginBottom: "14px",
     padding: "12px 14px",
     borderRadius: "14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
     background:
       "rgba(239,68,68,0.1)",
     border:
@@ -872,182 +1294,165 @@ const styles = {
     fontSize: "12px",
   },
 
-  toolbar: {
-    padding: "13px",
+  // ===================================================
+  // SEARCH
+  // ===================================================
+
+  searchCard: {
+    padding: "10px",
     borderRadius: "18px",
+    backdropFilter:
+      "blur(14px)",
+    marginBottom: "14px",
+  },
+
+  searchBox: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding:
+      "2px 4px",
+  },
+
+  searchInput: {
+    width: "100%",
+    border: "none",
+    outline: "none",
+    background:
+      "transparent",
+    fontSize: "12px",
+    padding: "8px 0",
+  },
+
+  clearButton: {
+    width: "25px",
+    height: "25px",
+    border: "none",
+    borderRadius: "50%",
+    background:
+      "rgba(148,163,184,.15)",
+    color: "#64748b",
+    cursor: "pointer",
+    fontSize: "16px",
+    lineHeight: 1,
+  },
+
+  // ===================================================
+  // FILTER
+  // ===================================================
+
+  filterSection: {
+    marginBottom: "22px",
+  },
+
+  filterHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent:
       "space-between",
-    marginBottom: "18px",
-    backdropFilter:
-      "blur(14px)",
+    marginBottom: "9px",
   },
 
-  toolbarTitle: {
+  filterTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "12px",
+    fontWeight: 700,
+  },
+
+  resultCount: {
+    fontSize: "10px",
+  },
+
+  filterList: {
+    display: "flex",
+    gap: "6px",
+    overflowX: "auto",
+    paddingBottom: "3px",
+    scrollbarWidth: "none",
+  },
+
+  filterButton: {
+    flexShrink: 0,
+    border:
+      "1px solid rgba(148,163,184,.18)",
+    borderRadius: "10px",
+    padding: "7px 10px",
+    background:
+      "transparent",
+    color: "#64748b",
+    fontSize: "10px",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+
+  filterActive: {
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    color: "#fff",
+    border:
+      "1px solid transparent",
+  },
+
+  // ===================================================
+  // HISTORY HEADER
+  // ===================================================
+
+  historyHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
+    gap: "10px",
+    marginBottom: "11px",
+  },
+
+  sectionTitle: {
     margin: 0,
-    fontSize: "14px",
+    fontSize: "17px",
     fontWeight: 750,
   },
 
-  toolbarText: {
-    margin: "3px 0 0",
+  sectionSubtitle: {
+    margin: "4px 0 0",
     fontSize: "10px",
   },
 
   refreshButton: {
     border: "none",
-    borderRadius: "10px",
-    padding: "8px 10px",
+    background:
+      "transparent",
+    color: "#2563eb",
     display: "flex",
     alignItems: "center",
     gap: "5px",
-    background:
-      "rgba(37,99,235,.1)",
-    color: "#2563eb",
     fontSize: "10px",
     fontWeight: 700,
     cursor: "pointer",
+    flexShrink: 0,
   },
 
-  timeline: {
+  // ===================================================
+  // LOADING
+  // ===================================================
+
+  loadingCard: {
+    minHeight: "170px",
+    borderRadius: "21px",
     display: "flex",
     flexDirection: "column",
-  },
-
-  timelineItem: {
-    position: "relative",
-    display: "flex",
-    gap: "11px",
-    paddingBottom: "14px",
-  },
-
-  timelineLine: {
-    position: "absolute",
-    left: "19px",
-    top: "40px",
-    bottom: 0,
-    width: "1px",
-  },
-
-  eventIcon: {
-    position: "relative",
-    zIndex: 2,
-    width: "40px",
-    height: "40px",
-    borderRadius: "13px",
-    display: "grid",
-    placeItems: "center",
-    flexShrink: 0,
+    alignItems: "center",
+    justifyContent:
+      "center",
+    gap: "10px",
     backdropFilter:
       "blur(12px)",
   },
 
-  eventCard: {
-    flex: 1,
-    minWidth: 0,
-    padding: "13px",
-    borderRadius: "17px",
-    backdropFilter:
-      "blur(14px)",
-  },
-
-  eventTop: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent:
-      "space-between",
-    gap: "10px",
-  },
-
-  eventMain: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  eventTitle: {
-    margin: 0,
-    fontSize: "13px",
-    fontWeight: 750,
-    lineHeight: 1.3,
-  },
-
-  eventDate: {
-    margin: "4px 0 0",
-    fontSize: "9px",
-  },
-
-  statusBadge: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    padding: "5px 7px",
-    borderRadius: "8px",
-    fontSize: "8px",
-    fontWeight: 800,
-    flexShrink: 0,
-  },
-
-  description: {
-    margin: "9px 0 0",
-    fontSize: "10px",
-    lineHeight: 1.5,
-  },
-
-  meta: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "6px",
-    marginTop: "10px",
-  },
-
-  metaItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    padding:
-      "4px 7px",
-    borderRadius: "7px",
-    background:
-      "rgba(148,163,184,.08)",
-    fontSize: "8px",
-    maxWidth: "100%",
-    overflow: "hidden",
-    textOverflow:
-      "ellipsis",
-    whiteSpace:
-      "nowrap",
-  },
-
-  eventBottom: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent:
-      "space-between",
-    marginTop: "10px",
-    paddingTop: "8px",
-    borderTop:
-      "1px solid rgba(148,163,184,.1)",
-  },
-
-  typeLabel: {
-    fontSize: "8px",
-    fontWeight: 700,
-    letterSpacing: ".5px",
-  },
-
-  deleteButton: {
-    border: "none",
-    background:
-      "transparent",
-    color: "#ef4444",
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-    fontSize: "8px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
+  // ===================================================
+  // EMPTY
+  // ===================================================
 
   empty: {
     padding: "35px 18px",
@@ -1082,26 +1487,101 @@ const styles = {
     lineHeight: 1.5,
   },
 
-  appInfo: {
+  // ===================================================
+  // HISTORY LIST
+  // ===================================================
+
+  historyList: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "10px",
-    marginTop: "35px",
-    marginBottom: "15px",
-    opacity: 0.75,
+    flexDirection:
+      "column",
+    gap: "9px",
   },
 
-  appLogo: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "10px",
+  historyCard: {
+    padding: "13px",
+    borderRadius: "18px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "11px",
+    backdropFilter:
+      "blur(12px)",
+    transition:
+      "transform .15s ease",
+  },
+
+  historyIcon: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "13px",
     display: "grid",
     placeItems: "center",
+    flexShrink: 0,
+  },
+
+  historyContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  historyTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
+    gap: "8px",
+  },
+
+  historyTitle: {
+    margin: 0,
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+
+  historyDescription: {
+    margin:
+      "4px 0 7px",
+    fontSize: "11px",
+    lineHeight: 1.45,
+  },
+
+  metaRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "5px",
+    marginBottom: "7px",
+  },
+
+  timeRow: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+
+  timeItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    color: "#64748b",
+    fontSize: "9px",
+  },
+
+  // ===================================================
+  // FOOTER
+  // ===================================================
+
+  footerInfo: {
+    marginTop: "24px",
+    padding: "13px",
+    borderRadius: "16px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
     background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "#fff",
-    fontWeight: 800,
-    fontSize: "15px",
+      "rgba(37,99,235,.06)",
+    color: "#64748b",
+    fontSize: "10px",
+    lineHeight: 1.5,
   },
 };

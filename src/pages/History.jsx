@@ -472,7 +472,7 @@ function ProfessionalChart({ data, dark, selectedPoint, onSelectPoint, range }) 
         <path
           d={humPath}
           fill="none"
-          stroke="#3b82f6"
+          stroke="#be3bf6"
           strokeWidth="2"
           strokeDasharray="4 3"
           strokeOpacity="0.85"
@@ -482,7 +482,7 @@ function ProfessionalChart({ data, dark, selectedPoint, onSelectPoint, range }) 
         <path
           d={tempPath}
           fill="none"
-          stroke="#ef4444"
+          stroke="#0202df"
           strokeWidth="2.8"
           strokeLinecap="round"
         />

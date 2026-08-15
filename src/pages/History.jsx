@@ -1,84 +1,74 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
-
-import { useNavigate } from "react-router-dom";
-
+import { useEffect, useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
-
+import AppHeader from "../components/AppHeader";
+import PageLoader from "../components/PageLoader";
 import { useAppSettings } from "../context/AppSettingsContext";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
-export default function History() {
+const ANALYSIS_PLANS = ["PRO", "PREMIUM"];
+
+const RANGES = [
+  { key: "day", label: "1 Day", days: 1 },
+  { key: "week", label: "1 Week", days: 7 },
+  { key: "month", label: "1 Month", days: 30 },
+  { key: "3months", label: "3 Months", days: 90 },
+  { key: "6months", label: "6 Months", days: 180 },
+  { key: "year", label: "1 Year", days: 365 },
+];
+
+export default function Analysis() {
   const { isDark } = useAppSettings();
-  const navigate = useNavigate();
 
-  const [planName, setPlanName] = useState("Free");
-
-  const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] =
-    useState("");
-
-  const [selectedDeviceData, setSelectedDeviceData] =
-    useState(null);
-
-  const [history, setHistory] = useState([]);
-
+  const [profile, setProfile] = useState(null);
+  const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [historyLoading, setHistoryLoading] =
-    useState(false);
-
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [accessDenied, setAccessDenied] =
-    useState(false);
+  const [range, setRange] = useState("day");
+  const [selectedPoint, setSelectedPoint] = useState(null);
 
-  // =====================================================
-  // TOKEN
-  // =====================================================
+  const token = localStorage.getItem("token");
 
-  function getToken() {
-    const token =
-      localStorage.getItem("token");
+  const theme = {
+    text: isDark ? "#f8fafc" : "#0f172a",
+    muted: isDark ? "#94a3b8" : "#64748b",
+    card: isDark
+      ? "rgba(255,255,255,0.07)"
+      : "rgba(255,255,255,0.82)",
+    border: isDark
+      ? "rgba(255,255,255,0.12)"
+      : "rgba(15,23,42,0.08)",
+    grid: isDark
+      ? "rgba(148,163,184,0.12)"
+      : "rgba(15,23,42,0.08)",
+  };
 
-    if (!token) {
-      throw new Error(
-        "You are not logged in."
-      );
-    }
-
-    return token;
+  function getPlanName(data) {
+    return String(
+      data?.plan?.planName ||
+        data?.plan?.name ||
+        "FREE"
+    ).toUpperCase();
   }
 
-  // =====================================================
-  // SUBSCRIPTION
-  // =====================================================
+  function canUseAnalysis(plan) {
+    return ANALYSIS_PLANS.includes(plan);
+  }
 
-  async function fetchSubscription() {
-    const token = getToken();
-
+  async function fetchProfile() {
     const res = await fetch(
-      `${API_URL}/api/payments/current`,
+      `${API_URL}/api/profile/me`,
       {
-        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type":
-            "application/json",
         },
       }
     );
 
-    let data = {};
-
-    try {
-      data = await res.json();
-    } catch {
-      data = {};
-    }
+    const data = await res.json();
 
     if (!res.ok) {
       throw new Error(
@@ -87,1205 +77,1215 @@ export default function History() {
       );
     }
 
-    /*
-     * Expected examples:
-     *
-     * {
-     *   currentPlan: "Pro"
-     * }
-     *
-     * OR
-     *
-     * {
-     *   planName: "Pro"
-     * }
-     */
-
-    const currentPlan =
-      data.currentPlan ||
-      data.planName ||
-      data.plan ||
-      "Free";
-
-    const normalizedPlan =
-      String(currentPlan).trim();
-
-    setPlanName(normalizedPlan);
-
-    return normalizedPlan;
+    return data;
   }
 
-  // =====================================================
-  // HISTORY ACCESS
-  // =====================================================
-
-  function checkHistoryAccess(plan) {
-    const normalized =
-      String(plan || "")
-        .trim()
-        .toLowerCase();
-
-    return normalized !== "free";
-  }
-
-  // =====================================================
-  // DEVICES
-  // =====================================================
-
-  async function fetchDevices() {
-    const token = getToken();
-
+  async function fetchTelemetry() {
     const res = await fetch(
-      `${API_URL}/api/devices/my-devices`,
+      `${API_URL}/api/telemetry/my-devices`,
       {
-        method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type":
-            "application/json",
         },
       }
     );
 
-    let data = {};
-
-    try {
-      data = await res.json();
-    } catch {
-      data = {};
-    }
+    const data = await res.json();
 
     if (!res.ok) {
       throw new Error(
         data.message ||
-          "Failed to load devices"
+          "Failed to load telemetry"
       );
     }
 
-    const deviceList =
-      Array.isArray(data)
-        ? data
-        : Array.isArray(data.data)
-        ? data.data
-        : Array.isArray(data.devices)
-        ? data.devices
-        : [];
-
-    setDevices(deviceList);
-
-    if (deviceList.length > 0) {
-      const firstDevice =
-        deviceList[0];
-
-      const firstDeviceId =
-        firstDevice.deviceId ||
-        "";
-
-      setSelectedDevice(
-        firstDeviceId
-      );
-
-      setSelectedDeviceData(
-        firstDevice
-      );
-    } else {
-      setSelectedDevice("");
-      setSelectedDeviceData(null);
-    }
-
-    return deviceList;
+    return Array.isArray(data.data)
+      ? data.data
+      : [];
   }
 
-  // =====================================================
-  // SELECTED DEVICE
-  // =====================================================
-
-  useEffect(() => {
-    if (!selectedDevice) {
-      setSelectedDeviceData(null);
-      return;
-    }
-
-    const device =
-      devices.find(
-        (item) =>
-          item.deviceId ===
-          selectedDevice
-      );
-
-    setSelectedDeviceData(
-      device || null
-    );
-  }, [
-    selectedDevice,
-    devices,
-  ]);
-
-  // =====================================================
-  // HISTORY
-  // =====================================================
-
-  async function fetchHistory(deviceId) {
-    if (
-      !deviceId ||
-      accessDenied
-    ) {
-      setHistory([]);
-      return;
-    }
-
+  async function loadAnalysis(
+    showRefresh = false
+  ) {
     try {
-      const token = getToken();
-
-      setHistoryLoading(true);
-      setError("");
-
-      const url =
-        `${API_URL}/api/telemetry/history/` +
-        `${encodeURIComponent(deviceId)}` +
-        `?limit=100`;
-
-      const res = await fetch(
-        url,
-        {
-          method: "GET",
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-            "Content-Type":
-              "application/json",
-          },
-        }
-      );
-
-      let data = {};
-
-      try {
-        data = await res.json();
-      } catch {
-        data = {};
+      if (showRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
 
-      // =================================================
-      // PLAN RESTRICTION
-      // =================================================
+      setError("");
 
-      if (res.status === 403) {
-        setHistory([]);
-        setAccessDenied(true);
-
-        setError(
-          data.message ||
-            "Your current subscription does not include sensor history."
+      if (!token) {
+        throw new Error(
+          "Authentication required"
         );
+      }
 
+      const profileData =
+        await fetchProfile();
+
+      setProfile(profileData);
+
+      const planName =
+        getPlanName(profileData);
+
+      if (!canUseAnalysis(planName)) {
+        setRecords([]);
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(
-          data.message ||
-            `Failed to load sensor history (${res.status})`
-        );
-      }
+      const telemetry =
+        await fetchTelemetry();
 
-      // =================================================
-      // NORMALIZE RESPONSE
-      // =================================================
-
-      const rawData =
-        Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data.history)
-          ? data.history
-          : Array.isArray(data)
-          ? data
-          : [];
-
-      const sortedHistory =
-        [...rawData].sort(
-          (a, b) =>
-            new Date(
-              b.createdAt ||
-                b.timestamp ||
-                0
-            ) -
-            new Date(
-              a.createdAt ||
-                a.timestamp ||
-                0
+      const sorted = telemetry
+        .filter(
+          (item) =>
+            item.createdAt &&
+            (
+              Number.isFinite(
+                Number(item.temperature)
+              ) ||
+              Number.isFinite(
+                Number(item.humidity)
+              )
             )
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt) -
+            new Date(b.createdAt)
         );
 
-      setHistory(
-        sortedHistory
-      );
+      setRecords(sorted);
     } catch (err) {
       console.error(
-        "History error:",
+        "Analysis error:",
         err
       );
 
-      setHistory([]);
-
       setError(
         err.message ||
-          "Failed to load sensor history"
+          "Failed to load analysis"
       );
+
+      setRecords([]);
     } finally {
-      setHistoryLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   }
 
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
-
   useEffect(() => {
-    let mounted = true;
-
-    async function loadPage() {
-      try {
-        setLoading(true);
-        setError("");
-        setAccessDenied(false);
-
-        // -----------------------------------------------
-        // 1. CURRENT PAYMENT / PLAN
-        // -----------------------------------------------
-
-        const plan =
-          await fetchSubscription();
-
-        if (!mounted) {
-          return;
-        }
-
-        const allowed =
-          checkHistoryAccess(plan);
-
-        if (!allowed) {
-          setAccessDenied(true);
-          return;
-        }
-
-        // -----------------------------------------------
-        // 2. DEVICES
-        // -----------------------------------------------
-
-        await fetchDevices();
-      } catch (err) {
-        console.error(
-          "History page error:",
-          err
-        );
-
-        if (!mounted) {
-          return;
-        }
-
-        setError(
-          err.message ||
-            "Failed to load history"
-        );
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadPage();
-
-    return () => {
-      mounted = false;
-    };
+    loadAnalysis();
   }, []);
 
-  // =====================================================
-  // LOAD HISTORY WHEN DEVICE CHANGES
-  // =====================================================
+  const planName = getPlanName(profile);
+  const analysisAllowed =
+    canUseAnalysis(planName);
 
-  useEffect(() => {
-    if (
-      selectedDevice &&
-      !accessDenied &&
-      !loading
-    ) {
-      fetchHistory(
-        selectedDevice
-      );
-    }
+  const selectedRange =
+    RANGES.find(
+      (item) => item.key === range
+    ) || RANGES[0];
+
+  const filteredRecords = useMemo(() => {
+    if (!records.length) return [];
+
+    const now = Date.now();
+
+    const from =
+      now -
+      selectedRange.days *
+        24 *
+        60 *
+        60 *
+        1000;
+
+    return records.filter((item) => {
+      const time =
+        new Date(
+          item.createdAt
+        ).getTime();
+
+      return time >= from;
+    });
   }, [
-    selectedDevice,
-    accessDenied,
-    loading,
+    records,
+    selectedRange,
   ]);
 
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
-
-  function formatDate(date) {
-    if (!date) {
-      return "Unknown time";
-    }
-
-    const parsed =
-      new Date(date);
-
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
-      return "Unknown time";
-    }
-
-    return parsed.toLocaleString();
-  }
-
-  // =====================================================
-  // FORMAT NUMBER
-  // =====================================================
-
-  function formatNumber(
-    value,
-    decimals = 1
-  ) {
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
-    ) {
-      return "--";
-    }
-
-    const number =
-      Number(value);
-
-    if (
-      !Number.isFinite(number)
-    ) {
-      return "--";
-    }
-
-    return number.toFixed(
-      decimals
+  const chartData = useMemo(() => {
+    return downsample(
+      filteredRecords,
+      100
     );
-  }
+  }, [filteredRecords]);
 
-  // =====================================================
-  // DEVICE CONFIGURATION
-  // =====================================================
+  const statistics = useMemo(() => {
+    const temperatures =
+      filteredRecords
+        .map((item) =>
+          Number(item.temperature)
+        )
+        .filter(Number.isFinite);
 
-  const chicksAge =
-    selectedDeviceData?.chicksAge ??
-    selectedDeviceData?.chickAge ??
-    null;
+    const humidities =
+      filteredRecords
+        .map((item) =>
+          Number(item.humidity)
+        )
+        .filter(Number.isFinite);
 
-  const numberOfChickens =
-    selectedDeviceData?.numberOfChickens ??
-    selectedDeviceData?.chickenCount ??
-    null;
+    const average = (values) =>
+      values.length
+        ? values.reduce(
+            (sum, value) =>
+              sum + value,
+            0
+          ) / values.length
+        : 0;
 
-  const broodingRoomArea =
-    selectedDeviceData?.broodingRoomArea ??
-    selectedDeviceData?.roomArea ??
-    null;
+    return {
+      maxTemp: temperatures.length
+        ? Math.max(...temperatures)
+        : 0,
 
-  const chicksType =
-    selectedDeviceData?.chicksType ??
-    selectedDeviceData?.chickType ??
-    "--";
+      minTemp: temperatures.length
+        ? Math.min(...temperatures)
+        : 0,
 
-  // =====================================================
-  // THEME
-  // =====================================================
+      avgTemp: average(
+        temperatures
+      ),
 
-  const background = isDark
-    ? "linear-gradient(135deg,#07111f,#0f2537)"
-    : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
+      avgHumidity: average(
+        humidities
+      ),
 
-  const text = isDark
-    ? "#ffffff"
-    : "#111827";
+      maxHumidity:
+        humidities.length
+          ? Math.max(...humidities)
+          : 0,
 
-  const muted = isDark
-    ? "#94a3b8"
-    : "#64748b";
+      minHumidity:
+        humidities.length
+          ? Math.min(...humidities)
+          : 0,
 
-  const cardBackground = isDark
-    ? "rgba(255,255,255,0.08)"
-    : "rgba(255,255,255,0.82)";
+      total:
+        filteredRecords.length,
+    };
+  }, [filteredRecords]);
 
-  const border = isDark
-    ? "rgba(255,255,255,0.08)"
-    : "rgba(15,23,42,0.08)";
+  const insight = useMemo(() => {
+    const temp =
+      statistics.avgTemp;
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+    const humidity =
+      statistics.avgHumidity;
+
+    if (!filteredRecords.length) {
+      return {
+        type: "neutral",
+        text:
+          "No telemetry data is available for this period.",
+      };
+    }
+
+    if (
+      temp > 32 ||
+      temp < 20
+    ) {
+      return {
+        type: "warning",
+        text:
+          "Temperature has moved outside the preferred monitoring range. Check the brooder environment.",
+      };
+    }
+
+    if (
+      humidity > 75 ||
+      humidity < 40
+    ) {
+      return {
+        type: "warning",
+        text:
+          "Humidity has moved outside the preferred monitoring range. Monitor ventilation and moisture.",
+      };
+    }
+
+    return {
+      type: "good",
+      text:
+        "Environmental conditions look relatively stable during this period.",
+    };
+  }, [statistics, filteredRecords]);
 
   if (loading) {
-    return (
-      <div
-        style={{
-          ...styles.page,
-          background,
-          color: text,
-        }}
-      >
-        <div
-          style={
-            styles.loadingPage
-          }
-        >
-          <div
-            style={styles.spinner}
-          />
-
-          <p
-            style={{
-              color: muted,
-            }}
-          >
-            Checking subscription...
-          </p>
-        </div>
-
-        <BottomNav />
-      </div>
-    );
+    return <PageLoader />;
   }
-
-  // =====================================================
-  // ACCESS DENIED
-  // =====================================================
-
-  if (accessDenied) {
-    return (
-      <div
-        style={{
-          ...styles.page,
-          background,
-          color: text,
-        }}
-      >
-        <div
-          style={styles.header}
-        >
-          <div>
-            <h1
-              style={{
-                margin: 0,
-                marginBottom: 8,
-              }}
-            >
-              Brooder History
-            </h1>
-
-            <p
-              style={{
-                color: muted,
-                margin: 0,
-              }}
-            >
-              Historical brooder
-              conditions
-            </p>
-          </div>
-        </div>
-
-        <div
-          style={{
-            ...styles.subscriptionCard,
-            background:
-              cardBackground,
-            border:
-              `1px solid ${border}`,
-          }}
-        >
-          <div
-            style={styles.lockIcon}
-          >
-            🔒
-          </div>
-
-          <h2
-            style={
-              styles.subscriptionTitle
-            }
-          >
-            History requires a paid
-            plan
-          </h2>
-
-          <p
-            style={{
-              ...styles.subscriptionText,
-              color: muted,
-            }}
-          >
-            Your current plan is{" "}
-            <strong>
-              {planName}
-            </strong>
-            .
-          </p>
-
-          <p
-            style={{
-              ...styles.subscriptionText,
-              color: muted,
-            }}
-          >
-            Upgrade your ANTIMATE
-            subscription to access
-            historical brooder
-            telemetry.
-          </p>
-
-          <button
-            onClick={() =>
-              navigate("/plans")
-            }
-            style={
-              styles.primaryButton
-            }
-          >
-            View Plans
-          </button>
-
-          <button
-            onClick={() =>
-              navigate(
-                "/dashboard"
-              )
-            }
-            style={
-              styles.secondaryButton
-            }
-          >
-            Back to Dashboard
-          </button>
-        </div>
-
-        <BottomNav />
-      </div>
-    );
-  }
-
-  // =====================================================
-  // MAIN
-  // =====================================================
 
   return (
     <div
       style={{
         ...styles.page,
-        background,
-        color: text,
+        background: isDark
+          ? "linear-gradient(135deg,#07111f,#0f2537)"
+          : "linear-gradient(135deg,#f8fafc,#e2e8f0)",
+        color: theme.text,
       }}
     >
-      <style>
-        {`
-          @keyframes loadingMove {
-            0% {
-              transform: translateX(-100%);
-            }
+      <AppHeader title="Analysis" />
 
-            100% {
-              transform: translateX(300%);
-            }
-          }
-
-          @keyframes spin {
-            from {
-              transform: rotate(0deg);
-            }
-
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          @media (max-width: 700px) {
-            .history-header {
-              flex-direction: column;
-              align-items: flex-start !important;
-              gap: 14px;
-            }
-
-            .analysis-button {
-              width: 100%;
-            }
-
-            .history-row {
-              flex-direction: column;
-              align-items: stretch !important;
-            }
-
-            .history-grid {
-              grid-template-columns: 1fr !important;
-            }
-
-            .history-right {
-              text-align: left !important;
-            }
-          }
-        `}
-      </style>
-
-      {/* LOADING BAR */}
-
-      {historyLoading && (
-        <div
-          style={
-            styles.loadingContainer
-          }
-        >
-          <div
-            style={
-              styles.loadingBar
-            }
-          />
-        </div>
-      )}
-
-      {/* HEADER */}
-
-      <div
-        className="history-header"
-        style={styles.header}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              marginBottom: 8,
-            }}
-          >
-            Brooder History
-          </h1>
-
-          <p
-            style={{
-              color: muted,
-              margin: 0,
-            }}
-          >
-            Historical conditions of
-            your brooder
-          </p>
-        </div>
-
-        <button
-          className="analysis-button"
-          onClick={() =>
-            navigate("/analysis")
-          }
-          style={
-            styles.analysisButton
-          }
-        >
-          📊 View Analysis
-        </button>
-      </div>
-
-      {/* DEVICE SELECTOR */}
-
-      {devices.length > 0 && (
-        <div
-          style={{
-            ...styles.selectorCard,
-            background:
-              cardBackground,
-            border:
-              `1px solid ${border}`,
-          }}
-        >
-          <label
-            style={{
-              ...styles.selectorLabel,
-              color: muted,
-            }}
-          >
-            Select brooder
-          </label>
-
-          <select
-            value={
-              selectedDevice
-            }
-            onChange={(e) =>
-              setSelectedDevice(
-                e.target.value
-              )
-            }
-            style={{
-              ...styles.select,
-              background:
-                isDark
-                  ? "#172033"
-                  : "#ffffff",
-              color: text,
-              border:
-                `1px solid ${border}`,
-            }}
-          >
-            {devices.map(
-              (device) => (
-                <option
-                  key={
-                    device._id ||
-                    device.deviceId
-                  }
-                  value={
-                    device.deviceId
-                  }
-                >
-                  {device.deviceName ||
-                    device.name ||
-                    device.brooderName ||
-                    "My Brooder"}
-                </option>
-              )
-            )}
-          </select>
-        </div>
-      )}
-
-      {/* DEVICE CONFIG */}
-
-      {selectedDeviceData && (
-        <div
-          style={{
-            ...styles.configCard,
-            background:
-              cardBackground,
-            border:
-              `1px solid ${border}`,
-          }}
-        >
-          <div
-            style={styles.configItem}
-          >
-            <span
-              style={{
-                ...styles.infoLabel,
-                color: muted,
-              }}
-            >
-              🐣 Age
-            </span>
-
-            <strong>
-              {chicksAge !== null
-                ? `${chicksAge} days`
-                : "--"}
-            </strong>
-          </div>
-
-          <div
-            style={styles.configItem}
-          >
-            <span
-              style={{
-                ...styles.infoLabel,
-                color: muted,
-              }}
-            >
-              🐔 Chickens
-            </span>
-
-            <strong>
-              {numberOfChickens ??
-                "--"}
-            </strong>
-          </div>
-
-          <div
-            style={styles.configItem}
-          >
-            <span
-              style={{
-                ...styles.infoLabel,
-                color: muted,
-              }}
-            >
-              📐 Room
-            </span>
-
-            <strong>
-              {broodingRoomArea !==
-              null
-                ? `${formatNumber(
-                    broodingRoomArea,
-                    2
-                  )} m²`
-                : "--"}
-            </strong>
-          </div>
-
-          <div
-            style={styles.configItem}
-          >
-            <span
-              style={{
-                ...styles.infoLabel,
-                color: muted,
-              }}
-            >
-              🐓 Type
-            </span>
-
-            <strong
-              style={{
-                textTransform:
-                  "capitalize",
-              }}
-            >
-              {chicksType}
-            </strong>
-          </div>
-        </div>
-      )}
-
-      {/* ERROR */}
-
-      {error && (
-        <div
-          style={{
-            ...styles.error,
-            background:
-              isDark
-                ? "rgba(239,68,68,0.12)"
-                : "rgba(239,68,68,0.08)",
-            border:
-              "1px solid rgba(239,68,68,0.2)",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* NO DEVICE */}
-
-      {!loading &&
-        devices.length === 0 &&
-        !error && (
-          <div
-            style={{
-              ...styles.empty,
-              background:
-                cardBackground,
-            }}
-          >
-            <div
-              style={
-                styles.emptyIcon
-              }
-            >
-              🐣
-            </div>
-
-            <h3>
-              No brooder connected
-            </h3>
+      <main style={styles.content}>
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>
+              Brooder Analysis
+            </h1>
 
             <p
               style={{
-                color: muted,
+                ...styles.subtitle,
+                color: theme.muted,
               }}
             >
-              Connect a Smart Brooder
-              to start collecting
-              historical data.
+              Detailed environmental
+              performance
             </p>
+          </div>
 
+          {analysisAllowed && (
             <button
               onClick={() =>
-                navigate(
-                  "/device-management"
-                )
+                loadAnalysis(true)
               }
-              style={
-                styles.primaryButton
-              }
+              disabled={refreshing}
+              style={styles.refresh}
             >
-              Add Brooder
+              {refreshing
+                ? "..."
+                : "Refresh"}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-      {/* NO DATA */}
-
-      {!loading &&
-        !historyLoading &&
-        devices.length > 0 &&
-        history.length === 0 &&
-        !error && (
+        {!analysisAllowed ? (
           <div
             style={{
-              ...styles.empty,
-              background:
-                cardBackground,
+              ...styles.lock,
+              background: theme.card,
+              border: `1px solid ${theme.border}`,
             }}
           >
-            <div
-              style={
-                styles.emptyIcon
-              }
-            >
-              📊
+            <div style={styles.lockIcon}>
+              🔒
             </div>
 
-            <h3>
-              No brooder data yet
-            </h3>
+            <h2>
+              Analysis is locked
+            </h2>
 
             <p
               style={{
-                color: muted,
+                color: theme.muted,
+                lineHeight: 1.6,
               }}
             >
-              Historical telemetry
-              will appear here when
-              your Smart Brooder starts
-              sending data.
+              Detailed environmental
+              analysis is available on
+              Pro and Premium plans.
             </p>
+
+            <span
+              style={styles.planBadge}
+            >
+              Current plan: {planName}
+            </span>
           </div>
-        )}
+        ) : (
+          <>
+            {error && (
+              <div
+                style={styles.error}
+              >
+                {error}
+              </div>
+            )}
 
-      {/* HISTORY */}
+            {/* RANGE */}
 
-      {history.map(
-        (item, index) => {
-          const temperature =
-            item.temperature;
-
-          const humidity =
-            item.humidity;
-
-          const heater =
-            item.heater || "OFF";
-
-          const fanSpeed =
-            Number(
-              item.fanSpeed ??
-                0
-            );
-
-          const fan =
-            item.fan || "OFF";
-
-          return (
-            <div
-              className="history-row"
-              key={
-                item._id ||
-                `${item.createdAt}-${index}`
-              }
+            <section
               style={{
-                ...styles.row,
-                background:
-                  cardBackground,
-                border:
-                  `1px solid ${border}`,
+                ...styles.rangeBox,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
               }}
             >
-              {/* ENVIRONMENT */}
-
-              <div
-                style={
-                  styles.mainInfo
-                }
-              >
-                <div
-                  style={
-                    styles.temperature
-                  }
-                >
-                  <span>
-                    🌡️
-                  </span>
-
-                  <strong>
-                    {formatNumber(
-                      temperature
-                    )}
-                    °C
-                  </strong>
-                </div>
-
-                <div
-                  style={
-                    styles.humidity
-                  }
-                >
-                  <span>
-                    💧
-                  </span>
-
-                  <span>
-                    {formatNumber(
-                      humidity
-                    )}
-                    %
-                  </span>
-                </div>
-              </div>
-
-              {/* OUTSIDE ENVIRONMENT */}
-
-              <div
-                style={
-                  styles.outside
-                }
-              >
-                <span
+              <div>
+                <p
                   style={{
-                    color: muted,
+                    ...styles.sectionLabel,
+                    color: theme.muted,
                   }}
                 >
-                  Outside
+                  Analysis period
+                </p>
+
+                <strong>
+                  {selectedRange.label}
+                </strong>
+              </div>
+
+              <div
+                style={styles.rangeScroll}
+              >
+                {RANGES.map(
+                  (item) => (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        setRange(
+                          item.key
+                        );
+                        setSelectedPoint(
+                          null
+                        );
+                      }}
+                      style={{
+                        ...styles.rangeButton,
+                        ...(range ===
+                        item.key
+                          ? styles.rangeActive
+                          : {
+                              color:
+                                theme.muted,
+                              background:
+                                "transparent",
+                            }),
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                )}
+              </div>
+            </section>
+
+            {/* SUMMARY */}
+
+            <section
+              style={styles.grid}
+            >
+              <StatCard
+                title="Average Temp"
+                value={`${statistics.avgTemp.toFixed(
+                  1
+                )}°C`}
+                icon="🌡️"
+                theme={theme}
+              />
+
+              <StatCard
+                title="Max Temp"
+                value={`${statistics.maxTemp.toFixed(
+                  1
+                )}°C`}
+                icon="🔥"
+                theme={theme}
+              />
+
+              <StatCard
+                title="Min Temp"
+                value={`${statistics.minTemp.toFixed(
+                  1
+                )}°C`}
+                icon="❄️"
+                theme={theme}
+              />
+
+              <StatCard
+                title="Avg Humidity"
+                value={`${statistics.avgHumidity.toFixed(
+                  1
+                )}%`}
+                icon="💧"
+                theme={theme}
+              />
+            </section>
+
+            {/* CHART */}
+
+            <section
+              style={{
+                ...styles.chartBox,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+              }}
+            >
+              <div
+                style={
+                  styles.chartHeader
+                }
+              >
+                <div>
+                  <h2
+                    style={
+                      styles.chartTitle
+                    }
+                  >
+                    Temperature & Humidity
+                  </h2>
+
+                  <p
+                    style={{
+                      ...styles.subtitle,
+                      color: theme.muted,
+                    }}
+                  >
+                    Touch a point for
+                    detailed telemetry
+                  </p>
+                </div>
+
+                <span
+                  style={
+                    styles.recordsBadge
+                  }
+                >
+                  {statistics.total} records
+                </span>
+              </div>
+
+              {chartData.length ? (
+                <AnalysisChart
+                  data={chartData}
+                  dark={isDark}
+                  selectedPoint={
+                    selectedPoint
+                  }
+                  onSelectPoint={
+                    setSelectedPoint
+                  }
+                  range={range}
+                />
+              ) : (
+                <div
+                  style={styles.noData}
+                >
+                  No telemetry data
+                  available for this
+                  period.
+                </div>
+              )}
+
+              {selectedPoint && (
+                <div
+                  style={{
+                    ...styles.pointDetails,
+                    background:
+                      isDark
+                        ? "rgba(37,99,235,0.12)"
+                        : "rgba(37,99,235,0.07)",
+                    border:
+                      "1px solid rgba(37,99,235,0.18)",
+                  }}
+                >
+                  <strong>
+                    Selected reading
+                  </strong>
+
+                  <div
+                    style={
+                      styles.pointGrid
+                    }
+                  >
+                    <span>
+                      Temperature
+                      <b>
+                        {selectedPoint.temperature ??
+                          "—"}
+                        °C
+                      </b>
+                    </span>
+
+                    <span>
+                      Humidity
+                      <b>
+                        {selectedPoint.humidity ??
+                          "—"}
+                        %
+                      </b>
+                    </span>
+
+                    <span>
+                      Time
+                      <b>
+                        {formatDateTime(
+                          selectedPoint.createdAt
+                        )}
+                      </b>
+                    </span>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* INSIGHT */}
+
+            <section
+              style={{
+                ...styles.insight,
+                background:
+                  insight.type ===
+                  "warning"
+                    ? "rgba(245,158,11,0.10)"
+                    : "rgba(34,197,94,0.10)",
+                border:
+                  insight.type ===
+                  "warning"
+                    ? "1px solid rgba(245,158,11,0.25)"
+                    : "1px solid rgba(34,197,94,0.20)",
+              }}
+            >
+              <div
+                style={styles.insightIcon}
+              >
+                {insight.type ===
+                "warning"
+                  ? "⚠️"
+                  : "✓"}
+              </div>
+
+              <div>
+                <strong>
+                  Environmental insight
+                </strong>
+
+                <p
+                  style={{
+                    margin:
+                      "5px 0 0",
+                    color:
+                      theme.muted,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {insight.text}
+                </p>
+              </div>
+            </section>
+
+            {/* DATA SUMMARY */}
+
+            <section
+              style={{
+                ...styles.dataSummary,
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    color: theme.muted,
+                  }}
+                >
+                  Records
                 </span>
 
                 <strong>
-                  {formatNumber(
-                    item.outsideTemperature
-                  )}
-                  °C
+                  {statistics.total}
                 </strong>
-
-                <span>
-                  💧{" "}
-                  {formatNumber(
-                    item.outsideHumidity
-                  )}
-                  %
-                </span>
               </div>
 
-              {/* ACTUATORS */}
-
-              <div
-                className="history-right"
-                style={styles.right}
-              >
-                <p
-                  style={
-                    styles.status
-                  }
-                >
-                  🔥 Heater{" "}
-                  <strong>
-                    {String(
-                      heater
-                    ).toUpperCase()}
-                  </strong>
-                </p>
-
-                <p
-                  style={
-                    styles.fan
-                  }
-                >
-                  💨 Fan{" "}
-                  {fanSpeed}%
-                  {" "}
-                  ({String(
-                    fan
-                  ).toUpperCase()})
-                </p>
-
-                <p
+              <div>
+                <span
                   style={{
-                    ...styles.date,
-                    color: muted,
+                    color: theme.muted,
                   }}
                 >
-                  {formatDate(
-                    item.createdAt
+                  Min humidity
+                </span>
+
+                <strong>
+                  {statistics.minHumidity.toFixed(
+                    1
                   )}
-                </p>
+                  %
+                </strong>
               </div>
-            </div>
-          );
-        }
-      )}
+
+              <div>
+                <span
+                  style={{
+                    color: theme.muted,
+                  }}
+                >
+                  Max humidity
+                </span>
+
+                <strong>
+                  {statistics.maxHumidity.toFixed(
+                    1
+                  )}
+                  %
+                </strong>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
 
       <BottomNav />
     </div>
   );
 }
 
-// =======================================================
-// STYLES
-// =======================================================
+/* =====================================================
+   CHART
+===================================================== */
+
+function AnalysisChart({
+  data,
+  dark,
+  selectedPoint,
+  onSelectPoint,
+  range,
+}) {
+  const width = 360;
+  const height = 190;
+
+  const paddingLeft = 42;
+  const paddingRight = 12;
+  const paddingTop = 15;
+  const paddingBottom = 32;
+
+  const chartWidth =
+    width -
+    paddingLeft -
+    paddingRight;
+
+  const chartHeight =
+    height -
+    paddingTop -
+    paddingBottom;
+
+  const temperatures = data
+    .map((item) =>
+      Number(item.temperature)
+    )
+    .filter(Number.isFinite);
+
+  const humidities = data
+    .map((item) =>
+      Number(item.humidity)
+    )
+    .filter(Number.isFinite);
+
+  const tempMin =
+    temperatures.length
+      ? Math.floor(
+          Math.min(...temperatures) - 1
+        )
+      : 0;
+
+  const tempMax =
+    temperatures.length
+      ? Math.ceil(
+          Math.max(...temperatures) + 1
+        )
+      : 40;
+
+  const humidityMin = 0;
+  const humidityMax = 100;
+
+  const getX = (index) =>
+    paddingLeft +
+    (index /
+      Math.max(data.length - 1, 1)) *
+      chartWidth;
+
+  const getTempY = (value) =>
+    paddingTop +
+    chartHeight -
+    ((value - tempMin) /
+      Math.max(
+        tempMax - tempMin,
+        1
+      )) *
+      chartHeight;
+
+  const getHumidityY = (value) =>
+    paddingTop +
+    chartHeight -
+    ((value - humidityMin) /
+      (humidityMax -
+        humidityMin)) *
+      chartHeight;
+
+  const tempPoints = data
+    .map((item, index) => {
+      const value =
+        Number(item.temperature);
+
+      if (!Number.isFinite(value))
+        return null;
+
+      return `${getX(index)},${getTempY(
+        value
+      )}`;
+    })
+    .filter(Boolean)
+    .join(" ");
+
+  const humidityPoints = data
+    .map((item, index) => {
+      const value =
+        Number(item.humidity);
+
+      if (!Number.isFinite(value))
+        return null;
+
+      return `${getX(
+        index
+      )},${getHumidityY(value)}`;
+    })
+    .filter(Boolean)
+    .join(" ");
+
+  const yTicks = 5;
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+      }}
+    >
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        style={{
+          width: "100%",
+          height: "220px",
+          display: "block",
+        }}
+        onClick={(event) => {
+          const rect =
+            event.currentTarget.getBoundingClientRect();
+
+          const svgX =
+            ((event.clientX -
+              rect.left) /
+              rect.width) *
+            width;
+
+          const index = Math.round(
+            ((svgX -
+              paddingLeft) /
+              chartWidth) *
+              Math.max(
+                data.length - 1,
+                1
+              )
+          );
+
+          if (
+            index >= 0 &&
+            index < data.length
+          ) {
+            onSelectPoint(
+              data[index]
+            );
+          }
+        }}
+      >
+        {/* GRID */}
+
+        {Array.from(
+          { length: yTicks },
+          (_, index) => {
+            const value =
+              tempMin +
+              ((tempMax -
+                tempMin) /
+                (yTicks - 1)) *
+                index;
+
+            const y =
+              getTempY(value);
+
+            return (
+              <g key={index}>
+                <line
+                  x1={paddingLeft}
+                  x2={
+                    width -
+                    paddingRight
+                  }
+                  y1={y}
+                  y2={y}
+                  stroke={
+                    dark
+                      ? "rgba(148,163,184,0.13)"
+                      : "rgba(15,23,42,0.08)"
+                  }
+                />
+
+                <text
+                  x="4"
+                  y={y + 4}
+                  fontSize="9"
+                  fill={
+                    dark
+                      ? "#94a3b8"
+                      : "#64748b"
+                  }
+                >
+                  {value.toFixed(0)}°
+                </text>
+              </g>
+            );
+          }
+        )}
+
+        {/* TEMPERATURE */}
+
+        <polyline
+          points={tempPoints}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* HUMIDITY */}
+
+        <polyline
+          points={humidityPoints}
+          fill="none"
+          stroke="#7c3aed"
+          strokeWidth="2.5"
+          strokeDasharray="5 4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* POINTS */}
+
+        {data.map(
+          (item, index) => {
+            const temp =
+              Number(
+                item.temperature
+              );
+
+            if (
+              !Number.isFinite(temp)
+            ) {
+              return null;
+            }
+
+            const selected =
+              selectedPoint?.createdAt ===
+              item.createdAt;
+
+            return (
+              <circle
+                key={`${item.createdAt}-${index}`}
+                cx={getX(index)}
+                cy={getTempY(temp)}
+                r={
+                  selected
+                    ? 6
+                    : 3.5
+                }
+                fill="#2563eb"
+                stroke={
+                  dark
+                    ? "#0f172a"
+                    : "#ffffff"
+                }
+                strokeWidth="2"
+              />
+            );
+          }
+        )}
+
+        {/* X AXIS */}
+
+        {getXAxisLabels(
+          data,
+          range
+        ).map((item) => (
+          <text
+            key={item.index}
+            x={getX(item.index)}
+            y={
+              height -
+              8
+            }
+            textAnchor="middle"
+            fontSize="8"
+            fill={
+              dark
+                ? "#94a3b8"
+                : "#64748b"
+            }
+          >
+            {item.label}
+          </text>
+        ))}
+      </svg>
+
+      <div
+        style={styles.legend}
+      >
+        <span>
+          <i
+            style={{
+              ...styles.legendDot,
+              background:
+                "#2563eb",
+            }}
+          />
+          Temperature
+        </span>
+
+        <span>
+          <i
+            style={{
+              ...styles.legendDot,
+              background:
+                "#7c3aed",
+            }}
+          />
+          Humidity
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
+function downsample(records, maxPoints) {
+  if (records.length <= maxPoints) {
+    return records;
+  }
+
+  const step =
+    (records.length - 1) /
+    (maxPoints - 1);
+
+  const result = [];
+
+  for (
+    let i = 0;
+    i < maxPoints;
+    i++
+  ) {
+    result.push(
+      records[
+        Math.round(i * step)
+      ]
+    );
+  }
+
+  return result;
+}
+
+function getXAxisLabels(
+  data,
+  range
+) {
+  if (!data.length) return [];
+
+  const count =
+    range === "day"
+      ? 6
+      : range === "week"
+      ? 7
+      : 6;
+
+  const result = [];
+
+  for (
+    let i = 0;
+    i < count;
+    i++
+  ) {
+    const index = Math.round(
+      (i /
+        Math.max(
+          count - 1,
+          1
+        )) *
+        (data.length - 1)
+    );
+
+    const item =
+      data[index];
+
+    if (!item) continue;
+
+    const date =
+      new Date(
+        item.createdAt
+      );
+
+    let label;
+
+    if (
+      range === "day"
+    ) {
+      label =
+        date.toLocaleTimeString(
+          [],
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
+    } else if (
+      range === "week"
+    ) {
+      label =
+        date.toLocaleDateString(
+          [],
+          {
+            weekday: "short",
+          }
+        );
+    } else {
+      label =
+        date.toLocaleDateString(
+          [],
+          {
+            month: "short",
+            day: "numeric",
+          }
+        );
+    }
+
+    result.push({
+      index,
+      label,
+    });
+  }
+
+  return result;
+}
+
+function formatDateTime(
+  value
+) {
+  if (!value) return "—";
+
+  return new Date(
+    value
+  ).toLocaleString(
+    [],
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  );
+}
+
+/* =====================================================
+   STAT CARD
+===================================================== */
+
+function StatCard({
+  title,
+  value,
+  icon,
+  theme,
+}) {
+  return (
+    <div
+      style={{
+        ...styles.card,
+        background: theme.card,
+        border: `1px solid ${theme.border}`,
+      }}
+    >
+      <div
+        style={styles.cardIcon}
+      >
+        {icon}
+      </div>
+
+      <p
+        style={{
+          ...styles.cardLabel,
+          color: theme.muted,
+        }}
+      >
+        {title}
+      </p>
+
+      <strong
+        style={styles.cardValue}
+      >
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+/* =====================================================
+   STYLES
+===================================================== */
 
 const styles = {
   page: {
     minHeight: "100vh",
     padding: "20px",
-    paddingBottom: "100px",
+    paddingBottom: "110px",
     fontFamily:
       "Inter, Arial, sans-serif",
+    boxSizing: "border-box",
   },
 
-  loadingPage: {
-    minHeight: "80vh",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-  },
-
-  spinner: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
-    border:
-      "3px solid rgba(148,163,184,0.25)",
-    borderTop:
-      "3px solid #2563eb",
-    animation:
-      "spin 0.8s linear infinite",
-  },
-
-  loadingContainer: {
-    position: "fixed",
-    bottom: "72px",
-    left: 0,
-    width: "100%",
-    height: "4px",
-    overflow: "hidden",
-    zIndex: 999,
-  },
-
-  loadingBar: {
-    height: "100%",
-    width: "40%",
-    background:
-      "linear-gradient(90deg,#22c55e,#06b6d4,#7c3aed)",
-    animation:
-      "loadingMove 1.2s infinite linear",
+  content: {
+    maxWidth: "560px",
+    margin: "0 auto",
   },
 
   header: {
     display: "flex",
     justifyContent:
       "space-between",
-    alignItems: "center",
-    marginBottom: "22px",
+    alignItems: "flex-start",
+    gap: "15px",
+    marginTop: "15px",
+    marginBottom: "18px",
   },
 
-  analysisButton: {
-    padding: "11px 16px",
+  title: {
+    margin: 0,
+    fontSize: "27px",
+    fontWeight: 800,
+  },
+
+  subtitle: {
+    margin:
+      "6px 0 0",
+    fontSize: "12px",
+    lineHeight: 1.5,
+  },
+
+  refresh: {
     border: "none",
-    borderRadius: "14px",
+    borderRadius: "12px",
+    padding:
+      "9px 14px",
     background:
       "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#fff",
@@ -1293,190 +1293,221 @@ const styles = {
     cursor: "pointer",
   },
 
-  selectorCard: {
-    padding: "14px",
-    borderRadius: "20px",
-    marginBottom: "16px",
+  lock: {
+    marginTop: "20px",
+    padding: "35px 22px",
+    borderRadius: "25px",
+    textAlign: "center",
     backdropFilter:
-      "blur(12px)",
+      "blur(14px)",
   },
 
-  selectorLabel: {
-    display: "block",
-    fontSize: "12px",
-    marginBottom: "8px",
-    fontWeight: 600,
-  },
-
-  select: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "14px",
-    outline: "none",
-    fontSize: "14px",
-  },
-
-  configCard: {
-    padding: "14px",
+  lockIcon: {
+    width: "65px",
+    height: "65px",
+    margin:
+      "0 auto 15px",
     borderRadius: "20px",
-    marginBottom: "16px",
     display: "grid",
-    gridTemplateColumns:
-      "repeat(4,1fr)",
-    gap: "10px",
-    backdropFilter:
-      "blur(12px)",
-  },
-
-  configItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "5px",
-    padding: "10px",
-    borderRadius: "14px",
+    placeItems: "center",
+    fontSize: "30px",
     background:
-      "rgba(148,163,184,0.08)",
+      "linear-gradient(135deg,rgba(37,99,235,0.15),rgba(124,58,237,0.15))",
   },
 
-  infoLabel: {
-    fontSize: "10px",
+  planBadge: {
+    display: "inline-block",
+    padding:
+      "8px 13px",
+    borderRadius: "999px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    color: "#fff",
+    fontSize: "11px",
     fontWeight: 700,
   },
 
   error: {
-    padding: "14px",
-    borderRadius: "16px",
-    marginBottom: "16px",
-    fontSize: "13px",
-  },
-
-  row: {
-    padding: "18px",
-    borderRadius: "22px",
+    padding: "13px",
     marginBottom: "14px",
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "center",
-    gap: "20px",
+    borderRadius: "15px",
+    background:
+      "rgba(239,68,68,0.1)",
+    color: "#ef4444",
+    fontSize: "12px",
+  },
+
+  rangeBox: {
+    padding: "14px",
+    borderRadius: "20px",
+    marginBottom: "14px",
     backdropFilter:
-      "blur(12px)",
-    boxShadow:
-      "0 10px 25px rgba(0,0,0,0.08)",
+      "blur(14px)",
   },
 
-  mainInfo: {
-    minWidth: "110px",
+  sectionLabel: {
+    margin:
+      "0 0 3px",
+    fontSize: "10px",
+    textTransform:
+      "uppercase",
+    letterSpacing:
+      "0.06em",
   },
 
-  temperature: {
+  rangeScroll: {
     display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "20px",
+    gap: "6px",
+    marginTop: "12px",
+    overflowX: "auto",
+    paddingBottom: "2px",
   },
 
-  humidity: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    marginTop: "10px",
-    fontSize: "14px",
-  },
-
-  outside: {
-    minWidth: "130px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    fontSize: "12px",
-  },
-
-  right: {
-    minWidth: "145px",
-    textAlign: "right",
-  },
-
-  status: {
-    margin: 0,
-    fontSize: "13px",
-  },
-
-  fan: {
-    margin: "7px 0",
-    fontSize: "12px",
-    opacity: 0.8,
-  },
-
-  date: {
-    margin: 0,
+  rangeButton: {
+    border: "none",
+    borderRadius: "11px",
+    padding:
+      "8px 11px",
     fontSize: "11px",
+    fontWeight: 700,
+    cursor: "pointer",
+    whiteSpace:
+      "nowrap",
   },
 
-  empty: {
-    padding: "40px 20px",
-    textAlign: "center",
-    borderRadius: "24px",
-    backdropFilter:
-      "blur(12px)",
+  rangeActive: {
+    color: "#fff",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
   },
 
-  emptyIcon: {
-    fontSize: "35px",
-    marginBottom: "10px",
+  grid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(2,minmax(0,1fr))",
+    gap: "10px",
   },
 
-  subscriptionCard: {
-    maxWidth: "520px",
-    margin: "50px auto 0",
-    padding: "35px 25px",
-    borderRadius: "28px",
-    textAlign: "center",
+  card: {
+    padding: "15px",
+    borderRadius: "21px",
     backdropFilter:
       "blur(14px)",
     boxShadow:
-      "0 20px 50px rgba(0,0,0,0.18)",
+      "0 10px 25px rgba(0,0,0,0.06)",
   },
 
-  lockIcon: {
-    fontSize: "48px",
-    marginBottom: "12px",
-  },
-
-  subscriptionTitle: {
-    margin: "0 0 12px",
+  cardIcon: {
     fontSize: "22px",
   },
 
-  subscriptionText: {
-    fontSize: "14px",
-    lineHeight: 1.6,
-    margin: "8px 0",
+  cardLabel: {
+    margin:
+      "8px 0 4px",
+    fontSize: "10px",
   },
 
-  primaryButton: {
-    marginTop: "18px",
-    padding: "12px 20px",
-    border: "none",
-    borderRadius: "14px",
+  cardValue: {
+    fontSize: "20px",
+  },
+
+  chartBox: {
+    marginTop: "14px",
+    padding: "15px",
+    borderRadius: "24px",
+    backdropFilter:
+      "blur(14px)",
+  },
+
+  chartHeader: {
+    display: "flex",
+    justifyContent:
+      "space-between",
+    alignItems:
+      "flex-start",
+    gap: "10px",
+  },
+
+  chartTitle: {
+    margin: 0,
+    fontSize: "16px",
+  },
+
+  recordsBadge: {
+    padding:
+      "6px 9px",
+    borderRadius: "999px",
     background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "#fff",
+      "rgba(37,99,235,0.10)",
+    color: "#2563eb",
+    fontSize: "10px",
     fontWeight: 700,
-    cursor: "pointer",
+    whiteSpace:
+      "nowrap",
   },
 
-  secondaryButton: {
-    display: "block",
-    width: "100%",
-    marginTop: "10px",
-    padding: "11px 18px",
-    border:
-      "1px solid rgba(148,163,184,0.25)",
-    borderRadius: "14px",
-    background: "transparent",
-    color: "inherit",
-    fontWeight: 600,
-    cursor: "pointer",
+  legend: {
+    display: "flex",
+    justifyContent:
+      "center",
+    gap: "20px",
+    marginTop: "-10px",
+    fontSize: "10px",
+  },
+
+  legendDot: {
+    width: "7px",
+    height: "7px",
+    display: "inline-block",
+    borderRadius: "50%",
+    marginRight: "5px",
+  },
+
+  pointDetails: {
+    marginTop: "8px",
+    padding: "12px",
+    borderRadius: "15px",
+    fontSize: "11px",
+  },
+
+  pointGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(3,1fr)",
+    gap: "8px",
+    marginTop: "9px",
+  },
+
+  insight: {
+    display: "flex",
+    gap: "10px",
+    marginTop: "14px",
+    padding: "14px",
+    borderRadius: "18px",
+    fontSize: "12px",
+  },
+
+  insightIcon: {
+    fontSize: "20px",
+  },
+
+  dataSummary: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(3,1fr)",
+    gap: "10px",
+    marginTop: "12px",
+    padding: "15px",
+    borderRadius: "20px",
+    backdropFilter:
+      "blur(14px)",
+  },
+
+  noData: {
+    padding:
+      "50px 10px",
+    textAlign: "center",
+    fontSize: "12px",
+    opacity: 0.6,
   },
 };

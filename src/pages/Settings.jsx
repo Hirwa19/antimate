@@ -43,25 +43,36 @@ export default function Settings() {
     "https://brooder-backend.onrender.com";
 
   // =====================================================
-  // CHECK PUSH STATUS
+  // GET AUTH TOKEN
+  // =====================================================
+
+  const getToken = () => {
+    return (
+      localStorage.getItem("token") ||
+      localStorage.getItem("accessToken")
+    );
+  };
+
+  // =====================================================
+  // CHECK BROWSER PUSH PERMISSION
   // =====================================================
 
   useEffect(() => {
-    const checkPushStatus = async () => {
+    const checkPushPermission = async () => {
       try {
-        // Browser does not support notifications
         if (!("Notification" in window)) {
           setPushEnabled(false);
           return;
         }
 
-        // Permission not granted
+        // Browser permission is the main source of truth
         if (Notification.permission !== "granted") {
           setPushEnabled(false);
           return;
         }
 
-        // Service worker not supported
+        // If browser permission is granted,
+        // check whether a push subscription exists.
         if (!("serviceWorker" in navigator)) {
           setPushEnabled(false);
           return;
@@ -73,10 +84,10 @@ export default function Settings() {
         const subscription =
           await registration.pushManager.getSubscription();
 
-        setPushEnabled(Boolean(subscription));
+        setPushEnabled(!!subscription);
       } catch (error) {
         console.error(
-          "❌ Failed to check push status:",
+          "❌ Failed to check push permission:",
           error
         );
 
@@ -84,36 +95,11 @@ export default function Settings() {
       }
     };
 
-    checkPushStatus();
+    checkPushPermission();
   }, []);
 
   // =====================================================
-  // VAPID KEY CONVERTER
-  // =====================================================
-
-  const urlBase64ToUint8Array = (base64String) => {
-    const padding = "=".repeat(
-      (4 - (base64String.length % 4)) % 4
-    );
-
-    const base64 = (
-      base64String +
-      padding
-    )
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const rawData = window.atob(base64);
-
-    return Uint8Array.from(
-      [...rawData].map((char) =>
-        char.charCodeAt(0)
-      )
-    );
-  };
-
-  // =====================================================
-  // ENABLE PUSH
+  // ENABLE PUSH NOTIFICATIONS
   // =====================================================
 
   const enablePushNotifications = async () => {
@@ -127,31 +113,27 @@ export default function Settings() {
       // -------------------------------------------------
 
       if (!("Notification" in window)) {
-        throw new Error(
+        alert(
           language === "rw"
-            ? "Browser yawe ntishyigikira push notifications."
+            ? "Browser yawe ntabwo ishyigikira push notifications."
             : "Your browser does not support push notifications."
         );
+
+        return;
       }
 
       if (!("serviceWorker" in navigator)) {
-        throw new Error(
+        alert(
           language === "rw"
-            ? "Browser yawe ntishyigikira Service Worker."
+            ? "Browser yawe ntabwo ishyigikira Service Worker."
             : "Your browser does not support Service Workers."
         );
-      }
 
-      if (!("PushManager" in window)) {
-        throw new Error(
-          language === "rw"
-            ? "Browser yawe ntishyigikira Push Notifications."
-            : "Your browser does not support Push Notifications."
-        );
+        return;
       }
 
       // -------------------------------------------------
-      // Request permission
+      // REQUEST BROWSER PERMISSION
       // -------------------------------------------------
 
       let permission = Notification.permission;
@@ -161,14 +143,18 @@ export default function Settings() {
           await Notification.requestPermission();
       }
 
+      // -------------------------------------------------
+      // USER DID NOT ALLOW
+      // -------------------------------------------------
+
       if (permission !== "granted") {
         setPushEnabled(false);
 
         if (permission === "denied") {
           alert(
             language === "rw"
-              ? "Wanze notifications. Jya muri browser settings wemere notifications za ANTIMATE."
-              : "Notifications were denied. Open your browser settings and allow notifications for ANTIMATE."
+              ? "Wanze browser permission. Jya muri browser settings wemere notifications za ANTIMATE."
+              : "Notification permission was denied. Open your browser settings and allow notifications for ANTIMATE."
           );
         }
 
@@ -176,75 +162,56 @@ export default function Settings() {
       }
 
       // -------------------------------------------------
-      // Check VAPID public key
-      // -------------------------------------------------
-
-      const vapidPublicKey =
-        import.meta.env.VITE_VAPID_PUBLIC_KEY;
-
-      if (!vapidPublicKey) {
-        throw new Error(
-          language === "rw"
-            ? "VAPID public key ntiboneka muri frontend."
-            : "VAPID public key is missing from the frontend."
-        );
-      }
-
-      // -------------------------------------------------
-      // Service worker
+      // WAIT FOR SERVICE WORKER
       // -------------------------------------------------
 
       const registration =
         await navigator.serviceWorker.ready;
 
       // -------------------------------------------------
-      // Existing subscription
+      // CHECK EXISTING SUBSCRIPTION
       // -------------------------------------------------
 
       let subscription =
         await registration.pushManager.getSubscription();
 
       // -------------------------------------------------
-      // Create new subscription
+      // CREATE NEW PUSH SUBSCRIPTION
       // -------------------------------------------------
 
       if (!subscription) {
+        const vapidPublicKey =
+          import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+        if (!vapidPublicKey) {
+          throw new Error(
+            "VITE_VAPID_PUBLIC_KEY is missing."
+          );
+        }
+
+        const convertedKey =
+          urlBase64ToUint8Array(vapidPublicKey);
+
         subscription =
           await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey:
-              urlBase64ToUint8Array(
-                vapidPublicKey
-              ),
+            applicationServerKey: convertedKey,
           });
       }
 
-      if (!subscription) {
-        throw new Error(
-          language === "rw"
-            ? "Push subscription ntiyakozwe."
-            : "Push subscription could not be created."
-        );
-      }
-
       // -------------------------------------------------
-      // Token
+      // SEND SUBSCRIPTION TO BACKEND
       // -------------------------------------------------
 
-      const token =
-        localStorage.getItem("token");
+      const token = getToken();
 
       if (!token) {
         throw new Error(
           language === "rw"
-            ? "Session yawe yarangiye. Ongera winjire."
-            : "Your session has expired. Please login again."
+            ? "Ntabwo winjiye muri account."
+            : "You are not logged in."
         );
       }
-
-      // -------------------------------------------------
-      // Send subscription to backend
-      // -------------------------------------------------
 
       const response = await fetch(
         `${API_URL}/api/push/subscribe`,
@@ -262,72 +229,85 @@ export default function Settings() {
         }
       );
 
-      let data = {};
-
-      try {
-        data = await response.json();
-      } catch {
-        data = {};
-      }
+      const data = await response.json();
 
       // -------------------------------------------------
-      // Backend error
+      // SUBSCRIPTION / PLAN CHECK
       // -------------------------------------------------
 
       if (!response.ok) {
-        // Subscription plan required
-        if (
-          response.status === 403 ||
-          response.status === 401
-        ) {
-          throw new Error(
-            data.message ||
-              (language === "rw"
-                ? "Subscription yawe ntabwo yemerewe gukoresha push notifications."
-                : "Your subscription does not allow push notifications.")
-          );
-        }
+        /*
+         * IMPORTANT:
+         * Backend still has:
+         *
+         * requirePlan(["Basic", "Pro", "Premium"])
+         *
+         * Therefore Free users will be rejected here.
+         *
+         * We unsubscribe the browser subscription so that
+         * the UI does not incorrectly show ON.
+         */
+
+        await subscription.unsubscribe();
+
+        setPushEnabled(false);
 
         throw new Error(
-          data.message ||
+          data?.message ||
             (language === "rw"
-              ? "Push subscription yanze kubikwa."
-              : "Failed to save push subscription.")
+              ? "Push notifications zisaba subscription ibifitiye uburenganzira."
+              : "Push notifications require an eligible subscription.")
         );
       }
 
       // -------------------------------------------------
-      // Success
+      // SUCCESS
       // -------------------------------------------------
 
       setPushEnabled(true);
 
+      // Store local state only for UI convenience
+      localStorage.setItem(
+        "pushNotificationsEnabled",
+        "true"
+      );
+
       alert(
         language === "rw"
-          ? "Push notifications zemerewe neza."
+          ? "Push notifications zafunguwe neza."
           : "Push notifications enabled successfully."
       );
     } catch (error) {
       console.error(
-        "❌ Enable push error:",
+        "❌ Enable push notification error:",
         error
       );
 
-      alert(
-        language === "rw"
-          ? `Ntibyashobotse gufungura notifications:\n${error.message}`
-          : `Failed to enable notifications:\n${error.message}`
-      );
-
-      // If backend failed, don't visually pretend it is enabled
       setPushEnabled(false);
+
+      /*
+       * Avoid showing duplicate browser alerts when
+       * we already displayed a specific permission message.
+       */
+
+      if (
+        !error.message?.includes(
+          "permission"
+        )
+      ) {
+        alert(
+          language === "rw"
+            ? `Ntibyashobotse gufungura notifications: ${error.message}`
+            : `Failed to enable notifications: ${error.message}`
+        );
+      }
     } finally {
       setPushLoading(false);
     }
   };
 
   // =====================================================
-  // DISABLE PUSH
+  // DISABLE PUSH NOTIFICATIONS
   // =====================================================
 
   const disablePushNotifications = async () => {
@@ -336,10 +316,11 @@ export default function Settings() {
     try {
       setPushLoading(true);
 
-      if (
-        "serviceWorker" in navigator &&
-        "PushManager" in window
-      ) {
+      // -------------------------------------------------
+      // UNSUBSCRIBE FROM BROWSER
+      // -------------------------------------------------
+
+      if ("serviceWorker" in navigator) {
         const registration =
           await navigator.serviceWorker.ready;
 
@@ -351,27 +332,57 @@ export default function Settings() {
         }
       }
 
+      // -------------------------------------------------
+      // UPDATE UI
+      // -------------------------------------------------
+
       setPushEnabled(false);
 
-      alert(
-        language === "rw"
-          ? "Push notifications zahagaritswe kuri browser."
-          : "Push notifications have been disabled for this browser."
-      );
-    } catch (error) {
-      console.error(
-        "❌ Disable push error:",
-        error
+      localStorage.setItem(
+        "pushNotificationsEnabled",
+        "false"
       );
 
-      alert(
-        language === "rw"
-          ? "Ntibyashobotse guhagarika notifications."
-          : "Failed to disable notifications."
+      /*
+       * NOTE:
+       * Browser unsubscribe does not delete the MongoDB
+       * subscription yet.
+       *
+       * The backend subscription will remain until we add
+       * a DELETE /unsubscribe endpoint.
+       */
+
+    } catch (error) {
+      console.error(
+        "❌ Disable push notification error:",
+        error
       );
     } finally {
       setPushLoading(false);
     }
+  };
+
+  // =====================================================
+  // URL BASE64 -> UINT8ARRAY
+  // =====================================================
+
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = "=".repeat(
+      (4 - (base64String.length % 4)) % 4
+    );
+
+    const base64 =
+      (base64String + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+    const rawData = window.atob(base64);
+
+    return Uint8Array.from(
+      [...rawData].map((char) =>
+        char.charCodeAt(0)
+      )
+    );
   };
 
   // =====================================================
@@ -656,7 +667,7 @@ export default function Settings() {
               pushEnabled
                 ? language === "rw"
                   ? "Ubu wemerewe kwakira notifications za ANTIMATE."
-                  : "You can receive ANTIMATE push notifications."
+                  : "ANTIMATE notifications are enabled."
                 : language === "rw"
                   ? "Emera ANTIMATE kukwoherereza notifications."
                   : "Allow ANTIMATE to send you push notifications."
@@ -675,9 +686,7 @@ export default function Settings() {
                 ...(pushEnabled
                   ? styles.notificationToggleActive
                   : {}),
-                opacity: pushLoading
-                  ? 0.55
-                  : 1,
+                opacity: pushLoading ? 0.6 : 1,
               }}
               aria-label={
                 pushEnabled
@@ -723,7 +732,9 @@ export default function Settings() {
             <SettingRow
               icon={<User size={19} />}
               title={text.editProfile}
-              description={text.editProfileDesc}
+              description={
+                text.editProfileDesc
+              }
               onClick={() =>
                 navigate("/profile")
               }
@@ -740,7 +751,9 @@ export default function Settings() {
 
             <SettingRow
               icon={<ShieldCheck size={19} />}
-              title={text.changePassword}
+              title={
+                text.changePassword
+              }
               description={
                 text.changePasswordDesc
               }
@@ -762,7 +775,9 @@ export default function Settings() {
 
             <SettingRow
               icon={<Bell size={19} />}
-              title={text.notifications}
+              title={
+                text.notifications
+              }
               description={
                 text.notificationDesc
               }
@@ -833,7 +848,9 @@ export default function Settings() {
             </div>
 
             <div
-              style={styles.deviceManagementContent}
+              style={
+                styles.deviceManagementContent
+              }
             >
               <h3
                 style={{

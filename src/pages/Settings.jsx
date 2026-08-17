@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Globe2,
   Moon,
@@ -6,6 +8,7 @@ import {
   User,
   ShieldCheck,
   Bell,
+  BellRing,
   HelpCircle,
   CreditCard,
   Settings as SettingsIcon,
@@ -27,6 +30,349 @@ export default function Settings() {
   } = useAppSettings();
 
   const navigate = useNavigate();
+
+  // =====================================================
+  // PUSH NOTIFICATIONS
+  // =====================================================
+
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const API_URL =
+    import.meta.env.VITE_API_URL ||
+    "https://brooder-backend.onrender.com";
+
+  // =====================================================
+  // CHECK PUSH STATUS
+  // =====================================================
+
+  useEffect(() => {
+    const checkPushStatus = async () => {
+      try {
+        // Browser does not support notifications
+        if (!("Notification" in window)) {
+          setPushEnabled(false);
+          return;
+        }
+
+        // Permission not granted
+        if (Notification.permission !== "granted") {
+          setPushEnabled(false);
+          return;
+        }
+
+        // Service worker not supported
+        if (!("serviceWorker" in navigator)) {
+          setPushEnabled(false);
+          return;
+        }
+
+        const registration =
+          await navigator.serviceWorker.ready;
+
+        const subscription =
+          await registration.pushManager.getSubscription();
+
+        setPushEnabled(Boolean(subscription));
+      } catch (error) {
+        console.error(
+          "❌ Failed to check push status:",
+          error
+        );
+
+        setPushEnabled(false);
+      }
+    };
+
+    checkPushStatus();
+  }, []);
+
+  // =====================================================
+  // VAPID KEY CONVERTER
+  // =====================================================
+
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = "=".repeat(
+      (4 - (base64String.length % 4)) % 4
+    );
+
+    const base64 = (
+      base64String +
+      padding
+    )
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const rawData = window.atob(base64);
+
+    return Uint8Array.from(
+      [...rawData].map((char) =>
+        char.charCodeAt(0)
+      )
+    );
+  };
+
+  // =====================================================
+  // ENABLE PUSH
+  // =====================================================
+
+  const enablePushNotifications = async () => {
+    if (pushLoading) return;
+
+    try {
+      setPushLoading(true);
+
+      // -------------------------------------------------
+      // Browser support
+      // -------------------------------------------------
+
+      if (!("Notification" in window)) {
+        throw new Error(
+          language === "rw"
+            ? "Browser yawe ntishyigikira push notifications."
+            : "Your browser does not support push notifications."
+        );
+      }
+
+      if (!("serviceWorker" in navigator)) {
+        throw new Error(
+          language === "rw"
+            ? "Browser yawe ntishyigikira Service Worker."
+            : "Your browser does not support Service Workers."
+        );
+      }
+
+      if (!("PushManager" in window)) {
+        throw new Error(
+          language === "rw"
+            ? "Browser yawe ntishyigikira Push Notifications."
+            : "Your browser does not support Push Notifications."
+        );
+      }
+
+      // -------------------------------------------------
+      // Request permission
+      // -------------------------------------------------
+
+      let permission = Notification.permission;
+
+      if (permission !== "granted") {
+        permission =
+          await Notification.requestPermission();
+      }
+
+      if (permission !== "granted") {
+        setPushEnabled(false);
+
+        if (permission === "denied") {
+          alert(
+            language === "rw"
+              ? "Wanze notifications. Jya muri browser settings wemere notifications za ANTIMATE."
+              : "Notifications were denied. Open your browser settings and allow notifications for ANTIMATE."
+          );
+        }
+
+        return;
+      }
+
+      // -------------------------------------------------
+      // Check VAPID public key
+      // -------------------------------------------------
+
+      const vapidPublicKey =
+        import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+      if (!vapidPublicKey) {
+        throw new Error(
+          language === "rw"
+            ? "VAPID public key ntiboneka muri frontend."
+            : "VAPID public key is missing from the frontend."
+        );
+      }
+
+      // -------------------------------------------------
+      // Service worker
+      // -------------------------------------------------
+
+      const registration =
+        await navigator.serviceWorker.ready;
+
+      // -------------------------------------------------
+      // Existing subscription
+      // -------------------------------------------------
+
+      let subscription =
+        await registration.pushManager.getSubscription();
+
+      // -------------------------------------------------
+      // Create new subscription
+      // -------------------------------------------------
+
+      if (!subscription) {
+        subscription =
+          await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey:
+              urlBase64ToUint8Array(
+                vapidPublicKey
+              ),
+          });
+      }
+
+      if (!subscription) {
+        throw new Error(
+          language === "rw"
+            ? "Push subscription ntiyakozwe."
+            : "Push subscription could not be created."
+        );
+      }
+
+      // -------------------------------------------------
+      // Token
+      // -------------------------------------------------
+
+      const token =
+        localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error(
+          language === "rw"
+            ? "Session yawe yarangiye. Ongera winjire."
+            : "Your session has expired. Please login again."
+        );
+      }
+
+      // -------------------------------------------------
+      // Send subscription to backend
+      // -------------------------------------------------
+
+      const response = await fetch(
+        `${API_URL}/api/push/subscribe`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: JSON.stringify(
+            subscription.toJSON()
+          ),
+        }
+      );
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      // -------------------------------------------------
+      // Backend error
+      // -------------------------------------------------
+
+      if (!response.ok) {
+        // Subscription plan required
+        if (
+          response.status === 403 ||
+          response.status === 401
+        ) {
+          throw new Error(
+            data.message ||
+              (language === "rw"
+                ? "Subscription yawe ntabwo yemerewe gukoresha push notifications."
+                : "Your subscription does not allow push notifications.")
+          );
+        }
+
+        throw new Error(
+          data.message ||
+            (language === "rw"
+              ? "Push subscription yanze kubikwa."
+              : "Failed to save push subscription.")
+        );
+      }
+
+      // -------------------------------------------------
+      // Success
+      // -------------------------------------------------
+
+      setPushEnabled(true);
+
+      alert(
+        language === "rw"
+          ? "Push notifications zemerewe neza."
+          : "Push notifications enabled successfully."
+      );
+    } catch (error) {
+      console.error(
+        "❌ Enable push error:",
+        error
+      );
+
+      alert(
+        language === "rw"
+          ? `Ntibyashobotse gufungura notifications:\n${error.message}`
+          : `Failed to enable notifications:\n${error.message}`
+      );
+
+      // If backend failed, don't visually pretend it is enabled
+      setPushEnabled(false);
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  // =====================================================
+  // DISABLE PUSH
+  // =====================================================
+
+  const disablePushNotifications = async () => {
+    if (pushLoading) return;
+
+    try {
+      setPushLoading(true);
+
+      if (
+        "serviceWorker" in navigator &&
+        "PushManager" in window
+      ) {
+        const registration =
+          await navigator.serviceWorker.ready;
+
+        const subscription =
+          await registration.pushManager.getSubscription();
+
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
+      }
+
+      setPushEnabled(false);
+
+      alert(
+        language === "rw"
+          ? "Push notifications zahagaritswe kuri browser."
+          : "Push notifications have been disabled for this browser."
+      );
+    } catch (error) {
+      console.error(
+        "❌ Disable push error:",
+        error
+      );
+
+      alert(
+        language === "rw"
+          ? "Ntibyashobotse guhagarika notifications."
+          : "Failed to disable notifications."
+      );
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   // =====================================================
   // THEME
@@ -209,7 +555,9 @@ export default function Settings() {
             <div style={styles.languageButtons}>
               <button
                 type="button"
-                onClick={() => setLanguage("rw")}
+                onClick={() =>
+                  setLanguage("rw")
+                }
                 style={{
                   ...styles.optionButton,
                   ...(language === "rw"
@@ -222,7 +570,9 @@ export default function Settings() {
 
               <button
                 type="button"
-                onClick={() => setLanguage("en")}
+                onClick={() =>
+                  setLanguage("en")
+                }
                 style={{
                   ...styles.optionButton,
                   ...(language === "en"
@@ -253,7 +603,9 @@ export default function Settings() {
             <div style={styles.themeButtons}>
               <button
                 type="button"
-                onClick={() => setTheme("dark")}
+                onClick={() =>
+                  setTheme("dark")
+                }
                 style={{
                   ...styles.themeButton,
                   ...(theme === "dark"
@@ -267,7 +619,9 @@ export default function Settings() {
 
               <button
                 type="button"
-                onClick={() => setTheme("light")}
+                onClick={() =>
+                  setTheme("light")
+                }
                 style={{
                   ...styles.themeButton,
                   ...(theme === "light"
@@ -279,6 +633,67 @@ export default function Settings() {
                 {text.light}
               </button>
             </div>
+          </SettingRow>
+
+          {/* =================================================
+              PUSH NOTIFICATIONS
+          ================================================= */}
+
+          <SettingRow
+            icon={
+              pushEnabled ? (
+                <BellRing size={19} />
+              ) : (
+                <Bell size={19} />
+              )
+            }
+            title={
+              language === "rw"
+                ? "Push Notifications"
+                : "Push Notifications"
+            }
+            description={
+              pushEnabled
+                ? language === "rw"
+                  ? "Ubu wemerewe kwakira notifications za ANTIMATE."
+                  : "You can receive ANTIMATE push notifications."
+                : language === "rw"
+                  ? "Emera ANTIMATE kukwoherereza notifications."
+                  : "Allow ANTIMATE to send you push notifications."
+            }
+          >
+            <button
+              type="button"
+              disabled={pushLoading}
+              onClick={
+                pushEnabled
+                  ? disablePushNotifications
+                  : enablePushNotifications
+              }
+              style={{
+                ...styles.notificationToggle,
+                ...(pushEnabled
+                  ? styles.notificationToggleActive
+                  : {}),
+                opacity: pushLoading
+                  ? 0.55
+                  : 1,
+              }}
+              aria-label={
+                pushEnabled
+                  ? "Disable push notifications"
+                  : "Allow push notifications"
+              }
+            >
+              <span
+                style={{
+                  ...styles.notificationToggleKnob,
+                  transform: pushEnabled
+                    ? "translateX(20px)"
+                    : "translateX(0)",
+                }}
+              />
+            </button>
           </SettingRow>
         </section>
 
@@ -309,7 +724,9 @@ export default function Settings() {
               icon={<User size={19} />}
               title={text.editProfile}
               description={text.editProfileDesc}
-              onClick={() => navigate("/profile")}
+              onClick={() =>
+                navigate("/profile")
+              }
             >
               <ChevronRight
                 size={18}
@@ -324,9 +741,13 @@ export default function Settings() {
             <SettingRow
               icon={<ShieldCheck size={19} />}
               title={text.changePassword}
-              description={text.changePasswordDesc}
+              description={
+                text.changePasswordDesc
+              }
               onClick={() =>
-                navigate("/change-password")
+                navigate(
+                  "/change-password"
+                )
               }
             >
               <ChevronRight
@@ -342,7 +763,9 @@ export default function Settings() {
             <SettingRow
               icon={<Bell size={19} />}
               title={text.notifications}
-              description={text.notificationDesc}
+              description={
+                text.notificationDesc
+              }
               onClick={() =>
                 navigate("/notifications")
               }
@@ -361,7 +784,9 @@ export default function Settings() {
               icon={<CreditCard size={19} />}
               title={text.plans}
               description={text.plansDesc}
-              onClick={() => navigate("/plans")}
+              onClick={() =>
+                navigate("/plans")
+              }
             >
               <ChevronRight
                 size={18}
@@ -377,7 +802,9 @@ export default function Settings() {
               icon={<HelpCircle size={19} />}
               title={text.help}
               description={text.helpDesc}
-              onClick={() => navigate("/help")}
+              onClick={() =>
+                navigate("/help")
+              }
             >
               <ChevronRight
                 size={18}
@@ -399,20 +826,22 @@ export default function Settings() {
               border: `1px solid ${border}`,
             }}
           >
-            <div style={styles.deviceManagementIcon}>
+            <div
+              style={styles.deviceManagementIcon}
+            >
               <SettingsIcon size={19} />
             </div>
 
-            <div style={styles.deviceManagementContent}>
+            <div
+              style={styles.deviceManagementContent}
+            >
               <h3
                 style={{
                   ...styles.deviceManagementTitle,
                   color: textColor,
                 }}
               >
-                {language === "rw"
-                  ? "Device Management"
-                  : "Device Management"}
+                Device Management
               </h3>
 
               <p
@@ -430,9 +859,13 @@ export default function Settings() {
             <button
               type="button"
               onClick={() =>
-                navigate("/device-management")
+                navigate(
+                  "/device-management"
+                )
               }
-              style={styles.deviceManagementButton}
+              style={
+                styles.deviceManagementButton
+              }
             >
               <ChevronRight size={17} />
             </button>
@@ -675,6 +1108,41 @@ const styles = {
     fontSize: "10px",
     fontWeight: 700,
     cursor: "pointer",
+  },
+
+  // =====================================================
+  // PUSH NOTIFICATION TOGGLE
+  // =====================================================
+
+  notificationToggle: {
+    width: "44px",
+    height: "24px",
+    padding: "2px",
+    border: "none",
+    borderRadius: "999px",
+    background: "#cbd5e1",
+    display: "flex",
+    alignItems: "center",
+    cursor: "pointer",
+    flexShrink: 0,
+    transition:
+      "background .2s ease, opacity .2s ease",
+  },
+
+  notificationToggleActive: {
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
+  },
+
+  notificationToggleKnob: {
+    width: "20px",
+    height: "20px",
+    borderRadius: "50%",
+    background: "#ffffff",
+    boxShadow:
+      "0 2px 6px rgba(0,0,0,.2)",
+    transition:
+      "transform .2s ease",
   },
 
   // =====================================================

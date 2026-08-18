@@ -7,6 +7,12 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
+const COOLDOWN_MINUTES = 10;
+
+// =====================================================
+// NOTIFICATIONS PAGE
+// =====================================================
+
 export default function Notifications() {
   const { isDark } = useAppSettings();
 
@@ -50,9 +56,9 @@ export default function Notifications() {
 
       const data = await res.json().catch(() => ({}));
 
-      // ===================================================
+      // =================================================
       // SUBSCRIPTION EXPIRED
-      // ===================================================
+      // =================================================
 
       if (
         res.status === 403 &&
@@ -72,6 +78,10 @@ export default function Notifications() {
         );
       }
 
+      // =================================================
+      // NORMALIZE RESPONSE
+      // =================================================
+
       let list = [];
 
       if (Array.isArray(data)) {
@@ -82,6 +92,14 @@ export default function Notifications() {
         list = data.data;
       }
 
+      // Newest first
+      list.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+
+        return dateB - dateA;
+      });
+
       setNotifications(list);
     } catch (err) {
       console.error(
@@ -90,8 +108,7 @@ export default function Notifications() {
       );
 
       setError(
-        err.message ||
-          "Failed to load notifications"
+        err.message || "Failed to load notifications"
       );
 
       setNotifications([]);
@@ -127,7 +144,7 @@ export default function Notifications() {
         const data = await res.json().catch(() => ({}));
 
         console.error(
-          "Mark notifications as read failed:",
+          "Mark read failed:",
           data.message
         );
       }
@@ -165,7 +182,36 @@ export default function Notifications() {
   }
 
   // =====================================================
-  // NOTIFICATION ICON
+  // ALERT COLOR
+  // =====================================================
+
+  function getAlertStyle(type) {
+    switch (type) {
+      case "TOO_HOT":
+        return styles.hot;
+
+      case "TOO_COLD":
+        return styles.cold;
+
+      case "LOW_HUMIDITY":
+        return styles.dry;
+
+      case "VERY_HIGH_HUMIDITY":
+        return styles.humid;
+
+      case "SENSOR_OFFLINE":
+        return styles.offline;
+
+      case "POWER_LOST":
+        return styles.power;
+
+      default:
+        return styles.normal;
+    }
+  }
+
+  // =====================================================
+  // ICON
   // =====================================================
 
   function getIcon(type) {
@@ -188,171 +234,148 @@ export default function Notifications() {
       case "POWER_LOST":
         return "⚡";
 
-      case "CHICKS_AGE":
-        return "🐣";
-
       default:
         return "🔔";
     }
   }
 
   // =====================================================
-  // TYPE LABEL
-  // =====================================================
-
-  function getTypeLabel(type) {
-    switch (type) {
-      case "TOO_HOT":
-        return "Temperature";
-
-      case "TOO_COLD":
-        return "Temperature";
-
-      case "LOW_HUMIDITY":
-        return "Humidity";
-
-      case "VERY_HIGH_HUMIDITY":
-        return "Humidity";
-
-      case "SENSOR_OFFLINE":
-        return "System";
-
-      case "POWER_LOST":
-        return "Power";
-
-      case "CHICKS_AGE":
-        return "Chicks";
-
-      default:
-        return "Brooder";
-    }
-  }
-
-  // =====================================================
-  // SEVERITY
-  // =====================================================
-
-  function getSeverity(item) {
-    const severity = String(
-      item?.severity || "warning"
-    ).toLowerCase();
-
-    if (
-      ["critical", "danger", "error"].includes(
-        severity
-      )
-    ) {
-      return "critical";
-    }
-
-    if (severity === "info") {
-      return "info";
-    }
-
-    return "warning";
-  }
-
-  // =====================================================
-  // DATE
+  // TIME FORMAT
   // =====================================================
 
   function formatDate(date) {
     if (!date) {
-      return "Just now";
+      return "No date";
     }
 
     const parsed = new Date(date);
 
     if (Number.isNaN(parsed.getTime())) {
-      return "Just now";
+      return "No date";
     }
 
-    const now = new Date();
-
-    const diff =
-      now.getTime() -
-      parsed.getTime();
-
-    const minute =
-      60 * 1000;
-
-    const hour =
-      60 * minute;
-
-    const day =
-      24 * hour;
-
-    if (diff < minute) {
-      return "Just now";
-    }
-
-    if (diff < hour) {
-      const minutes = Math.floor(
-        diff / minute
-      );
-
-      return `${minutes}m ago`;
-    }
-
-    if (diff < day) {
-      const hours = Math.floor(
-        diff / hour
-      );
-
-      return `${hours}h ago`;
-    }
-
-    if (diff < 7 * day) {
-      const days = Math.floor(
-        diff / day
-      );
-
-      return `${days}d ago`;
-    }
-
-    return parsed.toLocaleDateString(
-      undefined,
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    return parsed.toLocaleString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   // =====================================================
-  // EMPTY / ERROR COLORS
+  // SHORT MESSAGE
   // =====================================================
 
-  const colors = {
-    text: isDark
-      ? "#f8fafc"
-      : "#0f172a",
+  function getShortMessage(item) {
+    if (item.message) {
+      return item.message;
+    }
 
-    muted: isDark
-      ? "#94a3b8"
-      : "#64748b",
+    switch (item.type) {
+      case "TOO_HOT":
+        return "Brooder temperature is too high.";
 
-    subtle: isDark
-      ? "#64748b"
-      : "#94a3b8",
+      case "TOO_COLD":
+        return "Brooder temperature is too low.";
 
-    background: isDark
-      ? "#07111f"
-      : "#f8fafc",
+      case "LOW_HUMIDITY":
+        return "Brooder humidity is too low.";
 
-    card: isDark
-      ? "rgba(255,255,255,0.055)"
-      : "#ffffff",
+      case "VERY_HIGH_HUMIDITY":
+        return "Brooder humidity is too high.";
 
-    border: isDark
-      ? "rgba(255,255,255,0.09)"
-      : "#e2e8f0",
+      case "SENSOR_OFFLINE":
+        return "BR System is currently offline.";
 
-    hover: isDark
-      ? "rgba(255,255,255,0.08)"
-      : "#f8fafc",
-  };
+      case "POWER_LOST":
+        return "Power may have been lost.";
+
+      default:
+        return "A brooder event requires your attention.";
+    }
+  }
+
+  // =====================================================
+  // COOLDOWN
+  // =====================================================
+
+  function getCooldownText(item) {
+    /*
+      Backend can optionally send:
+      cooldownUntil
+      nextNotificationAt
+
+      If neither exists, we simply don't show
+      a cooldown message.
+
+      This keeps the frontend compatible with
+      the backend notification model.
+    */
+
+    const cooldownValue =
+      item.cooldownUntil ||
+      item.nextNotificationAt;
+
+    if (!cooldownValue) {
+      return null;
+    }
+
+    const cooldownDate =
+      new Date(cooldownValue);
+
+    if (Number.isNaN(cooldownDate.getTime())) {
+      return null;
+    }
+
+    const remaining =
+      cooldownDate.getTime() -
+      Date.now();
+
+    if (remaining <= 0) {
+      return null;
+    }
+
+    const minutes = Math.ceil(
+      remaining / (1000 * 60)
+    );
+
+    return `Cooldown ${minutes}m`;
+  }
+
+  // =====================================================
+  // PUSH STATUS
+  // =====================================================
+
+  function getPushStatus(item) {
+    return item.isPushSent
+      ? "Sent"
+      : "Not sent";
+  }
+
+  // =====================================================
+  // COLORS
+  // =====================================================
+
+  const background = isDark
+    ? "linear-gradient(135deg,#07111f,#0f2537)"
+    : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
+
+  const textColor = isDark
+    ? "#ffffff"
+    : "#0f172a";
+
+  const muted = isDark
+    ? "#94a3b8"
+    : "#64748b";
+
+  const cardBackground = isDark
+    ? "rgba(255,255,255,0.065)"
+    : "rgba(255,255,255,0.82)";
+
+  const cardBorder = isDark
+    ? "1px solid rgba(255,255,255,0.10)"
+    : "1px solid rgba(15,23,42,0.08)";
 
   // =====================================================
   // RENDER
@@ -362,8 +385,8 @@ export default function Notifications() {
     <div
       style={{
         ...styles.page,
-        background: colors.background,
-        color: colors.text,
+        background,
+        color: textColor,
       }}
     >
       <style>
@@ -378,57 +401,45 @@ export default function Notifications() {
             }
           }
 
-          .notification-row {
-            transition:
-              background 0.18s ease,
-              border-color 0.18s ease,
-              transform 0.18s ease;
-          }
-
-          .notification-row:hover {
-            transform: translateY(-1px);
-          }
-
-          .refresh-button {
-            transition:
-              opacity 0.2s ease,
-              transform 0.2s ease;
-          }
-
-          .refresh-button:hover:not(:disabled) {
-            transform: translateY(-1px);
-          }
-
-          @media (max-width: 600px) {
-            .notifications-header {
+          @media (max-width: 700px) {
+            .notification-header {
               align-items: flex-start !important;
+              flex-direction: column !important;
             }
 
-            .notifications-title {
-              font-size: 27px !important;
+            .notification-title {
+              font-size: 28px !important;
             }
 
-            .notification-row {
-              padding: 13px !important;
+            .notification-list {
+              max-width: 100% !important;
+            }
+
+            .notification-card {
+              padding: 15px !important;
+            }
+
+            .notification-card-top {
+              gap: 10px !important;
             }
 
             .notification-icon {
-              width: 40px !important;
-              height: 40px !important;
-              min-width: 40px !important;
-              font-size: 19px !important;
+              width: 44px !important;
+              height: 44px !important;
+              border-radius: 13px !important;
+              font-size: 21px !important;
             }
 
-            .notification-title-text {
-              font-size: 14px !important;
+            .notification-card-title {
+              font-size: 15px !important;
             }
 
             .notification-message {
-              font-size: 12px !important;
+              font-size: 13px !important;
             }
 
             .notification-meta {
-              font-size: 10px !important;
+              flex-wrap: wrap !important;
             }
           }
         `}
@@ -439,15 +450,12 @@ export default function Notifications() {
       ================================================= */}
 
       <div
-        className="notifications-header"
-        style={{
-          ...styles.header,
-          borderBottom: `1px solid ${colors.border}`,
-        }}
+        className="notification-header"
+        style={styles.header}
       >
         <div>
           <h1
-            className="notifications-title"
+            className="notification-title"
             style={styles.title}
           >
             Notifications
@@ -456,38 +464,31 @@ export default function Notifications() {
           <p
             style={{
               ...styles.subtitle,
-              color: colors.muted,
+              color: muted,
             }}
           >
-            Important updates from your brooder
+            Smart brooder alerts
           </p>
         </div>
 
         <button
-          className="refresh-button"
           onClick={handleRefresh}
           disabled={refreshing}
           style={{
-            ...styles.refreshButton,
-            opacity: refreshing ? 0.55 : 1,
+            ...styles.refreshBtn,
+            opacity: refreshing ? 0.6 : 1,
           }}
         >
-          <span
-            style={{
-              display: "inline-block",
-              animation: refreshing
-                ? "spin 1s linear infinite"
-                : "none",
-            }}
-          >
-            ↻
-          </span>
-
-          <span>
-            {refreshing
-              ? "Refreshing"
-              : "Refresh"}
-          </span>
+          {refreshing ? (
+            <>
+              <span style={styles.refreshSpinner}>
+                ⟳
+              </span>
+              Refreshing
+            </>
+          ) : (
+            "Refresh"
+          )}
         </button>
       </div>
 
@@ -498,74 +499,77 @@ export default function Notifications() {
       {loading ? (
         <PageLoader />
       ) : isSubscriptionExpired ? (
-        /* ===============================================
+        /* =================================================
            SUBSCRIPTION EXPIRED
-        =============================================== */
+        ================================================= */
 
         <div
           style={{
-            ...styles.messageBox,
+            ...styles.emptyBox,
             background: isDark
-              ? "rgba(239,68,68,0.08)"
-              : "#fff7f7",
-            border: isDark
-              ? "1px solid rgba(239,68,68,0.20)"
-              : "1px solid #fecaca",
+              ? "rgba(239,68,68,0.10)"
+              : "rgba(239,68,68,0.07)",
+            border:
+              "1px solid rgba(239,68,68,0.25)",
           }}
         >
-          <div style={styles.messageIcon}>
+          <div style={styles.emptyIcon}>
             ⏳
           </div>
 
-          <h2 style={styles.messageTitle}>
-            Subscription expired
+          <h2 style={styles.emptyTitle}>
+            Subscription Expired
           </h2>
 
           <p
             style={{
-              ...styles.messageText,
-              color: colors.muted,
+              ...styles.emptyText,
+              color: muted,
             }}
           >
-            Renew your plan to continue
-            receiving brooder notifications.
+            Your active plan has expired.
+            Renew or upgrade your plan to
+            continue receiving notifications.
           </p>
 
           <a
             href="/plans"
-            style={styles.primaryButton}
+            style={{
+              ...styles.retryBtn,
+              display: "inline-block",
+              textDecoration: "none",
+            }}
           >
-            Renew / Upgrade
+            Renew / Upgrade Plan
           </a>
         </div>
       ) : error ? (
-        /* ===============================================
+        /* =================================================
            ERROR
-        =============================================== */
+        ================================================= */
 
         <div
           style={{
-            ...styles.messageBox,
+            ...styles.emptyBox,
             background: isDark
-              ? "rgba(239,68,68,0.07)"
-              : "#fffafa",
-            border: isDark
-              ? "1px solid rgba(239,68,68,0.18)"
-              : "1px solid #fecaca",
+              ? "rgba(239,68,68,0.08)"
+              : "rgba(239,68,68,0.06)",
+            border:
+              "1px solid rgba(239,68,68,0.20)",
           }}
         >
-          <div style={styles.messageIcon}>
+          <div style={styles.emptyIcon}>
             ⚠️
           </div>
 
-          <h2 style={styles.messageTitle}>
+          <h2 style={styles.emptyTitle}>
             Unable to load notifications
           </h2>
 
           <p
             style={{
-              ...styles.messageText,
-              color: colors.muted,
+              ...styles.emptyText,
+              color: muted,
             }}
           >
             {error}
@@ -573,61 +577,60 @@ export default function Notifications() {
 
           <button
             onClick={() => fetchNotifications()}
-            style={styles.primaryButton}
+            style={styles.retryBtn}
           >
             Try Again
           </button>
         </div>
       ) : notifications.length === 0 ? (
-        /* ===============================================
+        /* =================================================
            EMPTY
-        =============================================== */
+        ================================================= */
 
         <div
           style={{
-            ...styles.messageBox,
-            background: colors.card,
-            border: `1px solid ${colors.border}`,
+            ...styles.emptyBox,
+            background: cardBackground,
+            border: cardBorder,
           }}
         >
-          <div
-            style={{
-              ...styles.emptyIcon,
-              color: colors.muted,
-            }}
-          >
-            ✓
+          <div style={styles.emptyIcon}>
+            🔔
           </div>
 
-          <h2 style={styles.messageTitle}>
-            All clear
+          <h2 style={styles.emptyTitle}>
+            No notifications
           </h2>
 
           <p
             style={{
-              ...styles.messageText,
-              color: colors.muted,
+              ...styles.emptyText,
+              color: muted,
             }}
           >
-            No new brooder alerts at the moment.
+            Your brooder is currently running
+            normally.
           </p>
         </div>
       ) : (
-        /* ===============================================
-           NOTIFICATION LIST
-        =============================================== */
+        /* =================================================
+           NOTIFICATIONS
+        ================================================= */
 
-        <div style={styles.list}>
+        <div
+          className="notification-list"
+          style={styles.list}
+        >
           {notifications.map(
             (item, index) => {
-              const severity =
-                getSeverity(item);
+              const alertStyle =
+                getAlertStyle(item.type);
 
-              const severityStyle =
-                getSeverityStyle(
-                  severity,
-                  isDark
-                );
+              const cooldownText =
+                getCooldownText(item);
+
+              const pushSent =
+                Boolean(item.isPushSent);
 
               return (
                 <div
@@ -635,133 +638,146 @@ export default function Notifications() {
                     item._id ||
                     `${item.createdAt}-${index}`
                   }
-                  className="notification-row"
+                  className="notification-card"
                   style={{
-                    ...styles.notificationRow,
+                    ...styles.card,
+                    ...alertStyle,
                     background:
-                      colors.card,
-                    border: `1px solid ${colors.border}`,
-                    borderLeft: `3px solid ${severityStyle.accent}`,
+                      cardBackground,
+                    border:
+                      cardBorder,
+                    color: textColor,
                   }}
                 >
-                  {/* ICON */}
+                  {/* ======================================
+                      TOP
+                  ====================================== */}
 
                   <div
-                    className="notification-icon"
-                    style={{
-                      ...styles.notificationIcon,
-                      background:
-                        severityStyle.iconBackground,
-                    }}
-                  >
-                    {getIcon(item.type)}
-                  </div>
-
-                  {/* CONTENT */}
-
-                  <div
+                    className="notification-card-top"
                     style={
-                      styles.notificationContent
+                      styles.cardTop
                     }
                   >
-                    {/* TOP LINE */}
+                    <div
+                      className="notification-icon"
+                      style={{
+                        ...styles.iconBox,
+                        background:
+                          isDark
+                            ? "rgba(255,255,255,0.09)"
+                            : "rgba(15,23,42,0.055)",
+                      }}
+                    >
+                      {getIcon(
+                        item.type
+                      )}
+                    </div>
 
                     <div
-                      style={
-                        styles.notificationTop
-                      }
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                      }}
                     >
                       <div
                         style={{
-                          minWidth: 0,
-                          flex: 1,
+                          display:
+                            "flex",
+                          alignItems:
+                            "center",
+                          gap: "8px",
+                          flexWrap:
+                            "wrap",
                         }}
                       >
-                        <div
-                          className="notification-title-text"
+                        <h2
+                          className="notification-card-title"
                           style={
-                            styles.notificationTitle
+                            styles.cardTitle
                           }
                         >
                           {item.title ||
-                            getTypeLabel(
-                              item.type
-                            )}
-                        </div>
+                            item.type ||
+                            "Brooder Alert"}
+                        </h2>
 
-                        <div
-                          className="notification-meta"
+                        <span
                           style={{
-                            ...styles.notificationMeta,
+                            ...styles.severity,
+                            background:
+                              getSeverityBackground(
+                                item.severity,
+                                isDark
+                              ),
                             color:
-                              colors.muted,
+                              getSeverityColor(
+                                item.severity
+                              ),
                           }}
                         >
-                          {getTypeLabel(
-                            item.type
-                          )}{" "}
-                          •{" "}
-                          {formatDate(
-                            item.createdAt
-                          )}
-                        </div>
+                          {item.severity ||
+                            "warning"}
+                        </span>
                       </div>
 
-                      {/* SEVERITY */}
-
-                      <span
+                      <p
                         style={{
-                          ...styles.severityBadge,
-                          color:
-                            severityStyle.text,
-                          background:
-                            severityStyle.background,
+                          ...styles.date,
+                          color: muted,
                         }}
                       >
-                        {severity}
-                      </span>
+                        {formatDate(
+                          item.createdAt
+                        )}
+                      </p>
                     </div>
+                  </div>
 
-                    {/* MESSAGE */}
+                  {/* ======================================
+                      SHORT MESSAGE
+                  ====================================== */}
 
+                  <p
+                    className="notification-message"
+                    style={{
+                      ...styles.message,
+                      color: isDark
+                        ? "#dbe4ef"
+                        : "#475569",
+                    }}
+                  >
+                    {getShortMessage(
+                      item
+                    )}
+                  </p>
+
+                  {/* ======================================
+                      SENSOR SUMMARY
+                  ====================================== */}
+
+                  {(item.temperature !==
+                    null &&
+                    item.temperature !==
+                      undefined) ||
+                  (item.humidity !==
+                    null &&
+                    item.humidity !==
+                      undefined) ? (
                     <div
-                      className="notification-message"
-                      style={{
-                        ...styles.notificationMessage,
-                        color:
-                          colors.muted,
-                      }}
+                      className="notification-meta"
+                      style={
+                        styles.meta
+                      }
                     >
-                      {item.message ||
-                        item.body ||
-                        "Brooder alert received."}
-                    </div>
-
-                    {/* PRO / PREMIUM DETAILS
-                        Only display if backend provides them.
-                    */}
-
-                    {(item.temperature !==
-                      null &&
-                      item.temperature !==
-                        undefined) ||
-                    (item.humidity !== null &&
-                      item.humidity !==
-                        undefined) ? (
-                      <div
-                        style={
-                          styles.compactDetails
-                        }
-                      >
-                        {item.temperature !==
-                          null &&
+                      {item.temperature !==
+                        null &&
                         item.temperature !==
-                          undefined ? (
+                          undefined && (
                           <span
                             style={{
-                              ...styles.detail,
-                              color:
-                                colors.muted,
+                              ...styles.metric,
+                              color: textColor,
                             }}
                           >
                             🌡️{" "}
@@ -770,25 +786,92 @@ export default function Notifications() {
                             }
                             °C
                           </span>
-                        ) : null}
+                        )}
 
-                        {item.humidity !==
-                          null &&
+                      {item.humidity !==
+                        null &&
                         item.humidity !==
-                          undefined ? (
+                          undefined && (
                           <span
                             style={{
-                              ...styles.detail,
-                              color:
-                                colors.muted,
+                              ...styles.metric,
+                              color: textColor,
                             }}
                           >
                             💧{" "}
-                            {item.humidity}%
+                            {
+                              item.humidity
+                            }
+                            %
                           </span>
-                        ) : null}
-                      </div>
-                    ) : null}
+                        )}
+                    </div>
+                  ) : null}
+
+                  {/* ======================================
+                      FOOTER
+                  ====================================== */}
+
+                  <div
+                    style={{
+                      ...styles.footer,
+                      borderTop: isDark
+                        ? "1px solid rgba(255,255,255,0.08)"
+                        : "1px solid rgba(15,23,42,0.07)",
+                    }}
+                  >
+                    {/* PUSH STATUS */}
+
+                    <div
+                      style={
+                        styles.pushStatus
+                      }
+                    >
+                      <span
+                        style={{
+                          ...styles.pushDot,
+                          background:
+                            pushSent
+                              ? "#22c55e"
+                              : "#f59e0b",
+                        }}
+                      />
+
+                      <span
+                        style={{
+                          color:
+                            muted,
+                        }}
+                      >
+                        Push:
+                      </span>
+
+                      <strong
+                        style={{
+                          color:
+                            pushSent
+                              ? "#22c55e"
+                              : "#f59e0b",
+                        }}
+                      >
+                        {getPushStatus(
+                          item
+                        )}
+                      </strong>
+                    </div>
+
+                    {/* COOLDOWN */}
+
+                    {cooldownText && (
+                      <span
+                        style={{
+                          ...styles.cooldown,
+                          color: muted,
+                        }}
+                      >
+                        ⏱ {cooldownText}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -803,58 +886,53 @@ export default function Notifications() {
 }
 
 // =====================================================
-// SEVERITY STYLE
+// SEVERITY BACKGROUND
 // =====================================================
 
-function getSeverityStyle(
+function getSeverityBackground(
   severity,
   isDark
 ) {
   switch (severity) {
     case "critical":
-      return {
-        accent: "#ef4444",
+      return isDark
+        ? "rgba(239,68,68,0.16)"
+        : "rgba(239,68,68,0.10)";
 
-        text: "#ef4444",
-
-        background: isDark
-          ? "rgba(239,68,68,0.12)"
-          : "#fef2f2",
-
-        iconBackground: isDark
-          ? "rgba(239,68,68,0.13)"
-          : "#fef2f2",
-      };
+    case "warning":
+      return isDark
+        ? "rgba(245,158,11,0.16)"
+        : "rgba(245,158,11,0.10)";
 
     case "info":
-      return {
-        accent: "#3b82f6",
-
-        text: "#3b82f6",
-
-        background: isDark
-          ? "rgba(59,130,246,0.12)"
-          : "#eff6ff",
-
-        iconBackground: isDark
-          ? "rgba(59,130,246,0.13)"
-          : "#eff6ff",
-      };
+      return isDark
+        ? "rgba(59,130,246,0.16)"
+        : "rgba(59,130,246,0.10)";
 
     default:
-      return {
-        accent: "#f59e0b",
+      return isDark
+        ? "rgba(148,163,184,0.14)"
+        : "rgba(100,116,139,0.09)";
+  }
+}
 
-        text: "#f59e0b",
+// =====================================================
+// SEVERITY COLOR
+// =====================================================
 
-        background: isDark
-          ? "rgba(245,158,11,0.12)"
-          : "#fffbeb",
+function getSeverityColor(severity) {
+  switch (severity) {
+    case "critical":
+      return "#ef4444";
 
-        iconBackground: isDark
-          ? "rgba(245,158,11,0.13)"
-          : "#fffbeb",
-      };
+    case "warning":
+      return "#f59e0b";
+
+    case "info":
+      return "#3b82f6";
+
+    default:
+      return "#64748b";
   }
 }
 
@@ -863,13 +941,16 @@ function getSeverityStyle(
 // =====================================================
 
 const styles = {
+  // ===================================================
+  // PAGE
+  // ===================================================
+
   page: {
     minHeight: "100vh",
     padding: "24px",
-    paddingBottom: "105px",
+    paddingBottom: "110px",
     fontFamily:
       "Inter, Arial, sans-serif",
-    boxSizing: "border-box",
   },
 
   // ===================================================
@@ -878,37 +959,49 @@ const styles = {
 
   header: {
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     alignItems: "center",
     gap: "20px",
-    paddingBottom: "18px",
-    marginBottom: "20px",
+    marginBottom: "25px",
   },
 
   title: {
+    fontSize: "32px",
     margin: 0,
-    fontSize: "31px",
     fontWeight: 750,
     letterSpacing: "-0.5px",
   },
 
   subtitle: {
-    margin: "5px 0 0",
+    marginTop: "6px",
+    marginBottom: 0,
     fontSize: "13px",
   },
 
-  refreshButton: {
-    display: "flex",
-    alignItems: "center",
-    gap: "7px",
+  refreshBtn: {
+    background:
+      "linear-gradient(135deg,#2dd4bf,#06b6d4)",
+    color: "#06221f",
     border: "none",
-    borderRadius: "10px",
-    padding: "9px 13px",
-    background: "#0f766e",
-    color: "#ffffff",
-    fontSize: "12px",
+    padding:
+      "10px 16px",
+    borderRadius: "12px",
     fontWeight: 700,
     cursor: "pointer",
+    whiteSpace:
+      "nowrap",
+    display: "flex",
+    alignItems:
+      "center",
+    gap: "6px",
+  },
+
+  refreshSpinner: {
+    fontSize: "17px",
+    display: "inline-block",
+    animation:
+      "spin 0.8s linear infinite",
   },
 
   // ===================================================
@@ -916,139 +1009,238 @@ const styles = {
   // ===================================================
 
   list: {
+    width: "100%",
+    maxWidth: "900px",
+    margin: "0 auto",
     display: "flex",
     flexDirection: "column",
-    gap: "9px",
-    maxWidth: "900px",
-  },
-
-  // ===================================================
-  // NOTIFICATION ROW
-  // ===================================================
-
-  notificationRow: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "12px",
-    padding: "14px",
-    borderRadius: "14px",
-    boxSizing: "border-box",
-  },
-
-  notificationIcon: {
-    width: "42px",
-    height: "42px",
-    minWidth: "42px",
-    borderRadius: "11px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "20px",
-  },
-
-  notificationContent: {
-    minWidth: 0,
-    flex: 1,
-  },
-
-  notificationTop: {
-    display: "flex",
-    alignItems: "flex-start",
     gap: "10px",
   },
 
-  notificationTitle: {
-    fontSize: "14px",
-    fontWeight: 700,
-    lineHeight: 1.3,
+  // ===================================================
+  // CARD
+  // ===================================================
+
+  card: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: "16px",
+    padding: "15px 17px",
+    boxShadow:
+      "0 8px 25px rgba(0,0,0,0.10)",
+    backdropFilter:
+      "blur(14px)",
+    borderLeft:
+      "4px solid #22c55e",
   },
 
-  notificationMeta: {
-    marginTop: "3px",
-    fontSize: "10px",
-    lineHeight: 1.3,
+  hot: {
+    borderLeft:
+      "4px solid #ef4444",
   },
 
-  notificationMessage: {
-    marginTop: "7px",
-    fontSize: "12px",
-    lineHeight: 1.5,
+  cold: {
+    borderLeft:
+      "4px solid #38bdf8",
   },
 
-  severityBadge: {
+  dry: {
+    borderLeft:
+      "4px solid #f59e0b",
+  },
+
+  humid: {
+    borderLeft:
+      "4px solid #a78bfa",
+  },
+
+  offline: {
+    borderLeft:
+      "4px solid #ef4444",
+  },
+
+  power: {
+    borderLeft:
+      "4px solid #f97316",
+  },
+
+  normal: {
+    borderLeft:
+      "4px solid #22c55e",
+  },
+
+  // ===================================================
+  // CARD TOP
+  // ===================================================
+
+  cardTop: {
+    display: "flex",
+    gap: "11px",
+    alignItems: "center",
+  },
+
+  iconBox: {
+    width: "45px",
+    height: "45px",
+    borderRadius: "13px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    fontSize: "22px",
     flexShrink: 0,
-    padding: "4px 7px",
-    borderRadius: "999px",
-    fontSize: "8px",
+  },
+
+  cardTitle: {
+    margin: 0,
+    fontSize: "16px",
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+
+  date: {
+    margin:
+      "4px 0 0",
+    fontSize: "11px",
+  },
+
+  // ===================================================
+  // SEVERITY
+  // ===================================================
+
+  severity: {
+    padding:
+      "3px 7px",
+    borderRadius:
+      "999px",
+    fontSize: "9px",
+    textTransform:
+      "uppercase",
     fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.4px",
+    letterSpacing:
+      "0.3px",
   },
 
   // ===================================================
-  // COMPACT DETAILS
+  // MESSAGE
   // ===================================================
 
-  compactDetails: {
+  message: {
+    lineHeight: 1.45,
+    margin:
+      "11px 0 9px",
+    fontSize: "13px",
+  },
+
+  // ===================================================
+  // SENSOR META
+  // ===================================================
+
+  meta: {
     display: "flex",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginTop: "7px",
-  },
-
-  detail: {
-    fontSize: "10px",
-  },
-
-  // ===================================================
-  // MESSAGE BOX
-  // ===================================================
-
-  messageBox: {
-    maxWidth: "600px",
-    margin: "45px auto",
-    padding: "35px 24px",
-    borderRadius: "18px",
-    textAlign: "center",
-    boxSizing: "border-box",
-  },
-
-  messageIcon: {
-    fontSize: "34px",
+    alignItems:
+      "center",
+    gap: "7px",
+    flexWrap:
+      "wrap",
     marginBottom: "10px",
+  },
+
+  metric: {
+    padding:
+      "5px 8px",
+    borderRadius:
+      "8px",
+    background:
+      "rgba(148,163,184,0.10)",
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+
+  // ===================================================
+  // FOOTER
+  // ===================================================
+
+  footer: {
+    marginTop: "5px",
+    paddingTop: "9px",
+    display: "flex",
+    justifyContent:
+      "space-between",
+    alignItems:
+      "center",
+    gap: "10px",
+    fontSize: "11px",
+    minHeight: "20px",
+  },
+
+  pushStatus: {
+    display: "flex",
+    alignItems:
+      "center",
+    gap: "5px",
+  },
+
+  pushDot: {
+    width: "7px",
+    height: "7px",
+    borderRadius:
+      "50%",
+    display: "inline-block",
+  },
+
+  cooldown: {
+    fontSize: "10px",
+    whiteSpace:
+      "nowrap",
+  },
+
+  // ===================================================
+  // EMPTY / ERROR
+  // ===================================================
+
+  emptyBox: {
+    borderRadius: "18px",
+    padding:
+      "40px 22px",
+    textAlign: "center",
+    backdropFilter:
+      "blur(14px)",
+    maxWidth: "650px",
+    margin:
+      "40px auto 0",
   },
 
   emptyIcon: {
-    fontSize: "34px",
-    marginBottom: "10px",
+    fontSize: "38px",
+    marginBottom:
+      "10px",
   },
 
-  messageTitle: {
-    margin: 0,
-    fontSize: "19px",
-    fontWeight: 700,
-  },
-
-  messageText: {
+  emptyTitle: {
     margin:
-      "8px auto 18px",
-    maxWidth: "430px",
-    fontSize: "13px",
-    lineHeight: 1.6,
+      "0 0 8px",
+    fontSize: "20px",
   },
 
-  primaryButton: {
-    display: "inline-block",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 16px",
+  emptyText: {
+    maxWidth: "430px",
+    margin:
+      "0 auto 18px",
+    lineHeight: 1.5,
+    fontSize: "13px",
+  },
+
+  retryBtn: {
     background:
-      "linear-gradient(135deg,#2563eb,#4f46e5)",
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
-    fontSize: "12px",
+    border: "none",
+    padding:
+      "10px 17px",
+    borderRadius:
+      "11px",
     fontWeight: 700,
-    textDecoration: "none",
     cursor: "pointer",
   },
 };

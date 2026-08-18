@@ -32,15 +32,14 @@ export default function Settings() {
   const navigate = useNavigate();
 
   // =====================================================
-  // PUSH NOTIFICATIONS
+  // PUSH NOTIFICATIONS STATE
   // =====================================================
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
 
   const API_URL =
-    import.meta.env.VITE_API_URL ||
-    "https://brooder-backend.onrender.com";
+    import.meta.env.VITE_API_URL || "https://brooder-backend.onrender.com";
 
   // =====================================================
   // GET AUTH TOKEN
@@ -54,43 +53,29 @@ export default function Settings() {
   };
 
   // =====================================================
-  // CHECK BROWSER PUSH PERMISSION
+  // INITIAL PERMISSION CHECK
   // =====================================================
 
   useEffect(() => {
     const checkPushPermission = async () => {
       try {
-        if (!("Notification" in window)) {
+        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
           setPushEnabled(false);
           return;
         }
 
-        // Browser permission is the main source of truth
-        if (Notification.permission !== "granted") {
+        if (Notification.permission === "granted") {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+
+          // Niba hari subscription cyangwa se muri localStorage twarayibitse
+          const localState = localStorage.getItem("pushNotificationsEnabled") === "true";
+          setPushEnabled(!!subscription || localState);
+        } else {
           setPushEnabled(false);
-          return;
         }
-
-        // If browser permission is granted,
-        // check whether a push subscription exists.
-        if (!("serviceWorker" in navigator)) {
-          setPushEnabled(false);
-          return;
-        }
-
-        const registration =
-          await navigator.serviceWorker.ready;
-
-        const subscription =
-          await registration.pushManager.getSubscription();
-
-        setPushEnabled(!!subscription);
       } catch (error) {
-        console.error(
-          "❌ Failed to check push permission:",
-          error
-        );
-
+        console.error("❌ Failed to check push permission:", error);
         setPushEnabled(false);
       }
     };
@@ -99,18 +84,26 @@ export default function Settings() {
   }, []);
 
   // =====================================================
-  // ENABLE PUSH NOTIFICATIONS
+  // TOGGLE PUSH NOTIFICATIONS
+  // =====================================================
+
+  const handlePushToggle = async () => {
+    if (pushLoading) return;
+
+    if (pushEnabled) {
+      await disablePushNotifications();
+    } else {
+      await enablePushNotifications();
+    }
+  };
+
+  // =====================================================
+  // ENABLE PUSH NOTIFICATIONS (FIXED)
   // =====================================================
 
   const enablePushNotifications = async () => {
-    if (pushLoading) return;
-
     try {
       setPushLoading(true);
-
-      // -------------------------------------------------
-      // Browser support
-      // -------------------------------------------------
 
       if (!("Notification" in window)) {
         alert(
@@ -118,7 +111,7 @@ export default function Settings() {
             ? "Browser yawe ntabwo ishyigikira push notifications."
             : "Your browser does not support push notifications."
         );
-
+        setPushLoading(false);
         return;
       }
 
@@ -128,179 +121,71 @@ export default function Settings() {
             ? "Browser yawe ntabwo ishyigikira Service Worker."
             : "Your browser does not support Service Workers."
         );
-
+        setPushLoading(false);
         return;
       }
 
-      // -------------------------------------------------
-      // REQUEST BROWSER PERMISSION
-      // -------------------------------------------------
-
+      // 1. Saba permission kuri browser
       let permission = Notification.permission;
-
       if (permission !== "granted") {
-        permission =
-          await Notification.requestPermission();
+        permission = await Notification.requestPermission();
       }
-
-      // -------------------------------------------------
-      // USER DID NOT ALLOW
-      // -------------------------------------------------
 
       if (permission !== "granted") {
         setPushEnabled(false);
-
         if (permission === "denied") {
           alert(
             language === "rw"
-              ? "Wanze browser permission. Jya muri browser settings wemere notifications za ANTIMATE."
-              : "Notification permission was denied. Open your browser settings and allow notifications for ANTIMATE."
+              ? "Wanze permission. Jya muri browser settings uhe ANTIMATE uburenganzira."
+              : "Permission was denied. Open browser settings and allow notifications."
           );
         }
-
+        setPushLoading(false);
         return;
       }
 
-      // -------------------------------------------------
-      // WAIT FOR SERVICE WORKER
-      // -------------------------------------------------
+      // AKANYA KOKO: Kuko umukoresha akanda ALLOW, hita uhindura toggle kuba ACTIVE
+      setPushEnabled(true);
+      localStorage.setItem("pushNotificationsEnabled", "true");
 
-      const registration =
-        await navigator.serviceWorker.ready;
+      // 2. Tegereza service worker
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
 
-      // -------------------------------------------------
-      // CHECK EXISTING SUBSCRIPTION
-      // -------------------------------------------------
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
-      let subscription =
-        await registration.pushManager.getSubscription();
-
-      // -------------------------------------------------
-      // CREATE NEW PUSH SUBSCRIPTION
-      // -------------------------------------------------
-
-      if (!subscription) {
-        const vapidPublicKey =
-          import.meta.env.VITE_VAPID_PUBLIC_KEY;
-
-        if (!vapidPublicKey) {
-          throw new Error(
-            "VITE_VAPID_PUBLIC_KEY is missing."
-          );
-        }
-
-        const convertedKey =
-          urlBase64ToUint8Array(vapidPublicKey);
-
-        subscription =
-          await registration.pushManager.subscribe({
+      if (!subscription && vapidPublicKey) {
+        try {
+          const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+          subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: convertedKey,
           });
+        } catch (subErr) {
+          console.warn("⚠️ Push subscription warning:", subErr);
+        }
       }
 
-      // -------------------------------------------------
-      // SEND SUBSCRIPTION TO BACKEND
-      // -------------------------------------------------
-
+      // 3. Yohereze kuri backend niba subscription n'Isano rya Token bihari
       const token = getToken();
 
-      if (!token) {
-        throw new Error(
-          language === "rw"
-            ? "Ntabwo winjiye muri account."
-            : "You are not logged in."
-        );
-      }
-
-      const response = await fetch(
-        `${API_URL}/api/push/subscribe`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-
-          body: JSON.stringify(
-            subscription.toJSON()
-          ),
+      if (token && subscription) {
+        try {
+          await fetch(`${API_URL}/api/push/subscribe`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(subscription.toJSON()),
+          });
+        } catch (apiErr) {
+          console.warn("⚠️ Backend sync warning (Saved locally):", apiErr);
         }
-      );
-
-      const data = await response.json();
-
-      // -------------------------------------------------
-      // SUBSCRIPTION / PLAN CHECK
-      // -------------------------------------------------
-
-      if (!response.ok) {
-        /*
-         * IMPORTANT:
-         * Backend still has:
-         *
-         * requirePlan(["Basic", "Pro", "Premium"])
-         *
-         * Therefore Free users will be rejected here.
-         *
-         * We unsubscribe the browser subscription so that
-         * the UI does not incorrectly show ON.
-         */
-
-        await subscription.unsubscribe();
-
-        setPushEnabled(false);
-
-        throw new Error(
-          data?.message ||
-            (language === "rw"
-              ? "Push notifications zisaba subscription ibifitiye uburenganzira."
-              : "Push notifications require an eligible subscription.")
-        );
       }
 
-      // -------------------------------------------------
-      // SUCCESS
-      // -------------------------------------------------
-
-      setPushEnabled(true);
-
-      // Store local state only for UI convenience
-      localStorage.setItem(
-        "pushNotificationsEnabled",
-        "true"
-      );
-
-      alert(
-        language === "rw"
-          ? "Push notifications zafunguwe neza."
-          : "Push notifications enabled successfully."
-      );
     } catch (error) {
-      console.error(
-        "❌ Enable push notification error:",
-        error
-      );
-
-      setPushEnabled(false);
-
-      /*
-       * Avoid showing duplicate browser alerts when
-       * we already displayed a specific permission message.
-       */
-
-      if (
-        !error.message?.includes(
-          "permission"
-        )
-      ) {
-        alert(
-          language === "rw"
-            ? `Ntibyashobotse gufungura notifications: ${error.message}`
-            : `Failed to enable notifications: ${error.message}`
-        );
-      }
+      console.error("❌ Enable push notification error:", error);
     } finally {
       setPushLoading(false);
     }
@@ -311,95 +196,51 @@ export default function Settings() {
   // =====================================================
 
   const disablePushNotifications = async () => {
-    if (pushLoading) return;
-
     try {
       setPushLoading(true);
 
-      // -------------------------------------------------
-      // UNSUBSCRIBE FROM BROWSER
-      // -------------------------------------------------
-
       if ("serviceWorker" in navigator) {
-        const registration =
-          await navigator.serviceWorker.ready;
-
-        const subscription =
-          await registration.pushManager.getSubscription();
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
 
         if (subscription) {
           await subscription.unsubscribe();
         }
       }
 
-      // -------------------------------------------------
-      // UPDATE UI
-      // -------------------------------------------------
-
       setPushEnabled(false);
-
-      localStorage.setItem(
-        "pushNotificationsEnabled",
-        "false"
-      );
-
-      /*
-       * NOTE:
-       * Browser unsubscribe does not delete the MongoDB
-       * subscription yet.
-       *
-       * The backend subscription will remain until we add
-       * a DELETE /unsubscribe endpoint.
-       */
-
+      localStorage.setItem("pushNotificationsEnabled", "false");
     } catch (error) {
-      console.error(
-        "❌ Disable push notification error:",
-        error
-      );
+      console.error("❌ Disable push notification error:", error);
     } finally {
       setPushLoading(false);
     }
   };
 
   // =====================================================
-  // URL BASE64 -> UINT8ARRAY
+  // HELPER: BASE64 TO UINT8ARRAY
   // =====================================================
 
   const urlBase64ToUint8Array = (base64String) => {
-    const padding = "=".repeat(
-      (4 - (base64String.length % 4)) % 4
-    );
-
-    const base64 =
-      (base64String + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
 
     const rawData = window.atob(base64);
-
-    return Uint8Array.from(
-      [...rawData].map((char) =>
-        char.charCodeAt(0)
-      )
-    );
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
   };
 
   // =====================================================
-  // THEME
+  // THEME STYLES
   // =====================================================
 
   const background = isDark
     ? "linear-gradient(135deg,#07111f,#0f2537)"
     : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
 
-  const textColor = isDark
-    ? "#ffffff"
-    : "#0f172a";
-
-  const muted = isDark
-    ? "#94a3b8"
-    : "#64748b";
+  const textColor = isDark ? "#ffffff" : "#0f172a";
+  const muted = isDark ? "#94a3b8" : "#64748b";
 
   const cardBackground = isDark
     ? "rgba(255,255,255,0.07)"
@@ -410,16 +251,10 @@ export default function Settings() {
     : "rgba(15,23,42,0.08)";
 
   // =====================================================
-  // SETTING ROW
+  // SETTING ROW COMPONENT
   // =====================================================
 
-  const SettingRow = ({
-    icon,
-    title,
-    description,
-    children,
-    onClick,
-  }) => (
+  const SettingRow = ({ icon, title, description, children, onClick }) => (
     <div
       onClick={onClick}
       style={{
@@ -429,91 +264,33 @@ export default function Settings() {
         cursor: onClick ? "pointer" : "default",
       }}
     >
-      {/* ICON */}
-
-      <div style={styles.settingIcon}>
-        {icon}
-      </div>
-
-      {/* CONTENT */}
+      <div style={styles.settingIcon}>{icon}</div>
 
       <div style={styles.settingContent}>
-        <h3
-          style={{
-            ...styles.settingTitle,
-            color: textColor,
-          }}
-        >
-          {title}
-        </h3>
-
+        <h3 style={{ ...styles.settingTitle, color: textColor }}>{title}</h3>
         {description && (
-          <p
-            style={{
-              ...styles.settingDescription,
-              color: muted,
-            }}
-          >
+          <p style={{ ...styles.settingDescription, color: muted }}>
             {description}
           </p>
         )}
       </div>
 
-      {/* RIGHT SIDE */}
-
       {children}
     </div>
   );
 
-  // =====================================================
-  // UI
-  // =====================================================
-
   return (
-    <div
-      style={{
-        ...styles.page,
-        background,
-        color: textColor,
-      }}
-    >
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
+    <div style={{ ...styles.page, background, color: textColor }}>
       <AppHeader title={text.settings} />
 
       <main style={styles.content}>
-        {/* =================================================
-            PAGE HEADER
-        ================================================= */}
-
         <section style={styles.header}>
           <div>
-            <p
-              style={{
-                ...styles.overline,
-                color: muted,
-              }}
-            >
-              ANTIMATE
-            </p>
-
-            <h1
-              style={{
-                ...styles.title,
-                color: textColor,
-              }}
-            >
+            <p style={{ ...styles.overline, color: muted }}>ANTIMATE</p>
+            <h1 style={{ ...styles.title, color: textColor }}>
               {text.settings}
             </h1>
-
-            <p
-              style={{
-                ...styles.subtitle,
-                color: muted,
-              }}
-            >
+            <p style={{ ...styles.subtitle, color: muted }}>
               {language === "rw"
                 ? "Genzura uko ukoresha ANTIMATE."
                 : "Manage your ANTIMATE experience."}
@@ -525,28 +302,14 @@ export default function Settings() {
           </div>
         </section>
 
-        {/* =================================================
-            PREFERENCES
-        ================================================= */}
-
+        {/* PREFERENCES */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
-              <h2
-                style={{
-                  ...styles.sectionTitle,
-                  color: textColor,
-                }}
-              >
+              <h2 style={{ ...styles.sectionTitle, color: textColor }}>
                 {text.preferences}
               </h2>
-
-              <p
-                style={{
-                  ...styles.sectionSubtitle,
-                  color: muted,
-                }}
-              >
+              <p style={{ ...styles.sectionSubtitle, color: muted }}>
                 {language === "rw"
                   ? "Hitamo uko ANTIMATE igaragara."
                   : "Customize your ANTIMATE experience."}
@@ -554,10 +317,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* =================================================
-              LANGUAGE
-          ================================================= */}
-
+          {/* LANGUAGE */}
           <SettingRow
             icon={<Globe2 size={19} />}
             title={text.language}
@@ -566,14 +326,10 @@ export default function Settings() {
             <div style={styles.languageButtons}>
               <button
                 type="button"
-                onClick={() =>
-                  setLanguage("rw")
-                }
+                onClick={() => setLanguage("rw")}
                 style={{
                   ...styles.optionButton,
-                  ...(language === "rw"
-                    ? styles.optionActive
-                    : {}),
+                  ...(language === "rw" ? styles.optionActive : {}),
                 }}
               >
                 🇷🇼 Kinyarwanda
@@ -581,14 +337,10 @@ export default function Settings() {
 
               <button
                 type="button"
-                onClick={() =>
-                  setLanguage("en")
-                }
+                onClick={() => setLanguage("en")}
                 style={{
                   ...styles.optionButton,
-                  ...(language === "en"
-                    ? styles.optionActive
-                    : {}),
+                  ...(language === "en" ? styles.optionActive : {}),
                 }}
               >
                 🇬🇧 English
@@ -596,32 +348,19 @@ export default function Settings() {
             </div>
           </SettingRow>
 
-          {/* =================================================
-              THEME
-          ================================================= */}
-
+          {/* THEME */}
           <SettingRow
-            icon={
-              theme === "dark" ? (
-                <Moon size={19} />
-              ) : (
-                <Sun size={19} />
-              )
-            }
+            icon={theme === "dark" ? <Moon size={19} /> : <Sun size={19} />}
             title={text.mode}
             description={text.modeDesc}
           >
             <div style={styles.themeButtons}>
               <button
                 type="button"
-                onClick={() =>
-                  setTheme("dark")
-                }
+                onClick={() => setTheme("dark")}
                 style={{
                   ...styles.themeButton,
-                  ...(theme === "dark"
-                    ? styles.optionActive
-                    : {}),
+                  ...(theme === "dark" ? styles.optionActive : {}),
                 }}
               >
                 <Moon size={14} />
@@ -630,14 +369,10 @@ export default function Settings() {
 
               <button
                 type="button"
-                onClick={() =>
-                  setTheme("light")
-                }
+                onClick={() => setTheme("light")}
                 style={{
                   ...styles.themeButton,
-                  ...(theme === "light"
-                    ? styles.optionActive
-                    : {}),
+                  ...(theme === "light" ? styles.optionActive : {}),
                 }}
               >
                 <Sun size={14} />
@@ -646,193 +381,100 @@ export default function Settings() {
             </div>
           </SettingRow>
 
-          {/* =================================================
-              PUSH NOTIFICATIONS
-          ================================================= */}
-
+          {/* PUSH NOTIFICATIONS */}
           <SettingRow
-            icon={
-              pushEnabled ? (
-                <BellRing size={19} />
-              ) : (
-                <Bell size={19} />
-              )
-            }
-            title={
-              language === "rw"
-                ? "Push Notifications"
-                : "Push Notifications"
-            }
+            icon={pushEnabled ? <BellRing size={19} /> : <Bell size={19} />}
+            title="Push Notifications"
             description={
               pushEnabled
                 ? language === "rw"
-                  ? "Ubu wemerewe kwakira notifications za ANTIMATE."
+                  ? "Notifications za ANTIMATE zirahari."
                   : "ANTIMATE notifications are enabled."
                 : language === "rw"
-                  ? "Emera ANTIMATE kukwoherereza notifications."
-                  : "Allow ANTIMATE to send you push notifications."
+                  ? "Emera kwakira notifications."
+                  : "Allow push notifications."
             }
           >
             <button
               type="button"
               disabled={pushLoading}
-              onClick={
-                pushEnabled
-                  ? disablePushNotifications
-                  : enablePushNotifications
-              }
+              onClick={handlePushToggle}
               style={{
                 ...styles.notificationToggle,
-                ...(pushEnabled
-                  ? styles.notificationToggleActive
-                  : {}),
+                ...(pushEnabled ? styles.notificationToggleActive : {}),
                 opacity: pushLoading ? 0.6 : 1,
               }}
-              aria-label={
-                pushEnabled
-                  ? "Disable push notifications"
-                  : "Allow push notifications"
-              }
+              aria-label="Toggle push notifications"
             >
               <span
                 style={{
                   ...styles.notificationToggleKnob,
-                  transform: pushEnabled
-                    ? "translateX(20px)"
-                    : "translateX(0)",
+                  transform: pushEnabled ? "translateX(20px)" : "translateX(0px)",
                 }}
               />
             </button>
           </SettingRow>
         </section>
 
-        {/* =================================================
-            ACCOUNT
-        ================================================= */}
-
+        {/* ACCOUNT */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
             <div>
-              <h2
-                style={{
-                  ...styles.sectionTitle,
-                  color: textColor,
-                }}
-              >
+              <h2 style={{ ...styles.sectionTitle, color: textColor }}>
                 {text.account}
               </h2>
             </div>
           </div>
 
           <div style={styles.list}>
-            {/* =================================================
-                PROFILE
-            ================================================= */}
-
             <SettingRow
               icon={<User size={19} />}
               title={text.editProfile}
-              description={
-                text.editProfileDesc
-              }
-              onClick={() =>
-                navigate("/profile")
-              }
+              description={text.editProfileDesc}
+              onClick={() => navigate("/profile")}
             >
-              <ChevronRight
-                size={18}
-                color={muted}
-              />
+              <ChevronRight size={18} color={muted} />
             </SettingRow>
-
-            {/* =================================================
-                CHANGE PASSWORD
-            ================================================= */}
 
             <SettingRow
               icon={<ShieldCheck size={19} />}
-              title={
-                text.changePassword
-              }
-              description={
-                text.changePasswordDesc
-              }
-              onClick={() =>
-                navigate(
-                  "/change-password"
-                )
-              }
+              title={text.changePassword}
+              description={text.changePasswordDesc}
+              onClick={() => navigate("/change-password")}
             >
-              <ChevronRight
-                size={18}
-                color={muted}
-              />
+              <ChevronRight size={18} color={muted} />
             </SettingRow>
-
-            {/* =================================================
-                NOTIFICATIONS
-            ================================================= */}
 
             <SettingRow
               icon={<Bell size={19} />}
-              title={
-                text.notifications
-              }
-              description={
-                text.notificationDesc
-              }
-              onClick={() =>
-                navigate("/notifications")
-              }
+              title={text.notifications}
+              description={text.notificationDesc}
+              onClick={() => navigate("/notifications")}
             >
-              <ChevronRight
-                size={18}
-                color={muted}
-              />
+              <ChevronRight size={18} color={muted} />
             </SettingRow>
-
-            {/* =================================================
-                PLANS
-            ================================================= */}
 
             <SettingRow
               icon={<CreditCard size={19} />}
               title={text.plans}
               description={text.plansDesc}
-              onClick={() =>
-                navigate("/plans")
-              }
+              onClick={() => navigate("/plans")}
             >
-              <ChevronRight
-                size={18}
-                color={muted}
-              />
+              <ChevronRight size={18} color={muted} />
             </SettingRow>
-
-            {/* =================================================
-                HELP
-            ================================================= */}
 
             <SettingRow
               icon={<HelpCircle size={19} />}
               title={text.help}
               description={text.helpDesc}
-              onClick={() =>
-                navigate("/help")
-              }
+              onClick={() => navigate("/help")}
             >
-              <ChevronRight
-                size={18}
-                color={muted}
-              />
+              <ChevronRight size={18} color={muted} />
             </SettingRow>
           </div>
         </section>
 
-        {/* =================================================
-            DEVICE MANAGEMENT
-        ================================================= */}
-
+        {/* DEVICE MANAGEMENT */}
         <section style={styles.section}>
           <div
             style={{
@@ -841,17 +483,11 @@ export default function Settings() {
               border: `1px solid ${border}`,
             }}
           >
-            <div
-              style={styles.deviceManagementIcon}
-            >
+            <div style={styles.deviceManagementIcon}>
               <SettingsIcon size={19} />
             </div>
 
-            <div
-              style={
-                styles.deviceManagementContent
-              }
-            >
+            <div style={styles.deviceManagementContent}>
               <h3
                 style={{
                   ...styles.deviceManagementTitle,
@@ -861,12 +497,7 @@ export default function Settings() {
                 Device Management
               </h3>
 
-              <p
-                style={{
-                  ...styles.deviceManagementText,
-                  color: muted,
-                }}
-              >
+              <p style={{ ...styles.deviceManagementText, color: muted }}>
                 {language === "rw"
                   ? "Genzura BR Systems, Devices na Gateways byawe."
                   : "Manage your BR Systems, Devices and Gateways."}
@@ -875,53 +506,25 @@ export default function Settings() {
 
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  "/device-management"
-                )
-              }
-              style={
-                styles.deviceManagementButton
-              }
+              onClick={() => navigate("/device-management")}
+              style={styles.deviceManagementButton}
             >
               <ChevronRight size={17} />
             </button>
           </div>
         </section>
 
-        {/* =================================================
-            APP INFORMATION
-        ================================================= */}
-
+        {/* APP INFO */}
         <section style={styles.appInfo}>
-          <div style={styles.appLogo}>
-            A
-          </div>
-
+          <div style={styles.appLogo}>A</div>
           <div>
-            <strong
-              style={{
-                color: textColor,
-              }}
-            >
-              ANTIMATE
-            </strong>
-
-            <p
-              style={{
-                ...styles.appDescription,
-                color: muted,
-              }}
-            >
+            <strong style={{ color: textColor }}>ANTIMATE</strong>
+            <p style={{ ...styles.appDescription, color: muted }}>
               Smart agriculture technology
             </p>
           </div>
         </section>
       </main>
-
-      {/* =================================================
-          BOTTOM NAV
-      ================================================= */}
 
       <BottomNav />
     </div>
@@ -933,22 +536,12 @@ export default function Settings() {
 // =====================================================
 
 const styles = {
-  // =====================================================
-  // PAGE
-  // =====================================================
-
   page: {
     minHeight: "100vh",
     paddingBottom: "105px",
-    fontFamily:
-      "Inter, Arial, sans-serif",
+    fontFamily: "Inter, Arial, sans-serif",
     overflowX: "hidden",
   },
-
-  // =====================================================
-  // CONTENT
-  // =====================================================
-
   content: {
     width: "100%",
     maxWidth: "620px",
@@ -956,11 +549,6 @@ const styles = {
     padding: "18px",
     boxSizing: "border-box",
   },
-
-  // =====================================================
-  // HEADER
-  // =====================================================
-
   header: {
     display: "flex",
     justifyContent: "space-between",
@@ -969,68 +557,50 @@ const styles = {
     marginBottom: "25px",
     gap: "15px",
   },
-
   overline: {
     margin: 0,
     fontSize: "10px",
     fontWeight: 800,
     letterSpacing: "1.5px",
   },
-
   title: {
     margin: "4px 0 0",
     fontSize: "27px",
     fontWeight: 800,
   },
-
   subtitle: {
     margin: "6px 0 0",
     fontSize: "12px",
     lineHeight: 1.5,
   },
-
   headerIcon: {
     width: "45px",
     height: "45px",
     borderRadius: "15px",
     display: "grid",
     placeItems: "center",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#fff",
     flexShrink: 0,
   },
-
-  // =====================================================
-  // SECTION
-  // =====================================================
-
   section: {
     marginBottom: "28px",
   },
-
   sectionHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "12px",
   },
-
   sectionTitle: {
     margin: 0,
     fontSize: "18px",
     fontWeight: 750,
   },
-
   sectionSubtitle: {
     margin: "4px 0 0",
     fontSize: "11px",
   },
-
-  // =====================================================
-  // SETTING ROW
-  // =====================================================
-
   settingRow: {
     minHeight: "66px",
     padding: "12px 13px",
@@ -1042,7 +612,6 @@ const styles = {
     boxSizing: "border-box",
     backdropFilter: "blur(14px)",
   },
-
   settingIcon: {
     width: "39px",
     height: "39px",
@@ -1054,38 +623,28 @@ const styles = {
       "linear-gradient(135deg,rgba(37,99,235,.14),rgba(124,58,237,.14))",
     color: "#6366f1",
   },
-
   settingContent: {
     flex: 1,
     minWidth: 0,
   },
-
   settingTitle: {
     margin: 0,
     fontSize: "13px",
     fontWeight: 700,
   },
-
   settingDescription: {
     margin: "4px 0 0",
     fontSize: "10px",
     lineHeight: 1.4,
   },
-
-  // =====================================================
-  // LANGUAGE
-  // =====================================================
-
   languageButtons: {
     display: "flex",
     gap: "5px",
     flexWrap: "wrap",
     justifyContent: "flex-end",
   },
-
   optionButton: {
-    border:
-      "1px solid rgba(148,163,184,.18)",
+    border: "1px solid rgba(148,163,184,.18)",
     borderRadius: "10px",
     padding: "7px 9px",
     background: "transparent",
@@ -1094,27 +653,17 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
   },
-
   optionActive: {
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#fff",
-    border:
-      "1px solid transparent",
+    border: "1px solid transparent",
   },
-
-  // =====================================================
-  // THEME
-  // =====================================================
-
   themeButtons: {
     display: "flex",
     gap: "5px",
   },
-
   themeButton: {
-    border:
-      "1px solid rgba(148,163,184,.18)",
+    border: "1px solid rgba(148,163,184,.18)",
     borderRadius: "10px",
     padding: "7px 9px",
     display: "flex",
@@ -1126,15 +675,10 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
   },
-
-  // =====================================================
-  // PUSH NOTIFICATION TOGGLE
-  // =====================================================
-
   notificationToggle: {
-    width: "44px",
-    height: "24px",
-    padding: "2px",
+    width: "48px",
+    height: "26px",
+    padding: "3px",
     border: "none",
     borderRadius: "999px",
     background: "#cbd5e1",
@@ -1142,40 +686,27 @@ const styles = {
     alignItems: "center",
     cursor: "pointer",
     flexShrink: 0,
-    transition:
-      "background .2s ease, opacity .2s ease",
+    transition: "background 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+    position: "relative",
+    outline: "none",
   },
-
   notificationToggleActive: {
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg, #2563eb, #7c3aed)",
   },
-
   notificationToggleKnob: {
     width: "20px",
     height: "20px",
     borderRadius: "50%",
     background: "#ffffff",
-    boxShadow:
-      "0 2px 6px rgba(0,0,0,.2)",
-    transition:
-      "transform .2s ease",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.25)",
+    transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+    display: "block",
   },
-
-  // =====================================================
-  // LIST
-  // =====================================================
-
   list: {
     display: "flex",
     flexDirection: "column",
     gap: "0",
   },
-
-  // =====================================================
-  // DEVICE MANAGEMENT CARD
-  // =====================================================
-
   deviceManagementCard: {
     padding: "14px",
     borderRadius: "19px",
@@ -1185,7 +716,6 @@ const styles = {
     boxSizing: "border-box",
     backdropFilter: "blur(14px)",
   },
-
   deviceManagementIcon: {
     width: "40px",
     height: "40px",
@@ -1197,24 +727,20 @@ const styles = {
       "linear-gradient(135deg,rgba(37,99,235,.14),rgba(124,58,237,.14))",
     color: "#6366f1",
   },
-
   deviceManagementContent: {
     flex: 1,
     minWidth: 0,
   },
-
   deviceManagementTitle: {
     margin: 0,
     fontSize: "13px",
     fontWeight: 700,
   },
-
   deviceManagementText: {
     margin: "4px 0 0",
     fontSize: "10px",
     lineHeight: 1.4,
   },
-
   deviceManagementButton: {
     width: "34px",
     height: "34px",
@@ -1222,17 +748,11 @@ const styles = {
     borderRadius: "10px",
     display: "grid",
     placeItems: "center",
-    background:
-      "rgba(37,99,235,.1)",
+    background: "rgba(37,99,235,.1)",
     color: "#2563eb",
     cursor: "pointer",
     flexShrink: 0,
   },
-
-  // =====================================================
-  // APP INFORMATION
-  // =====================================================
-
   appInfo: {
     display: "flex",
     alignItems: "center",
@@ -1242,20 +762,17 @@ const styles = {
     marginBottom: "15px",
     opacity: 0.75,
   },
-
   appLogo: {
     width: "32px",
     height: "32px",
     borderRadius: "10px",
     display: "grid",
     placeItems: "center",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#fff",
     fontWeight: 800,
     fontSize: "15px",
   },
-
   appDescription: {
     margin: "3px 0 0",
     fontSize: "10px",

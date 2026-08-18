@@ -14,7 +14,8 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [isSubscriptionExpired, setIsSubscriptionExpired] = useState(false);
+  const [isSubscriptionExpired, setIsSubscriptionExpired] =
+    useState(false);
 
   // =====================================================
   // FETCH NOTIFICATIONS
@@ -47,10 +48,18 @@ export default function Notifications() {
         },
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      // Handle Subscription Expiry (403 from requirePlan middleware)
-      if (res.status === 403 && data.message?.toLowerCase().includes("subscription expired")) {
+      // ===================================================
+      // SUBSCRIPTION EXPIRED
+      // ===================================================
+
+      if (
+        res.status === 403 &&
+        String(data.message || "")
+          .toLowerCase()
+          .includes("subscription expired")
+      ) {
         setIsSubscriptionExpired(true);
         setError("Your subscription plan has expired.");
         setNotifications([]);
@@ -58,7 +67,9 @@ export default function Notifications() {
       }
 
       if (!res.ok) {
-        throw new Error(data.message || "Failed to load notifications");
+        throw new Error(
+          data.message || "Failed to load notifications"
+        );
       }
 
       let list = [];
@@ -73,8 +84,16 @@ export default function Notifications() {
 
       setNotifications(list);
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-      setError(err.message || "Failed to load notifications");
+      console.error(
+        "Failed to fetch notifications:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to load notifications"
+      );
+
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -89,21 +108,34 @@ export default function Notifications() {
   async function markAllAsRead() {
     try {
       const token = localStorage.getItem("token");
-      if (!token || isSubscriptionExpired) return;
 
-      const res = await fetch(`${API_URL}/api/notifications/read/all`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (!token || isSubscriptionExpired) {
+        return;
+      }
+
+      const res = await fetch(
+        `${API_URL}/api/notifications/read/all`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error("Mark read failed:", data.message);
+
+        console.error(
+          "Mark notifications as read failed:",
+          data.message
+        );
       }
     } catch (err) {
-      console.error("Failed to mark notifications as read:", err);
+      console.error(
+        "Failed to mark notifications as read:",
+        err
+      );
     }
   }
 
@@ -126,282 +158,642 @@ export default function Notifications() {
 
   async function handleRefresh() {
     await fetchNotifications(false);
+
     if (!isSubscriptionExpired) {
       await markAllAsRead();
     }
   }
 
   // =====================================================
-  // ALERT STYLE & ICON
+  // NOTIFICATION ICON
   // =====================================================
-
-  function getAlertStyle(type) {
-    switch (type) {
-      case "TOO_HOT":
-        return styles.hot;
-      case "TOO_COLD":
-        return styles.cold;
-      case "LOW_HUMIDITY":
-        return styles.dry;
-      case "VERY_HIGH_HUMIDITY":
-        return styles.humid;
-      default:
-        return styles.normal;
-    }
-  }
 
   function getIcon(type) {
     switch (type) {
       case "TOO_HOT":
         return "🔥";
+
       case "TOO_COLD":
         return "❄️";
+
       case "LOW_HUMIDITY":
         return "💧";
+
       case "VERY_HIGH_HUMIDITY":
         return "🌫️";
-      default:
+
+      case "SENSOR_OFFLINE":
+        return "📡";
+
+      case "POWER_LOST":
+        return "⚡";
+
+      case "CHICKS_AGE":
         return "🐣";
+
+      default:
+        return "🔔";
     }
   }
 
-  function formatDate(date) {
-    if (!date) return "No date";
-    const parsed = new Date(date);
-    if (Number.isNaN(parsed.getTime())) return "No date";
-    return parsed.toLocaleString();
+  // =====================================================
+  // TYPE LABEL
+  // =====================================================
+
+  function getTypeLabel(type) {
+    switch (type) {
+      case "TOO_HOT":
+        return "Temperature";
+
+      case "TOO_COLD":
+        return "Temperature";
+
+      case "LOW_HUMIDITY":
+        return "Humidity";
+
+      case "VERY_HIGH_HUMIDITY":
+        return "Humidity";
+
+      case "SENSOR_OFFLINE":
+        return "System";
+
+      case "POWER_LOST":
+        return "Power";
+
+      case "CHICKS_AGE":
+        return "Chicks";
+
+      default:
+        return "Brooder";
+    }
   }
 
   // =====================================================
-  // COLORS
+  // SEVERITY
   // =====================================================
 
-  const background = isDark
-    ? "linear-gradient(135deg,#07111f,#0f2537)"
-    : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
+  function getSeverity(item) {
+    const severity = String(
+      item?.severity || "warning"
+    ).toLowerCase();
 
-  const textColor = isDark ? "#ffffff" : "#0f172a";
-  const muted = isDark ? "#94a3b8" : "#64748b";
-  const cardBackground = isDark
-    ? "rgba(255,255,255,0.08)"
-    : "rgba(255,255,255,0.78)";
-  const cardBorder = isDark
-    ? "1px solid rgba(255,255,255,0.12)"
-    : "1px solid rgba(15,23,42,0.08)";
+    if (
+      ["critical", "danger", "error"].includes(
+        severity
+      )
+    ) {
+      return "critical";
+    }
+
+    if (severity === "info") {
+      return "info";
+    }
+
+    return "warning";
+  }
+
+  // =====================================================
+  // DATE
+  // =====================================================
+
+  function formatDate(date) {
+    if (!date) {
+      return "Just now";
+    }
+
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return "Just now";
+    }
+
+    const now = new Date();
+
+    const diff =
+      now.getTime() -
+      parsed.getTime();
+
+    const minute =
+      60 * 1000;
+
+    const hour =
+      60 * minute;
+
+    const day =
+      24 * hour;
+
+    if (diff < minute) {
+      return "Just now";
+    }
+
+    if (diff < hour) {
+      const minutes = Math.floor(
+        diff / minute
+      );
+
+      return `${minutes}m ago`;
+    }
+
+    if (diff < day) {
+      const hours = Math.floor(
+        diff / hour
+      );
+
+      return `${hours}h ago`;
+    }
+
+    if (diff < 7 * day) {
+      const days = Math.floor(
+        diff / day
+      );
+
+      return `${days}d ago`;
+    }
+
+    return parsed.toLocaleDateString(
+      undefined,
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }
+    );
+  }
+
+  // =====================================================
+  // EMPTY / ERROR COLORS
+  // =====================================================
+
+  const colors = {
+    text: isDark
+      ? "#f8fafc"
+      : "#0f172a",
+
+    muted: isDark
+      ? "#94a3b8"
+      : "#64748b",
+
+    subtle: isDark
+      ? "#64748b"
+      : "#94a3b8",
+
+    background: isDark
+      ? "#07111f"
+      : "#f8fafc",
+
+    card: isDark
+      ? "rgba(255,255,255,0.055)"
+      : "#ffffff",
+
+    border: isDark
+      ? "rgba(255,255,255,0.09)"
+      : "#e2e8f0",
+
+    hover: isDark
+      ? "rgba(255,255,255,0.08)"
+      : "#f8fafc",
+  };
 
   // =====================================================
   // RENDER
   // =====================================================
 
   return (
-    <div style={{ ...styles.page, background, color: textColor }}>
+    <div
+      style={{
+        ...styles.page,
+        background: colors.background,
+        color: colors.text,
+      }}
+    >
       <style>
         {`
           @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+              transform: rotate(0deg);
+            }
+
+            to {
+              transform: rotate(360deg);
+            }
           }
+
+          .notification-row {
+            transition:
+              background 0.18s ease,
+              border-color 0.18s ease,
+              transform 0.18s ease;
+          }
+
+          .notification-row:hover {
+            transform: translateY(-1px);
+          }
+
+          .refresh-button {
+            transition:
+              opacity 0.2s ease,
+              transform 0.2s ease;
+          }
+
+          .refresh-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+          }
+
           @media (max-width: 600px) {
-            .notification-header { align-items: flex-start !important; }
-            .notification-title { font-size: 28px !important; }
-            .notification-grid { grid-template-columns: 1fr !important; }
-            .notification-footer { flex-direction: column; align-items: flex-start; }
+            .notifications-header {
+              align-items: flex-start !important;
+            }
+
+            .notifications-title {
+              font-size: 27px !important;
+            }
+
+            .notification-row {
+              padding: 13px !important;
+            }
+
+            .notification-icon {
+              width: 40px !important;
+              height: 40px !important;
+              min-width: 40px !important;
+              font-size: 19px !important;
+            }
+
+            .notification-title-text {
+              font-size: 14px !important;
+            }
+
+            .notification-message {
+              font-size: 12px !important;
+            }
+
+            .notification-meta {
+              font-size: 10px !important;
+            }
           }
         `}
       </style>
 
-      {/* HEADER */}
-      <div className="notification-header" style={styles.header}>
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
+      <div
+        className="notifications-header"
+        style={{
+          ...styles.header,
+          borderBottom: `1px solid ${colors.border}`,
+        }}
+      >
         <div>
-          <h1 className="notification-title" style={styles.title}>
+          <h1
+            className="notifications-title"
+            style={styles.title}
+          >
             Notifications
           </h1>
-          <p style={{ ...styles.subtitle, color: muted }}>
-            Smart Brooder alerts and environment warnings
+
+          <p
+            style={{
+              ...styles.subtitle,
+              color: colors.muted,
+            }}
+          >
+            Important updates from your brooder
           </p>
         </div>
 
         <button
+          className="refresh-button"
           onClick={handleRefresh}
           disabled={refreshing}
           style={{
-            ...styles.refreshBtn,
-            opacity: refreshing ? 0.6 : 1,
+            ...styles.refreshButton,
+            opacity: refreshing ? 0.55 : 1,
           }}
         >
-          {refreshing ? "Refreshing..." : "Refresh"}
+          <span
+            style={{
+              display: "inline-block",
+              animation: refreshing
+                ? "spin 1s linear infinite"
+                : "none",
+            }}
+          >
+            ↻
+          </span>
+
+          <span>
+            {refreshing
+              ? "Refreshing"
+              : "Refresh"}
+          </span>
         </button>
       </div>
 
-      {/* LOADING */}
+      {/* =================================================
+          LOADING
+      ================================================= */}
+
       {loading ? (
         <PageLoader />
       ) : isSubscriptionExpired ? (
-        /* SUBSCRIPTION EXPIRED WARNING CARD */
+        /* ===============================================
+           SUBSCRIPTION EXPIRED
+        =============================================== */
+
         <div
           style={{
-            ...styles.emptyBox,
+            ...styles.messageBox,
             background: isDark
-              ? "rgba(239,68,68,0.12)"
-              : "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.30)",
+              ? "rgba(239,68,68,0.08)"
+              : "#fff7f7",
+            border: isDark
+              ? "1px solid rgba(239,68,68,0.20)"
+              : "1px solid #fecaca",
           }}
         >
-          <div style={styles.emptyIcon}>⏳</div>
-          <h2>Subscription Expired</h2>
-          <p style={{ color: muted, maxWidth: "400px", margin: "10px auto 20px" }}>
-            Your active plan has expired. Upgrade or renew your ANTIMATE subscription to continue receiving real-time alerts.
-          </p>
-          <a
-            href="/plans"
+          <div style={styles.messageIcon}>
+            ⏳
+          </div>
+
+          <h2 style={styles.messageTitle}>
+            Subscription expired
+          </h2>
+
+          <p
             style={{
-              ...styles.retryBtn,
-              display: "inline-block",
-              textDecoration: "none",
+              ...styles.messageText,
+              color: colors.muted,
             }}
           >
-            Renew / Upgrade Plan
+            Renew your plan to continue
+            receiving brooder notifications.
+          </p>
+
+          <a
+            href="/plans"
+            style={styles.primaryButton}
+          >
+            Renew / Upgrade
           </a>
         </div>
       ) : error ? (
-        /* GENERAL ERROR */
+        /* ===============================================
+           ERROR
+        =============================================== */
+
         <div
           style={{
-            ...styles.emptyBox,
+            ...styles.messageBox,
             background: isDark
-              ? "rgba(239,68,68,0.10)"
-              : "rgba(239,68,68,0.07)",
-            border: "1px solid rgba(239,68,68,0.20)",
+              ? "rgba(239,68,68,0.07)"
+              : "#fffafa",
+            border: isDark
+              ? "1px solid rgba(239,68,68,0.18)"
+              : "1px solid #fecaca",
           }}
         >
-          <div style={styles.emptyIcon}>⚠️</div>
-          <h2>Unable to load notifications</h2>
-          <p style={{ color: muted }}>{error}</p>
-          <button onClick={() => fetchNotifications()} style={styles.retryBtn}>
+          <div style={styles.messageIcon}>
+            ⚠️
+          </div>
+
+          <h2 style={styles.messageTitle}>
+            Unable to load notifications
+          </h2>
+
+          <p
+            style={{
+              ...styles.messageText,
+              color: colors.muted,
+            }}
+          >
+            {error}
+          </p>
+
+          <button
+            onClick={() => fetchNotifications()}
+            style={styles.primaryButton}
+          >
             Try Again
           </button>
         </div>
       ) : notifications.length === 0 ? (
-        /* EMPTY */
+        /* ===============================================
+           EMPTY
+        =============================================== */
+
         <div
           style={{
-            ...styles.emptyBox,
-            background: cardBackground,
-            border: cardBorder,
+            ...styles.messageBox,
+            background: colors.card,
+            border: `1px solid ${colors.border}`,
           }}
         >
-          <div style={styles.emptyIcon}>🔔</div>
-          <h2>No notifications yet</h2>
-          <p style={{ color: muted }}>
-            Your brooder is currently running normally.
+          <div
+            style={{
+              ...styles.emptyIcon,
+              color: colors.muted,
+            }}
+          >
+            ✓
+          </div>
+
+          <h2 style={styles.messageTitle}>
+            All clear
+          </h2>
+
+          <p
+            style={{
+              ...styles.messageText,
+              color: colors.muted,
+            }}
+          >
+            No new brooder alerts at the moment.
           </p>
         </div>
       ) : (
-        /* NOTIFICATIONS LIST */
-        <div className="notification-grid" style={styles.grid}>
-          {notifications.map((item, index) => {
-            const alertStyle = getAlertStyle(item.type);
+        /* ===============================================
+           NOTIFICATION LIST
+        =============================================== */
 
-            return (
-              <div
-                key={item._id || `${item.createdAt}-${index}`}
-                style={{
-                  ...styles.card,
-                  ...alertStyle,
-                  background: cardBackground,
-                  border: cardBorder,
-                  color: textColor,
-                }}
-              >
-                {/* CARD TOP */}
-                <div style={styles.cardTop}>
+        <div style={styles.list}>
+          {notifications.map(
+            (item, index) => {
+              const severity =
+                getSeverity(item);
+
+              const severityStyle =
+                getSeverityStyle(
+                  severity,
+                  isDark
+                );
+
+              return (
+                <div
+                  key={
+                    item._id ||
+                    `${item.createdAt}-${index}`
+                  }
+                  className="notification-row"
+                  style={{
+                    ...styles.notificationRow,
+                    background:
+                      colors.card,
+                    border: `1px solid ${colors.border}`,
+                    borderLeft: `3px solid ${severityStyle.accent}`,
+                  }}
+                >
+                  {/* ICON */}
+
                   <div
+                    className="notification-icon"
                     style={{
-                      ...styles.iconBox,
-                      background: isDark
-                        ? "rgba(255,255,255,0.12)"
-                        : "rgba(15,23,42,0.06)",
+                      ...styles.notificationIcon,
+                      background:
+                        severityStyle.iconBackground,
                     }}
                   >
                     {getIcon(item.type)}
                   </div>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={styles.cardTitle}>
-                      {item.title || item.type || "Brooder Alert"}
-                    </h2>
-                    <p style={{ ...styles.date, color: muted }}>
-                      {formatDate(item.createdAt)}
-                    </p>
-                  </div>
+                  {/* CONTENT */}
 
-                  <span
-                    style={{
-                      ...styles.badge,
-                      background: isDark
-                        ? "rgba(255,255,255,0.14)"
-                        : "rgba(15,23,42,0.08)",
-                    }}
+                  <div
+                    style={
+                      styles.notificationContent
+                    }
                   >
-                    {item.severity || "warning"}
-                  </span>
-                </div>
+                    {/* TOP LINE */}
 
-                {/* MESSAGE */}
-                <p
-                  style={{
-                    ...styles.message,
-                    color: isDark ? "#e2e8f0" : "#334155",
-                  }}
-                >
-                  {item.message || "No message available"}
-                </p>
+                    <div
+                      style={
+                        styles.notificationTop
+                      }
+                    >
+                      <div
+                        style={{
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        <div
+                          className="notification-title-text"
+                          style={
+                            styles.notificationTitle
+                          }
+                        >
+                          {item.title ||
+                            getTypeLabel(
+                              item.type
+                            )}
+                        </div>
 
-                {/* SENSOR DETAILS */}
-                <div style={styles.detailsGrid}>
-                  <Detail
-                    label="Temperature"
-                    value={`${item.temperature ?? "--"}°C`}
-                    isDark={isDark}
-                  />
-                  <Detail
-                    label="Humidity"
-                    value={`${item.humidity ?? "--"}%`}
-                    isDark={isDark}
-                  />
-                  <Detail
-                    label="Heater"
-                    value={String(item.heater ?? "UNKNOWN")}
-                    isDark={isDark}
-                  />
-                  <Detail
-                    label="Fan"
-                    value={String(
-                      item.fan ?? item.fanSpeed ?? "UNKNOWN"
-                    )}
-                    isDark={isDark}
-                  />
-                </div>
+                        <div
+                          className="notification-meta"
+                          style={{
+                            ...styles.notificationMeta,
+                            color:
+                              colors.muted,
+                          }}
+                        >
+                          {getTypeLabel(
+                            item.type
+                          )}{" "}
+                          •{" "}
+                          {formatDate(
+                            item.createdAt
+                          )}
+                        </div>
+                      </div>
 
-                {/* FOOTER */}
-                <div
-                  className="notification-footer"
-                  style={{
-                    ...styles.footer,
-                    borderTop: isDark
-                      ? "1px solid rgba(255,255,255,0.12)"
-                      : "1px solid rgba(15,23,42,0.08)",
-                    color: muted,
-                  }}
-                >
-                  <span>Status: {item.status || "new"}</span>
-                  <span>
-                    Push: {item.isPushSent ? "Sent" : "Not sent"}
-                  </span>
+                      {/* SEVERITY */}
+
+                      <span
+                        style={{
+                          ...styles.severityBadge,
+                          color:
+                            severityStyle.text,
+                          background:
+                            severityStyle.background,
+                        }}
+                      >
+                        {severity}
+                      </span>
+                    </div>
+
+                    {/* MESSAGE */}
+
+                    <div
+                      className="notification-message"
+                      style={{
+                        ...styles.notificationMessage,
+                        color:
+                          colors.muted,
+                      }}
+                    >
+                      {item.message ||
+                        item.body ||
+                        "Brooder alert received."}
+                    </div>
+
+                    {/* PRO / PREMIUM DETAILS
+                        Only display if backend provides them.
+                    */}
+
+                    {(item.temperature !==
+                      null &&
+                      item.temperature !==
+                        undefined) ||
+                    (item.humidity !== null &&
+                      item.humidity !==
+                        undefined) ? (
+                      <div
+                        style={
+                          styles.compactDetails
+                        }
+                      >
+                        {item.temperature !==
+                          null &&
+                        item.temperature !==
+                          undefined ? (
+                          <span
+                            style={{
+                              ...styles.detail,
+                              color:
+                                colors.muted,
+                            }}
+                          >
+                            🌡️{" "}
+                            {
+                              item.temperature
+                            }
+                            °C
+                          </span>
+                        ) : null}
+
+                        {item.humidity !==
+                          null &&
+                        item.humidity !==
+                          undefined ? (
+                          <span
+                            style={{
+                              ...styles.detail,
+                              color:
+                                colors.muted,
+                            }}
+                          >
+                            💧{" "}
+                            {item.humidity}%
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       )}
 
@@ -411,30 +803,59 @@ export default function Notifications() {
 }
 
 // =====================================================
-// DETAIL COMPONENT
+// SEVERITY STYLE
 // =====================================================
 
-function Detail({ label, value, isDark }) {
-  return (
-    <div
-      style={{
-        ...styles.detailBox,
+function getSeverityStyle(
+  severity,
+  isDark
+) {
+  switch (severity) {
+    case "critical":
+      return {
+        accent: "#ef4444",
+
+        text: "#ef4444",
+
         background: isDark
-          ? "rgba(255,255,255,0.10)"
-          : "rgba(15,23,42,0.05)",
-      }}
-    >
-      <span
-        style={{
-          ...styles.label,
-          color: isDark ? "#94a3b8" : "#64748b",
-        }}
-      >
-        {label}
-      </span>
-      <strong style={styles.value}>{value}</strong>
-    </div>
-  );
+          ? "rgba(239,68,68,0.12)"
+          : "#fef2f2",
+
+        iconBackground: isDark
+          ? "rgba(239,68,68,0.13)"
+          : "#fef2f2",
+      };
+
+    case "info":
+      return {
+        accent: "#3b82f6",
+
+        text: "#3b82f6",
+
+        background: isDark
+          ? "rgba(59,130,246,0.12)"
+          : "#eff6ff",
+
+        iconBackground: isDark
+          ? "rgba(59,130,246,0.13)"
+          : "#eff6ff",
+      };
+
+    default:
+      return {
+        accent: "#f59e0b",
+
+        text: "#f59e0b",
+
+        background: isDark
+          ? "rgba(245,158,11,0.12)"
+          : "#fffbeb",
+
+        iconBackground: isDark
+          ? "rgba(245,158,11,0.13)"
+          : "#fffbeb",
+      };
+  }
 }
 
 // =====================================================
@@ -445,133 +866,189 @@ const styles = {
   page: {
     minHeight: "100vh",
     padding: "24px",
-    paddingBottom: "110px",
-    fontFamily: "Inter, Arial, sans-serif",
+    paddingBottom: "105px",
+    fontFamily:
+      "Inter, Arial, sans-serif",
+    boxSizing: "border-box",
   },
+
+  // ===================================================
+  // HEADER
+  // ===================================================
+
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: "20px",
-    marginBottom: "28px",
+    paddingBottom: "18px",
+    marginBottom: "20px",
   },
+
   title: {
-    fontSize: "34px",
     margin: 0,
+    fontSize: "31px",
     fontWeight: 750,
+    letterSpacing: "-0.5px",
   },
+
   subtitle: {
-    marginTop: "8px",
-    marginBottom: 0,
-    fontSize: "14px",
+    margin: "5px 0 0",
+    fontSize: "13px",
   },
-  refreshBtn: {
-    background: "linear-gradient(135deg,#2dd4bf,#06b6d4)",
-    color: "#06221f",
-    border: "none",
-    padding: "11px 17px",
-    borderRadius: "14px",
-    fontWeight: 700,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  retryBtn: {
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "#ffffff",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "14px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  emptyBox: {
-    borderRadius: "24px",
-    padding: "45px 25px",
-    textAlign: "center",
-    backdropFilter: "blur(14px)",
-  },
-  emptyIcon: {
-    fontSize: "42px",
-    marginBottom: "12px",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(310px,1fr))",
-    gap: "20px",
-  },
-  card: {
-    borderRadius: "24px",
-    padding: "20px",
-    boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
-    backdropFilter: "blur(14px)",
-    borderLeft: "6px solid #22c55e",
-  },
-  hot: { borderLeft: "6px solid #ef4444" },
-  cold: { borderLeft: "6px solid #38bdf8" },
-  dry: { borderLeft: "6px solid #f59e0b" },
-  humid: { borderLeft: "6px solid #a78bfa" },
-  normal: { borderLeft: "6px solid #22c55e" },
-  cardTop: {
+
+  refreshButton: {
     display: "flex",
-    gap: "12px",
     alignItems: "center",
-    marginBottom: "16px",
+    gap: "7px",
+    border: "none",
+    borderRadius: "10px",
+    padding: "9px 13px",
+    background: "#0f766e",
+    color: "#ffffff",
+    fontSize: "12px",
+    fontWeight: 700,
+    cursor: "pointer",
   },
-  iconBox: {
-    width: "52px",
-    height: "52px",
-    borderRadius: "17px",
+
+  // ===================================================
+  // LIST
+  // ===================================================
+
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "9px",
+    maxWidth: "900px",
+  },
+
+  // ===================================================
+  // NOTIFICATION ROW
+  // ===================================================
+
+  notificationRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    padding: "14px",
+    borderRadius: "14px",
+    boxSizing: "border-box",
+  },
+
+  notificationIcon: {
+    width: "42px",
+    height: "42px",
+    minWidth: "42px",
+    borderRadius: "11px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "26px",
-    flexShrink: 0,
+    fontSize: "20px",
   },
-  cardTitle: {
+
+  notificationContent: {
+    minWidth: 0,
+    flex: 1,
+  },
+
+  notificationTop: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+  },
+
+  notificationTitle: {
+    fontSize: "14px",
+    fontWeight: 700,
+    lineHeight: 1.3,
+  },
+
+  notificationMeta: {
+    marginTop: "3px",
+    fontSize: "10px",
+    lineHeight: 1.3,
+  },
+
+  notificationMessage: {
+    marginTop: "7px",
+    fontSize: "12px",
+    lineHeight: 1.5,
+  },
+
+  severityBadge: {
+    flexShrink: 0,
+    padding: "4px 7px",
+    borderRadius: "999px",
+    fontSize: "8px",
+    fontWeight: 800,
+    textTransform: "uppercase",
+    letterSpacing: "0.4px",
+  },
+
+  // ===================================================
+  // COMPACT DETAILS
+  // ===================================================
+
+  compactDetails: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "7px",
+  },
+
+  detail: {
+    fontSize: "10px",
+  },
+
+  // ===================================================
+  // MESSAGE BOX
+  // ===================================================
+
+  messageBox: {
+    maxWidth: "600px",
+    margin: "45px auto",
+    padding: "35px 24px",
+    borderRadius: "18px",
+    textAlign: "center",
+    boxSizing: "border-box",
+  },
+
+  messageIcon: {
+    fontSize: "34px",
+    marginBottom: "10px",
+  },
+
+  emptyIcon: {
+    fontSize: "34px",
+    marginBottom: "10px",
+  },
+
+  messageTitle: {
     margin: 0,
     fontSize: "19px",
     fontWeight: 700,
   },
-  date: {
-    margin: "5px 0 0",
-    fontSize: "12px",
-  },
-  badge: {
-    padding: "6px 10px",
-    borderRadius: "999px",
-    fontSize: "10px",
-    textTransform: "uppercase",
-    fontWeight: 700,
-    whiteSpace: "nowrap",
-  },
-  message: {
+
+  messageText: {
+    margin:
+      "8px auto 18px",
+    maxWidth: "430px",
+    fontSize: "13px",
     lineHeight: 1.6,
-    margin: "0 0 18px",
-    fontSize: "14px",
   },
-  detailsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2,1fr)",
-    gap: "10px",
-  },
-  detailBox: {
-    borderRadius: "15px",
-    padding: "12px",
-  },
-  label: {
-    display: "block",
-    fontSize: "11px",
-    marginBottom: "5px",
-  },
-  value: {
-    fontSize: "17px",
-  },
-  footer: {
-    marginTop: "17px",
-    paddingTop: "13px",
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "10px",
+
+  primaryButton: {
+    display: "inline-block",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 16px",
+    background:
+      "linear-gradient(135deg,#2563eb,#4f46e5)",
+    color: "#ffffff",
     fontSize: "12px",
+    fontWeight: 700,
+    textDecoration: "none",
+    cursor: "pointer",
   },
 };

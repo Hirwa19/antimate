@@ -222,32 +222,25 @@ const translations = {
     intelligentControl: "Intelligent Control",
     dataDrivenFarming: "Data-driven Farming",
 
-    liveBrooderStatus: "Live brooder status",
-offline: "Offline",
-chicksAge: "Chicks age",
-deviceActive: "Device active",
-deviceOffline: "Device offline",
-last120Minutes: "Last 120 minutes",
-readings: "readings",
-now: "Now",
-time: "Time",
-deviceStatus: "Device status",
-dataReceived: "data received",
-last: "last",
-noData: "no data",
-on: "ON",
-off: "OFF",
-heating: "heating",
-standby: "standby",
-running: "running",
-deviceHeartbeat: "Device heartbeat",
-receivingData: "Receiving data normally",
-noRecentHeartbeat: "No recent heartbeat or telemetry",
-noDataReceived: "No data received",
-justNow: "Just now",
-ago: "ago",
-days: "days",
-viewDetailedAnalysis: "View detailed analysis",
+    chicksAge: "Chicks age",
+    deviceActive: "Device active",
+    deviceOffline: "Device offline",
+    last120Minutes: "Last 120 minutes",
+    readings: "readings",
+    now: "Now",
+    time: "Time",
+    deviceStatus: "Device status",
+    dataReceived: "data received",
+    last: "last",
+    noData: "no data",
+    deviceHeartbeat: "Device heartbeat",
+    receivingData: "Receiving data normally",
+    noRecentHeartbeat: "No recent heartbeat or telemetry",
+    noDataReceived: "No data received",
+    justNow: "Just now",
+    ago: "ago",
+    days: "days",
+    viewDetailedAnalysis: "View detailed analysis",
   },
 
   rw: {
@@ -318,21 +311,21 @@ viewDetailedAnalysis: "View detailed analysis",
     temperature: "Ubushyuhe",
     humidity: "Ububobere",
     heater: "Icyuma gishyushya",
-    fan: "Umufana",
+    fan: "Icyuma gikonjesha",
     condition: "Imiterere",
     connection: "Uko ihagaze kuri system",
-    online: "Iri gukora",
-    offline: "Ntabwo iri gukora",
+    online: "Iri kumurongo",
+    offline: "Ntabwo iri kumurongo",
     live: "Iri gukora ubu",
-    disconnected: "Ntaho ihuriye",
+    disconnected: "Ntaho ihujwe",
     heating: "Irimo gushyushya",
     standby: "Itegereje",
     running: "Irimo gukora",
-    off: "Yazimye",
-    on: "YAKA",
-    autoMode: "Uburyo bwikora",
+    off: "Cyazimye",
+    on: "Cyatse",
+    autoMode: "Uburyo bwikoresha",
     autoModeText:
-      "System igenzura ibidukikije by'inkoko mu buryo bwikora",
+      "System iri mu buryo kwikoresha",
     normal: "Bisanzwe",
     temperatureTrend: "Imigendekere y'ubushyuhe",
     lastReadings: "Amakuru aheruka",
@@ -425,7 +418,7 @@ viewDetailedAnalysis: "View detailed analysis",
       "Bona ibisubizo byihuse ku bibazo bikunze kubaho muri Smart Brooder.",
     needMoreHelp: "Ukeneye ubundi bufasha?",
     needMoreHelpText:
-      "Vugana n'abagufasha cyangwa winjire mu biganiro by'aborozi.",
+      "Talk to support or join live farmer discussions.",
     whatsappSupport: "Ubufasha kuri WhatsApp",
     liveChatCommunity: "Ikiganiro cy'aborozi",
 
@@ -490,35 +483,29 @@ viewDetailedAnalysis: "View detailed analysis",
     dataDrivenFarming:
       "Ubuhinzi bushingiye ku makuru",
 
-
-      liveBrooderStatus: "Imiterere ya brooder iriho ubu",
-offline: "Ntabwo iri kuri murandasi",
-chicksAge: "Iminsi imishwi imaze",
-deviceActive: "System iri gukora",
-deviceOffline: "System ntabwo iri gukora",
-last120Minutes: "Iminota 120 ishize",
-readings: "ibipimo",
-now: "Ubu",
-time: "Igihe",
-deviceStatus: "Imiterere ya system",
-dataReceived: "amakuru yakiriwe",
-last: "hashize",
-noData: "nta makuru",
-on: "YAKA",
-off: "ZIMA",
-heating: "iri gushyushya",
-standby: "itegereje",
-running: "iri gukora",
-deviceHeartbeat: "Heartbeat ya system",
-receivingData: "System iri kwakira amakuru neza",
-noRecentHeartbeat: "Nta heartbeat cyangwa telemetry nshya",
-noDataReceived: "Nta makuru yakiriwe",
-justNow: "Ubu ngubu",
-ago: "ashize",
-days: "iminsi",
-viewDetailedAnalysis: "Reba isesengura rirambuye",
+    chicksAge: "Iminsi imishwi imaze",
+    deviceActive: "System iri gukora",
+    deviceOffline: "System ntabwo iri gukora",
+    last120Minutes: "Iminota 120 ishize",
+    readings: "ibipimo",
+    now: "Ubu",
+    time: "Igihe",
+    deviceStatus: "Imiterere ya system",
+    dataReceived: "amakuru yakiriwe",
+    last: "hashize",
+    noData: "nta makuru",
+    deviceHeartbeat: "Heartbeat ya system",
+    receivingData: "System iri kwakira amakuru neza",
+    noRecentHeartbeat: "Nta heartbeat cyangwa telemetry nshya",
+    noDataReceived: "Nta makuru yakiriwe",
+    justNow: "Ubu ngubu",
+    ago: "ashize",
+    days: "iminsi",
+    viewDetailedAnalysis: "Reba isesengura rirambuye",
   },
 };
+
+const CHART_WINDOW = 120 * 60 * 1000;
 
 export function AppSettingsProvider({ children }) {
   const [language, setLanguage] = useState(() => {
@@ -529,45 +516,74 @@ export function AppSettingsProvider({ children }) {
     return localStorage.getItem("theme") || "dark";
   });
 
+  // State yo kubika telemetry history ku rwego rw'app yose
+  const [telemetryHistory, setTelemetryHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem("antimate_telemetry_history");
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      const cutoff = Date.now() - CHART_WINDOW;
+      return Array.isArray(parsed)
+        ? parsed.filter((item) => item.timestamp >= cutoff)
+        : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addTelemetryPoint = (point) => {
+    if (!point || !point.timestamp) return;
+
+    setTelemetryHistory((previous) => {
+      const cutoff = Date.now() - CHART_WINDOW;
+      const filtered = previous.filter((item) => item.timestamp >= cutoff);
+
+      const existingIndex = filtered.findIndex(
+        (item) => Math.abs(item.timestamp - point.timestamp) < 1000
+      );
+
+      let next;
+      if (existingIndex >= 0) {
+        next = [...filtered];
+        next[existingIndex] = point;
+      } else {
+        next = [...filtered, point];
+      }
+
+      const updated = next.sort((a, b) => a.timestamp - b.timestamp);
+
+      try {
+        localStorage.setItem(
+          "antimate_telemetry_history",
+          JSON.stringify(updated)
+        );
+      } catch (error) {
+        console.error("Failed to save telemetry history:", error);
+      }
+
+      return updated;
+    });
+  };
+
   useEffect(() => {
     localStorage.setItem("language", language);
-
     document.documentElement.lang = language;
-
-    document.body.setAttribute(
-      "data-language",
-      language
-    );
+    document.body.setAttribute("data-language", language);
   }, [language]);
 
   useEffect(() => {
     localStorage.setItem("theme", theme);
-
     const isDark = theme === "dark";
 
-    document.documentElement.setAttribute(
-      "data-theme",
-      theme
-    );
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-theme", theme);
 
-    document.body.setAttribute(
-      "data-theme",
-      theme
-    );
-
-    document.body.style.backgroundColor = isDark
-      ? "#0f172a"
-      : "#f8fafc";
-
-    document.body.style.color = isDark
-      ? "#ffffff"
-      : "#0f172a";
+    document.body.style.backgroundColor = isDark ? "#0f172a" : "#f8fafc";
+    document.body.style.color = isDark ? "#ffffff" : "#0f172a";
   }, [theme]);
 
   const isDark = theme === "dark";
-
-  const text =
-    translations[language] || translations.rw;
+  const text = translations[language] || translations.rw;
 
   return (
     <AppSettingsContext.Provider
@@ -579,6 +595,8 @@ export function AppSettingsProvider({ children }) {
         isDark,
         text,
         translations,
+        telemetryHistory,
+        addTelemetryPoint,
       }}
     >
       {children}

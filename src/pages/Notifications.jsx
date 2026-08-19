@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PageLoader from "../components/PageLoader";
 import BottomNav from "../components/BottomNav";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -7,1535 +7,1075 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
-// =====================================================
-// NOTIFICATION PAGE
-// =====================================================
-
 export default function Notifications() {
   const { isDark } = useAppSettings();
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [error, setError] = useState("");
-  const [errorType, setErrorType] = useState("");
+  const [subscriptionState, setSubscriptionState] =
+    useState(null);
 
-  const [filter, setFilter] = useState("all");
+  const token = localStorage.getItem("token");
 
   // =====================================================
-  // COLORS
+  // FETCH
   // =====================================================
 
-  const theme = useMemo(
-    () => ({
-      page: isDark ? "#07111f" : "#f5f7fb",
-      surface: isDark
-        ? "rgba(15, 31, 48, 0.86)"
-        : "rgba(255,255,255,0.92)",
+  const fetchNotifications = useCallback(
+    async (refresh = false) => {
+      try {
+        if (refresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
-      surfaceStrong: isDark
-        ? "#102338"
-        : "#ffffff",
+        setError("");
+        setSubscriptionState(null);
 
-      border: isDark
-        ? "rgba(148,163,184,0.13)"
-        : "rgba(15,23,42,0.08)",
+        if (!token) {
+          setError("Please login to view notifications.");
+          setNotifications([]);
+          return false;
+        }
 
-      text: isDark
-        ? "#f8fafc"
-        : "#0f172a",
+        const response = await fetch(
+          `${API_URL}/api/notifications`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
 
-      muted: isDark
-        ? "#94a3b8"
-        : "#64748b",
+        const data =
+          await response.json().catch(() => ({}));
 
-      soft: isDark
-        ? "#cbd5e1"
-        : "#475569",
+        // ===============================================
+        // AUTH
+        // ===============================================
 
-      headerGradient: isDark
-        ? "linear-gradient(135deg,#0b1d31,#102c43)"
-        : "linear-gradient(135deg,#ffffff,#eef5ff)",
+        if (response.status === 401) {
+          setError(
+            data.message ||
+              "Your session has expired. Please login again."
+          );
 
-      input: isDark
-        ? "rgba(255,255,255,0.055)"
-        : "#f1f5f9",
-    }),
-    [isDark]
+          setNotifications([]);
+          return false;
+        }
+
+        // ===============================================
+        // SUBSCRIPTION
+        // ===============================================
+
+        if (response.status === 403) {
+          setSubscriptionState(
+            data.code || "NO_ACTIVE_SUBSCRIPTION"
+          );
+
+          setError(
+            data.message ||
+              "An active subscription is required."
+          );
+
+          setNotifications([]);
+
+          return false;
+        }
+
+        // ===============================================
+        // OTHER ERROR
+        // ===============================================
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+              "Failed to load notifications."
+          );
+        }
+
+        // ===============================================
+        // RESPONSE
+        // ===============================================
+
+        let list = [];
+
+        if (Array.isArray(data.notifications)) {
+          list = data.notifications;
+        } else if (Array.isArray(data.data)) {
+          list = data.data;
+        } else if (Array.isArray(data)) {
+          list = data;
+        }
+
+        list.sort((a, b) => {
+          return (
+            new Date(b.createdAt || 0) -
+            new Date(a.createdAt || 0)
+          );
+        });
+
+        setNotifications(list);
+
+        return true;
+      } catch (err) {
+        console.error(
+          "❌ Notifications fetch:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Unable to load notifications."
+        );
+
+        setNotifications([]);
+
+        return false;
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [token]
   );
 
   // =====================================================
-  // FETCH NOTIFICATIONS
+  // MARK ALL READ
   // =====================================================
 
-  async function fetchNotifications(showLoader = true) {
-    let success = false;
+  const markAllAsRead = useCallback(async () => {
+    if (!token) return;
 
     try {
-      if (showLoader) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-
-      setError("");
-      setErrorType("");
-
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setError(
-          "You are not logged in. Please login to view notifications."
-        );
-
-        setErrorType("auth");
-        setNotifications([]);
-
-        return false;
-      }
-
-      const response = await fetch(
-        `${API_URL}/api/notifications`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response
-        .json()
-        .catch(() => ({}));
-
-      // =================================================
-      // 401 AUTH
-      // =================================================
-
-      if (response.status === 401) {
-        setError(
-          data.message ||
-            "Your session has expired. Please login again."
-        );
-
-        setErrorType("auth");
-        setNotifications([]);
-
-        return false;
-      }
-
-      // =================================================
-      // 403 SUBSCRIPTION / PLAN
-      // =================================================
-
-      if (response.status === 403) {
-        const message = String(
-          data.message || ""
-        ).toLowerCase();
-
-        if (
-          message.includes("subscription expired")
-        ) {
-          setError(
-            "Your subscription plan has expired. Renew your plan to continue receiving notifications."
-          );
-
-          setErrorType("expired");
-        } else if (
-          message.includes(
-            "no active subscription"
-          )
-        ) {
-          setError(
-            "You do not have an active subscription. Choose a plan to enable notifications."
-          );
-
-          setErrorType("no_subscription");
-        } else if (
-          message.includes("upgrade your plan")
-        ) {
-          setError(
-            data.message ||
-              "Your current plan does not include notifications."
-          );
-
-          setErrorType("upgrade");
-        } else {
-          setError(
-            data.message ||
-              "Your subscription does not allow access to notifications."
-          );
-
-          setErrorType("subscription");
-        }
-
-        setNotifications([]);
-
-        return false;
-      }
-
-      // =================================================
-      // OTHER HTTP ERROR
-      // =================================================
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to load notifications."
-        );
-      }
-
-      // =================================================
-      // NORMALIZE RESPONSE
-      // =================================================
-
-      let list = [];
-
-      if (Array.isArray(data)) {
-        list = data;
-      } else if (
-        Array.isArray(data.notifications)
-      ) {
-        list = data.notifications;
-      } else if (
-        Array.isArray(data.data)
-      ) {
-        list = data.data;
-      }
-
-      // =================================================
-      // SORT NEWEST FIRST
-      // =================================================
-
-      list.sort((a, b) => {
-        const dateA = new Date(
-          a.createdAt || 0
-        ).getTime();
-
-        const dateB = new Date(
-          b.createdAt || 0
-        ).getTime();
-
-        return dateB - dateA;
-      });
-
-      setNotifications(list);
-
-      success = true;
-
-      return true;
-    } catch (err) {
-      console.error(
-        "❌ Failed to fetch notifications:",
-        err
-      );
-
-      setError(
-        err.message ||
-          "Failed to load notifications."
-      );
-
-      setErrorType("network");
-      setNotifications([]);
-
-      return false;
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
-
-  // =====================================================
-  // MARK ALL AS READ
-  // =====================================================
-
-  async function markAllAsRead() {
-    try {
-      const token =
-        localStorage.getItem("token");
-
-      if (!token) {
-        return false;
-      }
-
       const response = await fetch(
         `${API_URL}/api/notifications/read/all`,
         {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         }
       );
 
       if (!response.ok) {
-        const data = await response
-          .json()
-          .catch(() => ({}));
-
-        console.error(
-          "❌ Mark all read failed:",
-          data.message
+        console.warn(
+          "Could not mark notifications as read."
         );
-
-        return false;
       }
-
-      // Update local state immediately
-      setNotifications((current) =>
-        current.map((item) => ({
-          ...item,
-          status: "read",
-        }))
-      );
-
-      return true;
-    } catch (err) {
+    } catch (error) {
       console.error(
-        "❌ Failed to mark notifications as read:",
-        err
+        "❌ Mark notifications read:",
+        error
       );
-
-      return false;
     }
-  }
+  }, [token]);
 
   // =====================================================
   // INITIAL LOAD
   // =====================================================
 
   useEffect(() => {
-    async function loadPage() {
-      const loaded =
-        await fetchNotifications(true);
+    let mounted = true;
 
-      // IMPORTANT:
-      // Only mark as read when fetching succeeded.
-      if (loaded) {
+    async function load() {
+      const success =
+        await fetchNotifications(false);
+
+      if (mounted && success) {
         await markAllAsRead();
       }
     }
 
-    loadPage();
-  }, []);
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [
+    fetchNotifications,
+    markAllAsRead,
+  ]);
 
   // =====================================================
   // REFRESH
   // =====================================================
 
   async function handleRefresh() {
-    const loaded =
-      await fetchNotifications(false);
+    await fetchNotifications(true);
+  }
 
-    if (loaded) {
-      await markAllAsRead();
+  // =====================================================
+  // DELETE
+  // =====================================================
+
+  async function deleteNotification(id) {
+    if (!id || !token) return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/notifications/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to delete notification"
+        );
+      }
+
+      setNotifications((current) =>
+        current.filter(
+          (item) => item._id !== id
+        )
+      );
+    } catch (error) {
+      console.error(
+        "❌ Delete notification:",
+        error
+      );
     }
   }
 
   // =====================================================
-  // FILTER
-  // =====================================================
-
-  const filteredNotifications =
-    useMemo(() => {
-      if (filter === "all") {
-        return notifications;
-      }
-
-      if (filter === "unread") {
-        return notifications.filter(
-          (item) =>
-            item.status === "new"
-        );
-      }
-
-      if (filter === "critical") {
-        return notifications.filter(
-          (item) =>
-            item.severity === "critical"
-        );
-      }
-
-      if (filter === "warning") {
-        return notifications.filter(
-          (item) =>
-            item.severity === "warning"
-        );
-      }
-
-      if (filter === "info") {
-        return notifications.filter(
-          (item) =>
-            item.severity === "info"
-        );
-      }
-
-      return notifications;
-    }, [notifications, filter]);
-
-  // =====================================================
-  // COUNTERS
-  // =====================================================
-
-  const unreadCount =
-    notifications.filter(
-      (item) => item.status === "new"
-    ).length;
-
-  const criticalCount =
-    notifications.filter(
-      (item) =>
-        item.severity === "critical"
-    ).length;
-
-  // =====================================================
-  // ICON
+  // HELPERS
   // =====================================================
 
   function getIcon(type) {
-    switch (type) {
-      case "TOO_HOT":
-        return "🔥";
+    const icons = {
+      TOO_HOT: "🔥",
+      TOO_COLD: "❄️",
+      LOW_HUMIDITY: "💧",
+      VERY_HIGH_HUMIDITY: "🌫️",
+      SENSOR_OFFLINE: "📡",
+      POWER_LOST: "⚡",
+    };
 
-      case "TOO_COLD":
-        return "❄️";
-
-      case "LOW_HUMIDITY":
-        return "💧";
-
-      case "VERY_HIGH_HUMIDITY":
-        return "🌫️";
-
-      case "SENSOR_OFFLINE":
-        return "📡";
-
-      case "POWER_LOST":
-        return "⚡";
-
-      default:
-        return "🔔";
-    }
+    return icons[type] || "🔔";
   }
 
-  // =====================================================
-  // TYPE LABEL
-  // =====================================================
+  function getTitle(item) {
+    if (item.title) return item.title;
 
-  function getTypeLabel(type) {
-    switch (type) {
-      case "TOO_HOT":
-        return "High Temperature";
+    const titles = {
+      TOO_HOT: "Temperature Too High",
+      TOO_COLD: "Temperature Too Low",
+      LOW_HUMIDITY: "Low Humidity",
+      VERY_HIGH_HUMIDITY:
+        "Humidity Too High",
+      SENSOR_OFFLINE: "System Offline",
+      POWER_LOST: "Power Lost",
+    };
 
-      case "TOO_COLD":
-        return "Low Temperature";
-
-      case "LOW_HUMIDITY":
-        return "Low Humidity";
-
-      case "VERY_HIGH_HUMIDITY":
-        return "High Humidity";
-
-      case "SENSOR_OFFLINE":
-        return "System Offline";
-
-      case "POWER_LOST":
-        return "Power Lost";
-
-      default:
-        return "Brooder Alert";
-    }
+    return (
+      titles[item.type] ||
+      "Brooder Alert"
+    );
   }
-
-  // =====================================================
-  // SHORT MESSAGE
-  // =====================================================
 
   function getMessage(item) {
     if (item.message) {
       return item.message;
     }
 
-    if (item.body) {
-      return item.body;
-    }
+    const messages = {
+      TOO_HOT:
+        "The brooder temperature is above the recommended range.",
 
-    switch (item.type) {
-      case "TOO_HOT":
-        return "Brooder temperature is too high.";
+      TOO_COLD:
+        "The brooder temperature is below the recommended range.",
 
-      case "TOO_COLD":
-        return "Brooder temperature is too low.";
+      LOW_HUMIDITY:
+        "The brooder humidity is below the recommended range.",
 
-      case "LOW_HUMIDITY":
-        return "Brooder humidity is too low.";
+      VERY_HIGH_HUMIDITY:
+        "The brooder humidity is above the recommended range.",
 
-      case "VERY_HIGH_HUMIDITY":
-        return "Brooder humidity is too high.";
+      SENSOR_OFFLINE:
+        "The BR System is currently offline.",
 
-      case "SENSOR_OFFLINE":
-        return "BR System is currently offline.";
+      POWER_LOST:
+        "The system may have lost electrical power.",
+    };
 
-      case "POWER_LOST":
-        return "Power may have been lost.";
-
-      default:
-        return "A brooder event requires your attention.";
-    }
+    return (
+      messages[item.type] ||
+      "A brooder event requires your attention."
+    );
   }
 
-  // =====================================================
-  // DATE
-  // =====================================================
+  function getSeverity(item) {
+    return (
+      item.severity || "warning"
+    ).toLowerCase();
+  }
 
-  function formatDate(date) {
-    if (!date) {
+  function formatDate(value) {
+    if (!value) return "Unknown time";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
       return "Unknown time";
     }
 
-    const parsed = new Date(date);
-
-    if (
-      Number.isNaN(
-        parsed.getTime()
-      )
-    ) {
-      return "Unknown time";
-    }
-
-    return parsed.toLocaleString([], {
-      year: "numeric",
+    return date.toLocaleString([], {
       month: "short",
       day: "numeric",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
   }
 
-  // =====================================================
-  // SEVERITY
-  // =====================================================
-
-  function getSeverityStyle(
-    severity
-  ) {
-    switch (severity) {
-      case "critical":
-        return {
-          background: isDark
-            ? "rgba(239,68,68,0.15)"
-            : "#fef2f2",
-          color: "#ef4444",
-          border:
-            "1px solid rgba(239,68,68,0.20)",
-        };
-
-      case "warning":
-        return {
-          background: isDark
-            ? "rgba(245,158,11,0.15)"
-            : "#fffbeb",
-          color: "#d97706",
-          border:
-            "1px solid rgba(245,158,11,0.20)",
-        };
-
-      case "info":
-        return {
-          background: isDark
-            ? "rgba(59,130,246,0.15)"
-            : "#eff6ff",
-          color: "#2563eb",
-          border:
-            "1px solid rgba(59,130,246,0.20)",
-        };
-
-      default:
-        return {
-          background: isDark
-            ? "rgba(148,163,184,0.12)"
-            : "#f1f5f9",
-          color: "#64748b",
-          border:
-            "1px solid rgba(148,163,184,0.20)",
-        };
-    }
-  }
-
-  // =====================================================
-  // CARD ACCENT
-  // =====================================================
-
-  function getAccentColor(type) {
-    switch (type) {
-      case "TOO_HOT":
-        return "#ef4444";
-
-      case "TOO_COLD":
-        return "#38bdf8";
-
-      case "LOW_HUMIDITY":
-        return "#f59e0b";
-
-      case "VERY_HIGH_HUMIDITY":
-        return "#8b5cf6";
-
-      case "SENSOR_OFFLINE":
-        return "#ef4444";
-
-      case "POWER_LOST":
-        return "#f97316";
-
-      default:
-        return "#22c55e";
-    }
-  }
-
-  // =====================================================
-  // STATUS LABEL
-  // =====================================================
-
-  function getStatusLabel(status) {
-    switch (status) {
-      case "new":
-        return "New";
-
-      case "read":
-        return "Read";
-
-      case "resolved":
-        return "Resolved";
-
-      default:
-        return "New";
-    }
-  }
-
-  // =====================================================
-  // PUSH STATUS
-  // =====================================================
-
-  function getPushStatus(item) {
-    if (item.isPushSent) {
+  function getSeverityStyle(severity) {
+    if (severity === "critical") {
       return {
-        label: "Push sent",
-        color: "#22c55e",
-      };
-    }
-
-    if (item.pushError) {
-      return {
-        label: "Push failed",
+        background: isDark
+          ? "rgba(239,68,68,.15)"
+          : "#fee2e2",
         color: "#ef4444",
       };
     }
 
+    if (severity === "info") {
+      return {
+        background: isDark
+          ? "rgba(59,130,246,.15)"
+          : "#dbeafe",
+        color: "#3b82f6",
+      };
+    }
+
     return {
-      label: "Not sent",
+      background: isDark
+        ? "rgba(245,158,11,.15)"
+        : "#fef3c7",
       color: "#f59e0b",
     };
   }
 
-  // =====================================================
-  // ERROR CONTENT
-  // =====================================================
+  function getAccent(type) {
+    const accents = {
+      TOO_HOT: "#ef4444",
+      TOO_COLD: "#38bdf8",
+      LOW_HUMIDITY: "#f59e0b",
+      VERY_HIGH_HUMIDITY: "#8b5cf6",
+      SENSOR_OFFLINE: "#ef4444",
+      POWER_LOST: "#f97316",
+    };
 
-  function renderErrorContent() {
-    switch (errorType) {
-      case "expired":
-        return {
-          icon: "⏳",
-          title: "Subscription Expired",
-          button: "Renew / Upgrade",
-          href: "/plans",
-        };
-
-      case "no_subscription":
-        return {
-          icon: "🔒",
-          title: "No Active Subscription",
-          button: "Choose a Plan",
-          href: "/plans",
-        };
-
-      case "upgrade":
-      case "subscription":
-        return {
-          icon: "⭐",
-          title: "Plan Upgrade Required",
-          button: "View Plans",
-          href: "/plans",
-        };
-
-      case "auth":
-        return {
-          icon: "🔐",
-          title: "Authentication Required",
-          button: "Login",
-          href: "/login",
-        };
-
-      default:
-        return {
-          icon: "⚠️",
-          title: "Unable to Load Notifications",
-          button: "Try Again",
-          href: null,
-        };
-    }
-  }
-
-  // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
     return (
-      <div
-        style={{
-          ...styles.page,
-          background: theme.page,
-        }}
-      >
-        <PageLoader />
-        <BottomNav />
-      </div>
+      accents[type] || "#22c55e"
     );
   }
 
   // =====================================================
-  // ERROR
+  // COLORS
   // =====================================================
 
-  if (error) {
-    const errorContent =
-      renderErrorContent();
+  const colors = {
+    page: isDark
+      ? "#07111f"
+      : "#f5f7fb",
 
-    return (
-      <div
-        style={{
-          ...styles.page,
-          background: theme.page,
-          color: theme.text,
-        }}
-      >
-        <style>
-          {responsiveCSS}
-        </style>
+    card: isDark
+      ? "rgba(15,31,49,.88)"
+      : "#ffffff",
 
-        <div style={styles.topBar}>
-          <div>
-            <div
-              style={{
-                ...styles.eyebrow,
-                color: "#06b6d4",
-              }}
-            >
-              ANTIMATE • ALERT CENTER
-            </div>
+    border: isDark
+      ? "rgba(255,255,255,.08)"
+      : "#e5e7eb",
 
-            <h1 style={styles.pageTitle}>
-              Notifications
-            </h1>
+    text: isDark
+      ? "#f8fafc"
+      : "#0f172a",
 
-            <p
-              style={{
-                ...styles.subtitle,
-                color: theme.muted,
-              }}
-            >
-              Smart brooder monitoring alerts
-            </p>
-          </div>
+    muted: isDark
+      ? "#94a3b8"
+      : "#64748b",
 
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            style={{
-              ...styles.refreshButton,
-              opacity: refreshing
-                ? 0.6
-                : 1,
-            }}
-          >
-            {refreshing
-              ? "Refreshing..."
-              : "↻ Refresh"}
-          </button>
-        </div>
-
-        <div
-          style={{
-            ...styles.errorPanel,
-            background:
-              theme.surface,
-            border:
-              `1px solid ${theme.border}`,
-          }}
-        >
-          <div
-            style={{
-              ...styles.errorIcon,
-              background: isDark
-                ? "rgba(239,68,68,0.12)"
-                : "#fef2f2",
-            }}
-          >
-            {errorContent.icon}
-          </div>
-
-          <h2
-            style={{
-              ...styles.errorTitle,
-              color: theme.text,
-            }}
-          >
-            {errorContent.title}
-          </h2>
-
-          <p
-            style={{
-              ...styles.errorMessage,
-              color: theme.muted,
-            }}
-          >
-            {error}
-          </p>
-
-          {errorContent.href ? (
-            <a
-              href={errorContent.href}
-              style={
-                styles.primaryButton
-              }
-            >
-              {errorContent.button}
-            </a>
-          ) : (
-            <button
-              onClick={() =>
-                fetchNotifications()
-              }
-              style={
-                styles.primaryButton
-              }
-            >
-              {errorContent.button}
-            </button>
-          )}
-        </div>
-
-        <BottomNav />
-      </div>
-    );
-  }
+    soft: isDark
+      ? "rgba(255,255,255,.045)"
+      : "#f8fafc",
+  };
 
   // =====================================================
-  // MAIN RENDER
+  // RENDER
   // =====================================================
 
   return (
     <div
       style={{
-        ...styles.page,
-        background: theme.page,
-        color: theme.text,
+        minHeight: "100vh",
+        background: colors.page,
+        color: colors.text,
+        paddingBottom: 100,
+        fontFamily:
+          "Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
-      <style>
-        {responsiveCSS}
-      </style>
+      <style>{`
+        @keyframes notificationSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+        .notification-refresh:hover {
+          transform: translateY(-1px);
+        }
 
-      <div style={styles.topBar}>
-        <div>
-          <div
-            style={{
-              ...styles.eyebrow,
-              color: "#06b6d4",
-            }}
-          >
-            ANTIMATE • ALERT CENTER
-          </div>
+        .notification-card:hover {
+          transform: translateY(-2px);
+        }
 
-          <h1 style={styles.pageTitle}>
-            Notifications
-          </h1>
+        .notification-delete:hover {
+          background: rgba(239,68,68,.12) !important;
+          color: #ef4444 !important;
+        }
 
-          <p
-            style={{
-              ...styles.subtitle,
-              color: theme.muted,
-            }}
-          >
-            Smart brooder monitoring alerts
-          </p>
-        </div>
+        @media(max-width:700px) {
+          .notification-page {
+            padding: 18px !important;
+          }
 
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          style={{
-            ...styles.refreshButton,
-            opacity: refreshing
-              ? 0.6
-              : 1,
-          }}
-        >
-          {refreshing
-            ? "Refreshing..."
-            : "↻ Refresh"}
-        </button>
-      </div>
+          .notification-heading {
+            font-size: 28px !important;
+          }
 
-      {/* =================================================
-          SUMMARY
-      ================================================= */}
+          .notification-card {
+            padding: 16px !important;
+          }
 
-      <div
-        className="notification-summary"
-        style={styles.summaryGrid}
-      >
-        <SummaryCard
-          icon="🔔"
-          label="Total alerts"
-          value={notifications.length}
-          theme={theme}
-          isDark={isDark}
-        />
+          .notification-actions {
+            width: 100%;
+          }
 
-        <SummaryCard
-          icon="🆕"
-          label="Unread"
-          value={unreadCount}
-          theme={theme}
-          isDark={isDark}
-        />
+          .notification-refresh {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}</style>
 
-        <SummaryCard
-          icon="🚨"
-          label="Critical"
-          value={criticalCount}
-          theme={theme}
-          isDark={isDark}
-        />
-      </div>
-
-      {/* =================================================
-          FILTER BAR
-      ================================================= */}
-
-      <div
-        className="notification-filter"
+      <main
+        className="notification-page"
         style={{
-          ...styles.filterBar,
-          background:
-            theme.surface,
-          border:
-            `1px solid ${theme.border}`,
+          maxWidth: 1050,
+          margin: "0 auto",
+          padding: "30px 24px",
         }}
       >
-        <div
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
+        <header
           style={{
             display: "flex",
-            gap: "7px",
-            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 20,
+            marginBottom: 28,
           }}
         >
-          <FilterButton
-            label="All"
-            active={filter === "all"}
-            onClick={() =>
-              setFilter("all")
-            }
-            theme={theme}
-          />
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 13,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background:
+                    "linear-gradient(135deg,#06b6d4,#2563eb)",
+                  boxShadow:
+                    "0 8px 25px rgba(37,99,235,.25)",
+                  fontSize: 20,
+                }}
+              >
+                🔔
+              </div>
 
-          <FilterButton
-            label={`Unread ${
-              unreadCount > 0
-                ? `(${unreadCount})`
-                : ""
-            }`}
-            active={
-              filter === "unread"
-            }
-            onClick={() =>
-              setFilter("unread")
-            }
-            theme={theme}
-          />
+              <h1
+                className="notification-heading"
+                style={{
+                  margin: 0,
+                  fontSize: 32,
+                  fontWeight: 800,
+                  letterSpacing: "-.8px",
+                }}
+              >
+                Notifications
+              </h1>
+            </div>
 
-          <FilterButton
-            label="Critical"
-            active={
-              filter === "critical"
-            }
-            onClick={() =>
-              setFilter("critical")
-            }
-            theme={theme}
-          />
-
-          <FilterButton
-            label="Warning"
-            active={
-              filter === "warning"
-            }
-            onClick={() =>
-              setFilter("warning")
-            }
-            theme={theme}
-          />
-
-          <FilterButton
-            label="Info"
-            active={
-              filter === "info"
-            }
-            onClick={() =>
-              setFilter("info")
-            }
-            theme={theme}
-          />
-        </div>
-
-        {notifications.length >
-          0 && (
-          <button
-            onClick={markAllAsRead}
-            style={{
-              ...styles.readAllButton,
-              color: "#06b6d4",
-            }}
-          >
-            ✓ Mark all read
-          </button>
-        )}
-      </div>
-
-      {/* =================================================
-          EMPTY FILTER
-      ================================================= */}
-
-      {filteredNotifications.length ===
-      0 ? (
-        <div
-          style={{
-            ...styles.emptyPanel,
-            background:
-              theme.surface,
-            border:
-              `1px solid ${theme.border}`,
-          }}
-        >
-          <div
-            style={{
-              ...styles.emptyIcon,
-              background: isDark
-                ? "rgba(34,197,94,0.10)"
-                : "#f0fdf4",
-            }}
-          >
-            {filter === "all"
-              ? "🔔"
-              : "✓"}
+            <p
+              style={{
+                margin:
+                  "9px 0 0 52px",
+                color: colors.muted,
+                fontSize: 13,
+              }}
+            >
+              Real-time alerts from your Smart Brooder
+            </p>
           </div>
 
-          <h2
+          <div className="notification-actions">
+            <button
+              className="notification-refresh"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              style={{
+                border: `1px solid ${colors.border}`,
+                background: colors.card,
+                color: colors.text,
+                borderRadius: 12,
+                padding: "10px 15px",
+                fontWeight: 700,
+                cursor: refreshing
+                  ? "default"
+                  : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: ".2s",
+                opacity: refreshing ? .65 : 1,
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  animation: refreshing
+                    ? "notificationSpin .8s linear infinite"
+                    : "none",
+                }}
+              >
+                ↻
+              </span>
+
+              {refreshing
+                ? "Refreshing..."
+                : "Refresh"}
+            </button>
+          </div>
+        </header>
+
+        {/* =================================================
+            LOADING
+        ================================================= */}
+
+        {loading ? (
+          <PageLoader />
+        ) : subscriptionState ? (
+          // =================================================
+          // SUBSCRIPTION
+          // =================================================
+
+          <section
             style={{
-              ...styles.emptyTitle,
-              color: theme.text,
+              ...emptyStyle(colors),
+              borderColor:
+                "rgba(245,158,11,.25)",
             }}
           >
-            {filter === "all"
-              ? "No notifications"
-              : "Nothing here"}
-          </h2>
+            <div
+              style={{
+                ...emptyIconStyle,
+                background:
+                  "rgba(245,158,11,.12)",
+              }}
+            >
+              🔒
+            </div>
 
-          <p
+            <h2 style={emptyTitleStyle}>
+              Subscription Required
+            </h2>
+
+            <p
+              style={{
+                ...emptyTextStyle,
+                color: colors.muted,
+              }}
+            >
+              {error ||
+                "An active Basic, Pro, or Premium plan is required to access notifications."}
+            </p>
+
+            <a
+              href="/plans"
+              style={{
+                display: "inline-flex",
+                textDecoration: "none",
+                padding: "11px 18px",
+                borderRadius: 11,
+                color: "#fff",
+                fontWeight: 700,
+                background:
+                  "linear-gradient(135deg,#2563eb,#7c3aed)",
+              }}
+            >
+              View Plans
+            </a>
+          </section>
+        ) : error ? (
+          // =================================================
+          // ERROR
+          // =================================================
+
+          <section style={emptyStyle(colors)}>
+            <div
+              style={{
+                ...emptyIconStyle,
+                background:
+                  "rgba(239,68,68,.12)",
+              }}
+            >
+              ⚠️
+            </div>
+
+            <h2 style={emptyTitleStyle}>
+              Unable to load notifications
+            </h2>
+
+            <p
+              style={{
+                ...emptyTextStyle,
+                color: colors.muted,
+              }}
+            >
+              {error}
+            </p>
+
+            <button
+              onClick={() =>
+                fetchNotifications(false)
+              }
+              style={{
+                padding: "10px 17px",
+                border: "none",
+                borderRadius: 11,
+                background:
+                  "linear-gradient(135deg,#2563eb,#7c3aed)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Try Again
+            </button>
+          </section>
+        ) : notifications.length === 0 ? (
+          // =================================================
+          // EMPTY
+          // =================================================
+
+          <section style={emptyStyle(colors)}>
+            <div
+              style={{
+                ...emptyIconStyle,
+                background:
+                  "rgba(34,197,94,.12)",
+              }}
+            >
+              ✓
+            </div>
+
+            <h2 style={emptyTitleStyle}>
+              Everything looks good
+            </h2>
+
+            <p
+              style={{
+                ...emptyTextStyle,
+                color: colors.muted,
+              }}
+            >
+              No brooder alerts have been generated yet.
+            </p>
+          </section>
+        ) : (
+          // =================================================
+          // LIST
+          // =================================================
+
+          <section
             style={{
-              ...styles.emptyText,
-              color: theme.muted,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
             }}
           >
-            {filter === "all"
-              ? "Your brooder is currently running normally. New alerts will appear here."
-              : "There are no notifications matching this filter."}
-          </p>
-        </div>
-      ) : (
-        /* =================================================
-           LIST
-        ================================================= */
+            {/* SUMMARY */}
 
-        <div style={styles.list}>
-          {filteredNotifications.map(
-            (item, index) => {
-              const accent =
-                getAccentColor(
-                  item.type
-                );
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 15px",
+                borderRadius: 13,
+                background: colors.card,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  color: colors.muted,
+                }}
+              >
+                Recent alerts
+              </span>
 
-              const severityStyle =
-                getSeverityStyle(
-                  item.severity
-                );
+              <strong
+                style={{
+                  fontSize: 13,
+                }}
+              >
+                {notifications.length}
+              </strong>
+            </div>
 
-              const pushStatus =
-                getPushStatus(item);
+            {notifications.map(
+              (item, index) => {
+                const severity =
+                  getSeverity(item);
 
-              const isNew =
-                item.status === "new";
+                const severityStyle =
+                  getSeverityStyle(
+                    severity
+                  );
 
-              return (
-                <div
-                  key={
-                    item._id ||
-                    `${item.createdAt}-${index}`
-                  }
-                  style={{
-                    ...styles.card,
-                    background:
-                      theme.surface,
-                    border:
-                      `1px solid ${theme.border}`,
-                    borderLeft:
-                      `4px solid ${accent}`,
-                    boxShadow: isNew
-                      ? isDark
-                        ? "0 12px 35px rgba(0,0,0,0.22)"
-                        : "0 12px 35px rgba(15,23,42,0.08)"
-                      : "0 7px 25px rgba(15,23,42,0.05)",
-                  }}
-                >
-                  {/* ======================================
-                      CARD HEADER
-                  ====================================== */}
+                const accent =
+                  getAccent(item.type);
 
-                  <div
-                    style={
-                      styles.cardHeader
+                return (
+                  <article
+                    key={
+                      item._id ||
+                      `${item.createdAt}-${index}`
                     }
+                    className="notification-card"
+                    style={{
+                      position: "relative",
+                      overflow: "hidden",
+                      background:
+                        colors.card,
+                      border:
+                        `1px solid ${colors.border}`,
+                      borderRadius: 17,
+                      padding: 19,
+                      boxShadow:
+                        isDark
+                          ? "0 10px 35px rgba(0,0,0,.18)"
+                          : "0 8px 25px rgba(15,23,42,.06)",
+                      transition:
+                        "transform .2s ease",
+                    }}
                   >
-                    <div
-                      style={{
-                        ...styles.notificationIcon,
-                        background: `${accent}18`,
-                        border:
-                          `1px solid ${accent}30`,
-                      }}
-                    >
-                      {getIcon(
-                        item.type
-                      )}
-                    </div>
+                    {/* ACCENT */}
 
                     <div
                       style={{
-                        flex: 1,
-                        minWidth: 0,
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        background: accent,
+                      }}
+                    />
+
+                    {/* TOP */}
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 13,
                       }}
                     >
                       <div
-                        style={
-                          styles.titleRow
-                        }
+                        style={{
+                          width: 46,
+                          height: 46,
+                          flexShrink: 0,
+                          borderRadius: 14,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 22,
+                          background:
+                            `${accent}18`,
+                        }}
                       >
-                        <h2
-                          style={{
-                            ...styles.cardTitle,
-                            color:
-                              theme.text,
-                          }}
-                        >
-                          {item.title ||
-                            getTypeLabel(
-                              item.type
-                            )}
-                        </h2>
-
-                        {isNew && (
-                          <span
-                            style={
-                              styles.newDot
-                            }
-                          >
-                            NEW
-                          </span>
+                        {getIcon(
+                          item.type
                         )}
                       </div>
 
                       <div
                         style={{
-                          ...styles.typeRow,
-                          color:
-                            theme.muted,
+                          flex: 1,
+                          minWidth: 0,
                         }}
                       >
-                        <span>
-                          {getTypeLabel(
-                            item.type
-                          )}
-                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: 8,
+                          }}
+                        >
+                          <h2
+                            style={{
+                              margin: 0,
+                              fontSize: 16,
+                              fontWeight: 750,
+                            }}
+                          >
+                            {getTitle(item)}
+                          </h2>
 
-                        <span>
-                          •
-                        </span>
+                          <span
+                            style={{
+                              padding:
+                                "4px 8px",
+                              borderRadius:
+                                999,
+                              fontSize: 9,
+                              fontWeight: 800,
+                              textTransform:
+                                "uppercase",
+                              letterSpacing:
+                                ".3px",
+                              ...severityStyle,
+                            }}
+                          >
+                            {severity}
+                          </span>
+                        </div>
 
-                        <span>
+                        <div
+                          style={{
+                            marginTop: 5,
+                            fontSize: 11,
+                            color: colors.muted,
+                          }}
+                        >
                           {formatDate(
                             item.createdAt
                           )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span
-                      style={{
-                        ...styles.severityBadge,
-                        ...severityStyle,
-                      }}
-                    >
-                      {item.severity ||
-                        "warning"}
-                    </span>
-                  </div>
-
-                  {/* ======================================
-                      MESSAGE
-                  ====================================== */}
-
-                  <p
-                    style={{
-                      ...styles.message,
-                      color: theme.soft,
-                    }}
-                  >
-                    {getMessage(item)}
-                  </p>
-
-                  {/* ======================================
-                      SENSOR DATA
-                  ====================================== */}
-
-                  <div
-                    style={
-                      styles.metricsGrid
-                    }
-                  >
-                    {item.temperature !==
-                      null &&
-                      item.temperature !==
-                        undefined && (
-                        <Metric
-                          icon="🌡️"
-                          label="Temperature"
-                          value={`${item.temperature}°C`}
-                          theme={theme}
-                        />
-                      )}
-
-                    {item.humidity !==
-                      null &&
-                      item.humidity !==
-                        undefined && (
-                        <Metric
-                          icon="💧"
-                          label="Humidity"
-                          value={`${item.humidity}%`}
-                          theme={theme}
-                        />
-                      )}
-
-                    {item.chicksAge !==
-                      null &&
-                      item.chicksAge !==
-                        undefined && (
-                        <Metric
-                          icon="🐣"
-                          label="Chick age"
-                          value={`${item.chicksAge} days`}
-                          theme={theme}
-                        />
-                      )}
-
-                    {item.chicksType && (
-                      <Metric
-                        icon="🐔"
-                        label="Type"
-                        value={
-                          item.chicksType
-                        }
-                        theme={theme}
-                      />
-                    )}
-
-                    {item.heater !==
-                      undefined &&
-                      item.heater !==
-                        null && (
-                        <Metric
-                          icon="🔥"
-                          label="Heater"
-                          value={String(
-                            item.heater
-                          )}
-                          theme={theme}
-                        />
-                      )}
-
-                    {item.fan !==
-                      undefined &&
-                      item.fan !==
-                        null && (
-                        <Metric
-                          icon="🌀"
-                          label="Fan"
-                          value={String(
-                            item.fan
-                          )}
-                          theme={theme}
-                        />
-                      )}
-                  </div>
-
-                  {/* ======================================
-                      INTELLIGENCE
-                  ====================================== */}
-
-                  {item.intelligence && (
-                    <div
-                      style={{
-                        ...styles.intelligence,
-                        background:
-                          isDark
-                            ? "rgba(6,182,212,0.08)"
-                            : "#ecfeff",
-                        border:
-                          isDark
-                            ? "1px solid rgba(6,182,212,0.16)"
-                            : "1px solid #cffafe",
-                      }}
-                    >
-                      <div
-                        style={
-                          styles.intelligenceTitle
-                        }
-                      >
-                        <span>
-                          🧠
-                        </span>
-
-                        <span>
-                          ANTIMATE AI
-                        </span>
+                        </div>
                       </div>
 
-                      <p
-                        style={{
-                          ...styles.intelligenceText,
-                          color:
-                            theme.soft,
-                        }}
-                      >
-                        {
-                          item.intelligence
-                        }
-                      </p>
+                      {/* DELETE */}
+
+                      {item._id && (
+                        <button
+                          className="notification-delete"
+                          onClick={() =>
+                            deleteNotification(
+                              item._id
+                            )
+                          }
+                          title="Delete"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            border: "none",
+                            borderRadius: 9,
+                            background:
+                              "transparent",
+                            color:
+                              colors.muted,
+                            cursor: "pointer",
+                            fontSize: 15,
+                            transition: ".2s",
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
-                  )}
 
-                  {/* ======================================
-                      ACTION
-                  ====================================== */}
+                    {/* MESSAGE */}
 
-                  {item.action && (
-                    <div
+                    <p
                       style={{
-                        ...styles.actionBox,
-                        color:
-                          theme.soft,
+                        margin:
+                          "13px 0 14px 59px",
+                        color: isDark
+                          ? "#dbe4ef"
+                          : "#475569",
+                        fontSize: 13,
+                        lineHeight: 1.55,
                       }}
                     >
-                      <strong>
-                        Recommended action:
-                      </strong>
+                      {getMessage(item)}
+                    </p>
 
-                      <span>
-                        {item.action}
-                      </span>
-                    </div>
-                  )}
+                    {/* METRICS */}
 
-                  {/* ======================================
-                      FOOTER
-                  ====================================== */}
-
-                  <div
-                    style={{
-                      ...styles.cardFooter,
-                      borderTop:
-                        `1px solid ${theme.border}`,
-                    }}
-                  >
                     <div
-                      style={
-                        styles.footerLeft
-                      }
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 7,
+                        marginLeft: 59,
+                      }}
                     >
-                      <span
-                        style={{
-                          ...styles.statusBadge,
-                          background:
-                            isNew
-                              ? isDark
-                                ? "rgba(59,130,246,0.13)"
-                                : "#eff6ff"
-                              : isDark
-                              ? "rgba(148,163,184,0.10)"
-                              : "#f8fafc",
-                          color:
-                            isNew
-                              ? "#3b82f6"
-                              : theme.muted,
-                        }}
-                      >
-                        {getStatusLabel(
-                          item.status
+                      {item.temperature !==
+                        null &&
+                        item.temperature !==
+                          undefined && (
+                          <Metric
+                            icon="🌡️"
+                            value={`${item.temperature}°C`}
+                            colors={colors}
+                          />
                         )}
-                      </span>
 
+                      {item.humidity !==
+                        null &&
+                        item.humidity !==
+                          undefined && (
+                          <Metric
+                            icon="💧"
+                            value={`${item.humidity}%`}
+                            colors={colors}
+                          />
+                        )}
+
+                      {item.heater !==
+                        null &&
+                        item.heater !==
+                          undefined && (
+                          <Metric
+                            icon="🔥"
+                            value={`Heater: ${String(
+                              item.heater
+                            )}`}
+                            colors={colors}
+                          />
+                        )}
+
+                      {item.fan !==
+                        null &&
+                        item.fan !==
+                          undefined && (
+                          <Metric
+                            icon="🌀"
+                            value={`Fan: ${String(
+                              item.fan
+                            )}`}
+                            colors={colors}
+                          />
+                        )}
+                    </div>
+
+                    {/* FOOTER */}
+
+                    <div
+                      style={{
+                        marginTop: 15,
+                        paddingTop: 11,
+                        marginLeft: 59,
+                        borderTop:
+                          `1px solid ${colors.border}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent:
+                          "space-between",
+                        gap: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <span
                         style={{
-                          ...styles.pushStatus,
-                          color:
-                            pushStatus.color,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 10,
+                          color: colors.muted,
                         }}
                       >
                         <span
                           style={{
-                            ...styles.pushDot,
+                            width: 7,
+                            height: 7,
+                            borderRadius:
+                              "50%",
                             background:
-                              pushStatus.color,
+                              item.isPushSent
+                                ? "#22c55e"
+                                : "#f59e0b",
                           }}
                         />
 
-                        {pushStatus.label}
+                        Push{" "}
+                        {item.isPushSent
+                          ? "sent"
+                          : "not sent"}
                       </span>
-                    </div>
 
-                    <span
-                      style={{
-                        color:
-                          theme.muted,
-                        fontSize: "11px",
-                      }}
-                    >
-                      {item.systemId ||
-                        "BR System"}
-                    </span>
-                  </div>
-                </div>
-              );
-            }
-          )}
-        </div>
-      )}
+                      {item.chicksType && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: colors.muted,
+                          }}
+                        >
+                          {item.chicksType}
+                          {item.chicksAge !==
+                            null &&
+                            ` • Day ${item.chicksAge}`}
+                        </span>
+                      )}
+
+                      {item.systemId && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: colors.muted,
+                          }}
+                        >
+                          {item.systemId}
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              }
+            )}
+          </section>
+        )}
+      </main>
 
       <BottomNav />
     </div>
-  );
-}
-
-// =====================================================
-// SUMMARY CARD
-// =====================================================
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  theme,
-  isDark,
-}) {
-  return (
-    <div
-      style={{
-        ...styles.summaryCard,
-        background:
-          theme.surface,
-        border:
-          `1px solid ${theme.border}`,
-      }}
-    >
-      <div
-        style={{
-          ...styles.summaryIcon,
-          background: isDark
-            ? "rgba(6,182,212,0.10)"
-            : "#ecfeff",
-        }}
-      >
-        {icon}
-      </div>
-
-      <div>
-        <div
-          style={{
-            ...styles.summaryValue,
-            color: theme.text,
-          }}
-        >
-          {value}
-        </div>
-
-        <div
-          style={{
-            ...styles.summaryLabel,
-            color: theme.muted,
-          }}
-        >
-          {label}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================
-// FILTER BUTTON
-// =====================================================
-
-function FilterButton({
-  label,
-  active,
-  onClick,
-  theme,
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        ...styles.filterButton,
-        background: active
-          ? "linear-gradient(135deg,#0891b2,#2563eb)"
-          : theme.input,
-        color: active
-          ? "#ffffff"
-          : theme.muted,
-        border: active
-          ? "1px solid transparent"
-          : `1px solid ${theme.border}`,
-      }}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -1545,521 +1085,68 @@ function FilterButton({
 
 function Metric({
   icon,
-  label,
   value,
-  theme,
+  colors,
 }) {
   return (
-    <div
+    <span
       style={{
-        ...styles.metric,
-        background:
-          theme.input,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "6px 9px",
+        borderRadius: 9,
+        background: colors.soft,
         border:
-          `1px solid ${theme.border}`,
+          `1px solid ${colors.border}`,
+        fontSize: 10,
+        fontWeight: 650,
+        color: colors.text,
       }}
     >
-      <span style={styles.metricIcon}>
-        {icon}
-      </span>
-
-      <div>
-        <div
-          style={{
-            ...styles.metricLabel,
-            color: theme.muted,
-          }}
-        >
-          {label}
-        </div>
-
-        <div
-          style={{
-            ...styles.metricValue,
-            color: theme.text,
-          }}
-        >
-          {value}
-        </div>
-      </div>
-    </div>
+      {icon} {value}
+    </span>
   );
 }
 
 // =====================================================
-// RESPONSIVE CSS
+// EMPTY STYLE
 // =====================================================
 
-const responsiveCSS = `
-  * {
-    box-sizing: border-box;
-  }
-
-  button,
-  a {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  @media (max-width: 800px) {
-    .notification-summary {
-      grid-template-columns: repeat(3, 1fr) !important;
-    }
-  }
-
-  @media (max-width: 620px) {
-    .notification-summary {
-      grid-template-columns: 1fr !important;
-    }
-
-    .notification-filter {
-      align-items: stretch !important;
-      flex-direction: column !important;
-    }
-  }
-
-  @media (max-width: 500px) {
-    body {
-      overflow-x: hidden;
-    }
-  }
-`;
-
-// =====================================================
-// STYLES
-// =====================================================
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    padding: "26px",
-    paddingBottom: "115px",
-    fontFamily:
-      "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  },
-
-  // ===================================================
-  // HEADER
-  // ===================================================
-
-  topBar: {
-    maxWidth: "1180px",
-    margin: "0 auto 25px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "20px",
-  },
-
-  eyebrow: {
-    fontSize: "10px",
-    fontWeight: 800,
-    letterSpacing: "1.5px",
-    marginBottom: "6px",
-  },
-
-  pageTitle: {
-    margin: 0,
-    fontSize: "32px",
-    lineHeight: 1.1,
-    fontWeight: 800,
-    letterSpacing: "-0.7px",
-  },
-
-  subtitle: {
-    margin:
-      "7px 0 0",
-    fontSize: "13px",
-  },
-
-  refreshButton: {
-    border: "none",
-    borderRadius: "12px",
-    padding: "11px 16px",
-    background:
-      "linear-gradient(135deg,#06b6d4,#2563eb)",
-    color: "#ffffff",
-    fontWeight: 750,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-    boxShadow:
-      "0 7px 20px rgba(37,99,235,0.20)",
-  },
-
-  // ===================================================
-  // SUMMARY
-  // ===================================================
-
-  summaryGrid: {
-    maxWidth: "1180px",
-    margin: "0 auto 18px",
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(3, 1fr)",
-    gap: "12px",
-  },
-
-  summaryCard: {
-    minHeight: "82px",
-    borderRadius: "17px",
-    padding: "16px",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    boxShadow:
-      "0 7px 25px rgba(15,23,42,0.05)",
-  },
-
-  summaryIcon: {
-    width: "43px",
-    height: "43px",
-    borderRadius: "13px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "21px",
-    flexShrink: 0,
-  },
-
-  summaryValue: {
-    fontSize: "23px",
-    fontWeight: 800,
-    lineHeight: 1,
-  },
-
-  summaryLabel: {
-    fontSize: "11px",
-    marginTop: "5px",
-  },
-
-  // ===================================================
-  // FILTER
-  // ===================================================
-
-  filterBar: {
-    maxWidth: "1180px",
-    margin: "0 auto 18px",
-    padding: "10px",
-    borderRadius: "15px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-  },
-
-  filterButton: {
-    borderRadius: "9px",
-    padding: "8px 11px",
-    fontSize: "11px",
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-
-  readAllButton: {
-    border: "none",
-    background: "transparent",
-    fontSize: "11px",
-    fontWeight: 750,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-
-  // ===================================================
-  // LIST
-  // ===================================================
-
-  list: {
-    maxWidth: "900px",
-    margin: "0 auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-  },
-
-  // ===================================================
-  // CARD
-  // ===================================================
-
-  card: {
-    borderRadius: "18px",
-    padding: "17px",
-    backdropFilter: "blur(15px)",
-    overflow: "hidden",
-  },
-
-  cardHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-
-  notificationIcon: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "14px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "23px",
-    flexShrink: 0,
-  },
-
-  titleRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    flexWrap: "wrap",
-  },
-
-  cardTitle: {
-    margin: 0,
-    fontSize: "16px",
-    fontWeight: 780,
-    lineHeight: 1.25,
-  },
-
-  newDot: {
-    padding: "3px 6px",
-    borderRadius: "999px",
-    background: "#dbeafe",
-    color: "#2563eb",
-    fontSize: "8px",
-    fontWeight: 850,
-    letterSpacing: "0.5px",
-  },
-
-  typeRow: {
-    display: "flex",
-    gap: "6px",
-    flexWrap: "wrap",
-    marginTop: "5px",
-    fontSize: "10px",
-  },
-
-  severityBadge: {
-    padding: "5px 8px",
-    borderRadius: "999px",
-    fontSize: "9px",
-    fontWeight: 850,
-    textTransform: "uppercase",
-    letterSpacing: "0.4px",
-    whiteSpace: "nowrap",
-  },
-
-  message: {
-    margin:
-      "14px 0 13px",
-    fontSize: "13px",
-    lineHeight: 1.55,
-  },
-
-  // ===================================================
-  // METRICS
-  // ===================================================
-
-  metricsGrid: {
-    display: "flex",
-    gap: "8px",
-    flexWrap: "wrap",
-    marginBottom: "12px",
-  },
-
-  metric: {
-    minWidth: "112px",
-    borderRadius: "11px",
-    padding: "8px 10px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-
-  metricIcon: {
-    fontSize: "16px",
-  },
-
-  metricLabel: {
-    fontSize: "9px",
-    marginBottom: "2px",
-  },
-
-  metricValue: {
-    fontSize: "11px",
-    fontWeight: 750,
-  },
-
-  // ===================================================
-  // AI
-  // ===================================================
-
-  intelligence: {
-    borderRadius: "13px",
-    padding: "11px 12px",
-    marginTop: "4px",
-  },
-
-  intelligenceTitle: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    fontSize: "9px",
-    fontWeight: 850,
-    letterSpacing: "0.7px",
-    color: "#0891b2",
-  },
-
-  intelligenceText: {
-    margin:
-      "6px 0 0",
-    fontSize: "12px",
-    lineHeight: 1.5,
-  },
-
-  // ===================================================
-  // ACTION
-  // ===================================================
-
-  actionBox: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    marginTop: "11px",
-    padding: "10px 11px",
-    borderRadius: "11px",
-    background:
-      "rgba(148,163,184,0.07)",
-    fontSize: "11px",
-    lineHeight: 1.45,
-  },
-
-  // ===================================================
-  // FOOTER
-  // ===================================================
-
-  cardFooter: {
-    marginTop: "14px",
-    paddingTop: "10px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "10px",
-  },
-
-  footerLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "9px",
-    flexWrap: "wrap",
-  },
-
-  statusBadge: {
-    padding: "4px 7px",
-    borderRadius: "7px",
-    fontSize: "9px",
-    fontWeight: 750,
-  },
-
-  pushStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: "5px",
-    fontSize: "10px",
-    fontWeight: 650,
-  },
-
-  pushDot: {
-    width: "6px",
-    height: "6px",
-    borderRadius: "50%",
-  },
-
-  // ===================================================
-  // EMPTY
-  // ===================================================
-
-  emptyPanel: {
-    maxWidth: "620px",
-    margin: "55px auto",
-    padding: "45px 25px",
-    borderRadius: "20px",
-    textAlign: "center",
-    boxShadow:
-      "0 12px 35px rgba(15,23,42,0.06)",
-  },
-
-  emptyIcon: {
-    width: "65px",
-    height: "65px",
-    borderRadius: "20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    margin: "0 auto 14px",
-    fontSize: "29px",
-  },
-
-  emptyTitle: {
-    margin: "0 0 7px",
-    fontSize: "20px",
-    fontWeight: 780,
-  },
-
-  emptyText: {
-    maxWidth: "430px",
-    margin: "0 auto",
-    fontSize: "13px",
-    lineHeight: 1.55,
-  },
-
-  // ===================================================
-  // ERROR
-  // ===================================================
-
-  errorPanel: {
-    maxWidth: "620px",
+function emptyStyle(colors) {
+  return {
+    maxWidth: 650,
     margin: "60px auto",
-    padding: "45px 25px",
-    borderRadius: "20px",
     textAlign: "center",
+    padding: "45px 25px",
+    borderRadius: 20,
+    background: colors.card,
+    border: `1px solid ${colors.border}`,
     boxShadow:
-      "0 12px 35px rgba(15,23,42,0.07)",
-  },
+      "0 15px 40px rgba(15,23,42,.06)",
+  };
+}
 
-  errorIcon: {
-    width: "68px",
-    height: "68px",
-    borderRadius: "21px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    margin: "0 auto 14px",
-    fontSize: "30px",
-  },
+const emptyIconStyle = {
+  width: 62,
+  height: 62,
+  margin: "0 auto 15px",
+  borderRadius: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: 27,
+};
 
-  errorTitle: {
-    margin: "0 0 8px",
-    fontSize: "21px",
-    fontWeight: 800,
-  },
+const emptyTitleStyle = {
+  margin: "0 0 8px",
+  fontSize: 20,
+  fontWeight: 800,
+};
 
-  errorMessage: {
-    maxWidth: "450px",
-    margin: "0 auto 20px",
-    fontSize: "13px",
-    lineHeight: 1.6,
-  },
-
-  primaryButton: {
-    display: "inline-block",
-    border: "none",
-    textDecoration: "none",
-    borderRadius: "11px",
-    padding: "11px 17px",
-    background:
-      "linear-gradient(135deg,#06b6d4,#2563eb)",
-    color: "#ffffff",
-    fontSize: "12px",
-    fontWeight: 750,
-    cursor: "pointer",
-    boxShadow:
-      "0 8px 20px rgba(37,99,235,0.20)",
-  },
+const emptyTextStyle = {
+  maxWidth: 450,
+  margin: "0 auto 20px",
+  fontSize: 13,
+  lineHeight: 1.55,
 };

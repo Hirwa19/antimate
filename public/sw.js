@@ -1,17 +1,54 @@
-self.addEventListener("push", function (event) {
-  console.log("📩 Push notification received");
+// =====================================================
+// ANTIMATE SMART BROODER SERVICE WORKER
+// =====================================================
+
+// =====================================================
+// INSTALL
+// =====================================================
+
+self.addEventListener("install", (event) => {
+  console.log("🔧 ANTIMATE Service Worker installed");
+
+  self.skipWaiting();
+});
+
+// =====================================================
+// ACTIVATE
+// =====================================================
+
+self.addEventListener("activate", (event) => {
+  console.log("🚀 ANTIMATE Service Worker activated");
+
+  event.waitUntil(
+    self.clients.claim()
+  );
+});
+
+// =====================================================
+// PUSH EVENT
+// =====================================================
+
+self.addEventListener("push", (event) => {
+  console.log("📨 Push notification received");
 
   let data = {};
 
   try {
-    data = event.data
-      ? event.data.json()
-      : {};
+    if (event.data) {
+      data = event.data.json();
+    }
   } catch (error) {
     console.error(
-      "Failed to parse push payload:",
+      "❌ Failed to parse push payload:",
       error
     );
+
+    data = {
+      title: "ANTIMATE Smart Brooder",
+      body: event.data
+        ? event.data.text()
+        : "New brooder notification",
+    };
   }
 
   const title =
@@ -38,8 +75,13 @@ self.addEventListener("push", function (event) {
     renotify: true,
 
     requireInteraction:
-      data.requireInteraction ||
-      false,
+      data.requireInteraction === true,
+
+    vibrate: [
+      200,
+      100,
+      200,
+    ],
 
     data:
       data.data || {
@@ -61,35 +103,71 @@ self.addEventListener("push", function (event) {
 
 self.addEventListener(
   "notificationclick",
-  function (event) {
+  (event) => {
+    console.log(
+      "👆 Notification clicked"
+    );
+
     event.notification.close();
 
-    const url =
-      event.notification?.data?.url ||
+    const notificationData =
+      event.notification.data || {};
+
+    const targetUrl =
+      notificationData.url ||
       "/notifications";
 
     event.waitUntil(
-      clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      }).then(function (clientList) {
-        for (const client of clientList) {
-          if (
-            "focus" in client
-          ) {
-            client.navigate(url);
-            return client.focus();
-          }
-        }
+      clients
+        .matchAll({
+          type: "window",
+          includeUncontrolled: true,
+        })
+        .then((clientList) => {
 
-        if (
-          clients.openWindow
-        ) {
-          return clients.openWindow(
-            url
-          );
-        }
-      })
+          // ============================================
+          // FIND EXISTING APP WINDOW
+          // ============================================
+
+          for (const client of clientList) {
+            if (
+              client.url.includes(
+                window.location.origin
+              ) &&
+              "focus" in client
+            ) {
+              client.navigate(targetUrl);
+              return client.focus();
+            }
+          }
+
+          // ============================================
+          // OPEN NEW WINDOW
+          // ============================================
+
+          if (
+            clients.openWindow
+          ) {
+            return clients.openWindow(
+              targetUrl
+            );
+          }
+
+          return null;
+        })
+    );
+  }
+);
+
+// =====================================================
+// NOTIFICATION CLOSE
+// =====================================================
+
+self.addEventListener(
+  "notificationclose",
+  (event) => {
+    console.log(
+      "🔕 Notification closed"
     );
   }
 );

@@ -248,7 +248,7 @@ function Login() {
     <>
       {/* =========================================================
           ANTIMATE AI FLOATING ICON
-          Shared visual identity with Home.jsx
+          PUBLIC ACCESS — NO LOGIN REQUIRED
       ========================================================= */}
       <style>{`
         @keyframes antimateAIColorFlow {
@@ -258,19 +258,6 @@ function Login() {
 
           100% {
             transform: rotate(360deg);
-          }
-        }
-
-        @keyframes antimateAIGlow {
-          0%,
-          100% {
-            opacity: 0.45;
-            transform: scale(0.96);
-          }
-
-          50% {
-            opacity: 0.85;
-            transform: scale(1.04);
           }
         }
 
@@ -288,17 +275,17 @@ function Login() {
         .antimate-ai-float-login {
           position: fixed;
           right: 20px;
-          bottom: 24px;
+          bottom: 22px;
           width: 64px;
           height: 64px;
-          z-index: 9998;
-          text-decoration: none;
+          z-index: 99999;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
           border-radius: 50%;
+          text-decoration: none;
 
           animation:
             antimateAIFloat
@@ -312,7 +299,7 @@ function Login() {
         .antimate-ai-float-login::before {
           content: "";
           position: absolute;
-          inset: -5px;
+          inset: -6px;
 
           border-radius: 50%;
 
@@ -334,12 +321,12 @@ function Login() {
             infinite;
 
           filter: blur(7px);
-          opacity: 0.55;
+          opacity: 0.60;
 
           z-index: -2;
         }
 
-        .antimate-ai-login-ring {
+        .antimate-ai-ring-login {
           position: absolute;
           inset: 0;
 
@@ -349,18 +336,17 @@ function Login() {
           background: #0b1220;
 
           box-shadow:
-            0 10px 28px rgba(0, 0, 0, 0.25),
+            0 10px 28px rgba(0, 0, 0, 0.28),
             0 0 22px rgba(0, 200, 150, 0.20);
         }
 
-        .antimate-ai-login-ring::before {
+        .antimate-ai-ring-login::before {
           content: "";
 
           position: absolute;
           inset: 0;
 
           border-radius: 50%;
-
           padding: 3px;
 
           background:
@@ -385,11 +371,10 @@ function Login() {
             linear-gradient(#fff 0 0);
 
           -webkit-mask-composite: xor;
-
           mask-composite: exclude;
         }
 
-        .antimate-ai-login-inner {
+        .antimate-ai-inner-login {
           position: absolute;
           inset: 7px;
 
@@ -408,7 +393,7 @@ function Login() {
             #0f172a;
         }
 
-        .antimate-ai-login-text {
+        .antimate-ai-text-login {
           position: relative;
           z-index: 3;
 
@@ -416,7 +401,6 @@ function Login() {
 
           font-size: 17px;
           font-weight: 900;
-
           letter-spacing: -0.5px;
           line-height: 1;
 
@@ -435,7 +419,7 @@ function Login() {
 
         .antimate-ai-float-login:hover::before {
           animation-duration: 1.8s;
-          opacity: 0.85;
+          opacity: 0.90;
         }
 
         .antimate-ai-float-login:active {
@@ -443,7 +427,10 @@ function Login() {
         }
 
         .antimate-ai-float-login:focus-visible {
-          outline: 3px solid rgba(0, 200, 150, 0.45);
+          outline:
+            3px solid
+            rgba(0, 200, 150, 0.45);
+
           outline-offset: 4px;
         }
 
@@ -451,16 +438,15 @@ function Login() {
           .antimate-ai-float-login {
             right: 16px;
             bottom: 18px;
-
             width: 58px;
             height: 58px;
           }
 
-          .antimate-ai-login-inner {
+          .antimate-ai-inner-login {
             inset: 6px;
           }
 
-          .antimate-ai-login-text {
+          .antimate-ai-text-login {
             font-size: 16px;
           }
         }
@@ -468,7 +454,7 @@ function Login() {
         @media (prefers-reduced-motion: reduce) {
           .antimate-ai-float-login,
           .antimate-ai-float-login::before,
-          .antimate-ai-login-ring::before {
+          .antimate-ai-ring-login::before {
             animation: none;
           }
         }
@@ -490,7 +476,6 @@ function Login() {
 
             <div>
               <strong>ANTIMATE</strong>
-
               <span>
                 SMART FARMING
               </span>
@@ -531,7 +516,6 @@ function Login() {
               className="nav-signup"
             >
               {t.signup}
-
               <ArrowRight size={15} />
             </Link>
           </nav>
@@ -591,17 +575,13 @@ function Login() {
             <div className="hero-content">
               <div className="hero-badge">
                 <Sparkles size={15} />
-
                 {t.eyebrow}
               </div>
 
               <h1>
                 {t.title1}
                 <br />
-
-                <span>
-                  {t.title2}
-                </span>
+                <span>{t.title2}</span>
               </h1>
 
               <div className="animated-words">
@@ -634,7 +614,6 @@ function Login() {
                   }
                 >
                   {t.start}
-
                   <ArrowRight size={18} />
                 </button>
 
@@ -649,7 +628,6 @@ function Login() {
               <div className="hero-trust">
                 <div>
                   <ShieldCheck size={17} />
-
                   <span>
                     {t.live}
                   </span>
@@ -657,7 +635,6 @@ function Login() {
 
                 <div>
                   <Leaf size={17} />
-
                   <span>
                     {t.smart}
                   </span>
@@ -708,7 +685,6 @@ function Login() {
               </div>
 
               <div className="floating-circle circle-one" />
-
               <div className="floating-circle circle-two" />
             </div>
           </section>
@@ -768,7 +744,6 @@ function Login() {
             <div className="vision-content">
               <div className="small-heading">
                 <HeartHandshake size={17} />
-
                 OUR PURPOSE
               </div>
 
@@ -783,7 +758,6 @@ function Login() {
               <div className="vision-points">
                 <div>
                   <Cloud size={18} />
-
                   <span>
                     Simple technology
                   </span>
@@ -791,7 +765,6 @@ function Login() {
 
                 <div>
                   <ShieldCheck size={18} />
-
                   <span>
                     Reliable information
                   </span>
@@ -799,7 +772,6 @@ function Login() {
 
                 <div>
                   <Lock size={18} />
-
                   <span>
                     Secure platform
                   </span>
@@ -828,33 +800,46 @@ function Login() {
                 className="primary-button"
               >
                 {t.signup}
-
                 <ArrowRight size={18} />
               </Link>
             </div>
           </section>
         </main>
 
-        {/* =====================================================
+        {/* =========================================================
+            PUBLIC ANTIMATE AI
+            NO LOGIN
+        ========================================================= */}
+        <Link
+          to="/antimate-ai"
+          className="antimate-ai-float-login"
+          aria-label="Open ANTIMATE AI"
+          title="ANTIMATE AI"
+        >
+          <div className="antimate-ai-ring-login">
+            <div className="antimate-ai-inner-login">
+              <span className="antimate-ai-text-login">
+                AI
+              </span>
+            </div>
+          </div>
+        </Link>
+
+        {/* =========================================================
             FOOTER
-        ===================================================== */}
+        ========================================================= */}
         <footer className="login-footer">
           <div className="footer-brand">
             <AntimateLogo size={30} />
-
-            <strong>
-              ANTIMATE
-            </strong>
+            <strong>ANTIMATE</strong>
           </div>
 
-          <p>
-            {t.footer}
-          </p>
+          <p>{t.footer}</p>
         </footer>
 
-        {/* =====================================================
+        {/* =========================================================
             LOGIN MODAL
-        ===================================================== */}
+        ========================================================= */}
         {showLogin && (
           <div
             className="modal-overlay"
@@ -968,7 +953,6 @@ function Login() {
                   ) : (
                     <>
                       {t.signIn}
-
                       <ArrowRight
                         size={17}
                       />
@@ -989,7 +973,6 @@ function Login() {
 
                 <span>
                   {t.noAccount}{" "}
-
                   <Link
                     to="/signup"
                     onClick={() =>
@@ -1003,24 +986,6 @@ function Login() {
             </div>
           </div>
         )}
-
-        {/* =========================================================
-            ANTIMATE AI FLOATING BUTTON
-        ========================================================= */}
-        <Link
-          to="/antimate-ai"
-          className="antimate-ai-float-login"
-          aria-label="Open ANTIMATE AI"
-          title="ANTIMATE AI"
-        >
-          <div className="antimate-ai-login-ring">
-            <div className="antimate-ai-login-inner">
-              <span className="antimate-ai-login-text">
-                AI
-              </span>
-            </div>
-          </div>
-        </Link>
       </div>
     </>
   );
@@ -1037,13 +1002,9 @@ function Feature({
         {icon}
       </div>
 
-      <h3>
-        {title}
-      </h3>
+      <h3>{title}</h3>
 
-      <p>
-        {text}
-      </p>
+      <p>{text}</p>
 
       <div className="feature-line" />
     </div>

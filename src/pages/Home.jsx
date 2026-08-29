@@ -60,326 +60,6 @@ const YOUTUBE_VIDEOS = [
   },
 ];
 
-/* ============================================================
-   ANTIMATE AI FLOATING ICON
-   O-SHAPED INTELLIGENT WHEEL
-============================================================ */
-
-function AntimateAIFloatingButton({ isDark }) {
-  return (
-    <>
-      <style>{`
-        @keyframes antimateWheelRotate {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes antimateWheelReverse {
-          from {
-            transform: rotate(360deg);
-          }
-          to {
-            transform: rotate(0deg);
-          }
-        }
-
-        @keyframes antimatePulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.75;
-          }
-
-          50% {
-            transform: scale(1.08);
-            opacity: 1;
-          }
-        }
-
-        @keyframes antimateGlow {
-          0%, 100% {
-            opacity: 0.35;
-            transform: scale(0.92);
-          }
-
-          50% {
-            opacity: 0.7;
-            transform: scale(1.08);
-          }
-        }
-
-        @keyframes antimateDot {
-          0%, 100% {
-            opacity: 0.35;
-            transform: scale(0.8);
-          }
-
-          50% {
-            opacity: 1;
-            transform: scale(1.25);
-          }
-        }
-
-        .antimate-ai-floating {
-          animation: antimatePulse 3s ease-in-out infinite;
-        }
-
-        .antimate-ai-wheel {
-          animation: antimateWheelRotate 8s linear infinite;
-        }
-
-        .antimate-ai-inner-wheel {
-          animation: antimateWheelReverse 5s linear infinite;
-        }
-
-        .antimate-ai-glow {
-          animation: antimateGlow 3s ease-in-out infinite;
-        }
-
-        .antimate-ai-dot {
-          animation: antimateDot 1.8s ease-in-out infinite;
-        }
-
-        .antimate-ai-floating:hover {
-          animation-play-state: paused;
-          transform: scale(1.1);
-        }
-
-        .antimate-ai-floating:active {
-          transform: scale(0.94);
-        }
-
-        @media (max-width: 480px) {
-          .antimate-ai-floating {
-            right: 16px !important;
-            bottom: 82px !important;
-          }
-        }
-      `}</style>
-
-      <Link
-        to="/antimate-ai"
-        aria-label="Open ANTIMATE AI"
-        title="ANTIMATE AI"
-        className="antimate-ai-floating"
-        style={{
-          position: "fixed",
-          right: "22px",
-          bottom: "88px",
-          width: "64px",
-          height: "64px",
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          textDecoration: "none",
-          borderRadius: "50%",
-          WebkitTapHighlightColor: "transparent",
-        }}
-      >
-        {/* OUTER GLOW */}
-        <div
-          className="antimate-ai-glow"
-          style={{
-            position: "absolute",
-            inset: "-10px",
-            borderRadius: "50%",
-            background:
-              "conic-gradient(from 0deg, #00F5A0, #00D9FF, #7C3AED, #FF3CAC, #00F5A0)",
-            filter: "blur(12px)",
-            zIndex: 0,
-          }}
-        />
-
-        {/* DARK / LIGHT BASE */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "50%",
-            background: isDark
-              ? "rgba(10, 18, 30, 0.96)"
-              : "rgba(255, 255, 255, 0.97)",
-            border: isDark
-              ? "1px solid rgba(255,255,255,0.12)"
-              : "1px solid rgba(15,23,42,0.10)",
-            boxShadow: isDark
-              ? "0 12px 35px rgba(0,0,0,0.50), inset 0 0 18px rgba(0,255,190,0.06)"
-              : "0 12px 30px rgba(15,23,42,0.20), inset 0 0 18px rgba(0,200,150,0.05)",
-            zIndex: 1,
-          }}
-        />
-
-        {/* ROTATING OUTER WHEEL */}
-        <svg
-          className="antimate-ai-wheel"
-          width="58"
-          height="58"
-          viewBox="0 0 58 58"
-          style={{
-            position: "absolute",
-            zIndex: 2,
-            overflow: "visible",
-          }}
-        >
-          <defs>
-            <linearGradient
-              id="antimateGradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="#00F5A0" />
-              <stop offset="25%" stopColor="#00D9FF" />
-              <stop offset="50%" stopColor="#7C3AED" />
-              <stop offset="75%" stopColor="#FF3CAC" />
-              <stop offset="100%" stopColor="#00F5A0" />
-            </linearGradient>
-
-            <filter id="antimateWheelGlow">
-              <feGaussianBlur
-                stdDeviation="1.5"
-                result="coloredBlur"
-              />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Main O ring */}
-          <circle
-            cx="29"
-            cy="29"
-            r="22"
-            fill="none"
-            stroke="url(#antimateGradient)"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeDasharray="28 8 12 8"
-            filter="url(#antimateWheelGlow)"
-          />
-
-          {/* Secondary ring */}
-          <circle
-            cx="29"
-            cy="29"
-            r="17"
-            fill="none"
-            stroke="url(#antimateGradient)"
-            strokeWidth="1.5"
-            strokeOpacity="0.42"
-            strokeDasharray="3 6"
-          />
-
-          {/* Intelligent wheel nodes */}
-          <circle
-            cx="29"
-            cy="6"
-            r="2"
-            fill="#00F5A0"
-          />
-
-          <circle
-            cx="51"
-            cy="29"
-            r="2"
-            fill="#00D9FF"
-          />
-
-          <circle
-            cx="29"
-            cy="52"
-            r="2"
-            fill="#FF3CAC"
-          />
-
-          <circle
-            cx="7"
-            cy="29"
-            r="2"
-            fill="#7C3AED"
-          />
-        </svg>
-
-        {/* INNER ROTATING O */}
-        <svg
-          className="antimate-ai-inner-wheel"
-          width="42"
-          height="42"
-          viewBox="0 0 42 42"
-          style={{
-            position: "absolute",
-            zIndex: 3,
-          }}
-        >
-          <defs>
-            <linearGradient
-              id="antimateInnerGradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="#00D9FF" />
-              <stop offset="50%" stopColor="#A855F7" />
-              <stop offset="100%" stopColor="#00F5A0" />
-            </linearGradient>
-          </defs>
-
-          <circle
-            cx="21"
-            cy="21"
-            r="14"
-            fill="none"
-            stroke="url(#antimateInnerGradient)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray="9 5"
-          />
-        </svg>
-
-        {/* CENTER AI CORE */}
-        <div
-          style={{
-            position: "absolute",
-            zIndex: 4,
-            width: "22px",
-            height: "22px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: isDark
-              ? "radial-gradient(circle, #102a32 0%, #07131c 70%)"
-              : "radial-gradient(circle, #eafff8 0%, #ffffff 70%)",
-            boxShadow:
-              "0 0 12px rgba(0,245,160,0.45), 0 0 24px rgba(0,217,255,0.18)",
-          }}
-        >
-          <div
-            className="antimate-ai-dot"
-            style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(135deg, #00F5A0, #00D9FF)",
-              boxShadow:
-                "0 0 8px rgba(0,245,160,0.9)",
-            }}
-          />
-        </div>
-      </Link>
-    </>
-  );
-}
-
 function Home() {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const { isDark, text } = useAppSettings();
@@ -396,9 +76,7 @@ function Home() {
   const content = {
     greeting:
       t.homeGreeting ||
-      (t.home === "Ahabanza"
-        ? "Murakaza neza"
-        : "Welcome"),
+      (t.home === "Ahabanza" ? "Murakaza neza" : "Welcome"),
 
     greetingText:
       t.homeGreetingText ||
@@ -408,9 +86,7 @@ function Home() {
 
     featured:
       t.featured ||
-      (t.home === "Ahabanza"
-        ? "IBY'INGENZI"
-        : "FEATURED"),
+      (t.home === "Ahabanza" ? "IBY'INGENZI" : "FEATURED"),
 
     heroTitle:
       t.heroTitle ||
@@ -426,9 +102,7 @@ function Home() {
 
     readMore:
       t.readMore ||
-      (t.home === "Ahabanza"
-        ? "Soma birambuye"
-        : "Read more"),
+      (t.home === "Ahabanza" ? "Soma birambuye" : "Read more"),
 
     poultryTips:
       t.poultryTips ||
@@ -539,334 +213,516 @@ function Home() {
     t.home === "Ahabanza"
       ? [
           {
-            title:
-              "Uko warinda inkoko indwara y'umuraramo",
+            title: "Uko warinda inkoko indwara y'umuraramo",
             description:
               "Inyigisho igufasha kumenya uburyo bwo kurinda inkoko indwara y'umuraramo.",
           },
           {
-            title:
-              "Uko watangira ubworozi bw'inkoko",
+            title: "Uko watangira ubworozi bw'inkoko",
             description:
               "Urugero rw'umworozi wateje imbere ubworozi bwe mu Rwanda.",
           },
           {
-            title:
-              "Ubworozi bw'inkoko bugezweho",
+            title: "Ubworozi bw'inkoko bugezweho",
             description:
               "Menya uburyo bugezweho bushobora kongera umusaruro w'amagi n'inyama.",
           },
         ]
       : [
           {
-            title:
-              "How to protect chickens from Newcastle disease",
+            title: "How to protect chickens from Newcastle disease",
             description:
               "Learn practical ways to protect your poultry from Newcastle disease.",
           },
           {
-            title:
-              "How to start poultry farming",
+            title: "How to start poultry farming",
             description:
               "Learn from a poultry farmer who developed a successful farming business.",
           },
           {
-            title:
-              "Modern poultry farming",
+            title: "Modern poultry farming",
             description:
               "Discover modern methods that can improve egg and meat production.",
           },
         ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: bgMain,
-        color: textPrimary,
-        paddingBottom: "100px",
-        fontFamily: "Inter, Arial, sans-serif",
-      }}
-    >
-      <AppHeader title={t.home || "Home"} />
+    <>
+      {/* =========================================================
+          ANTIMATE AI FLOATING ICON ANIMATION
+      ========================================================= */}
+      <style>{`
+        @keyframes antimateAIColorFlow {
+          0% {
+            transform: rotate(0deg);
+          }
 
-      <main style={styles.main}>
+          100% {
+            transform: rotate(360deg);
+          }
+        }
 
-        {/* =================================================
-            GREETING
-        ================================================= */}
+        @keyframes antimateAIGlow {
+          0%,
+          100% {
+            opacity: 0.45;
+            transform: scale(0.96);
+          }
 
-        <section>
-          <h1 style={styles.greeting}>
-            {content.greeting},{" "}
-            {user?.name ||
-              (t.home === "Ahabanza"
-                ? "Mworozi"
-                : "Farmer")}{" "}
-            👋
-          </h1>
+          50% {
+            opacity: 0.85;
+            transform: scale(1.04);
+          }
+        }
 
-          <p
-            style={{
-              ...styles.greetingText,
-              color: textSecondary,
-            }}
-          >
-            {content.greetingText}
-          </p>
-        </section>
+        @keyframes antimateAIFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
 
-        {/* =================================================
-            FEATURED ARTICLE
-        ================================================= */}
+          50% {
+            transform: translateY(-4px);
+          }
+        }
 
-        <section
-          style={{
-            ...styles.heroCard,
-            background: bgCard,
-            border: `1px solid ${borderColor}`,
-            boxShadow: isDark
-              ? "none"
-              : "0 12px 30px rgba(0,0,0,0.06)",
-          }}
-        >
-          <div style={styles.heroImageWrapper}>
-            <img
-              src={HERO_ARTICLE.image}
-              alt="Smart farming"
-              style={styles.heroImage}
-            />
+        .antimate-ai-float {
+          position: fixed;
+          right: 20px;
+          bottom: 82px;
+          width: 64px;
+          height: 64px;
+          z-index: 9999;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          animation: antimateAIFloat 4s ease-in-out infinite;
+          -webkit-tap-highlight-color: transparent;
+        }
 
-            <div style={styles.imageOverlay}>
-              <span
-                style={{
-                  ...styles.badge,
-                  background: accent,
-                }}
-              >
-                {content.featured}
-              </span>
-            </div>
-          </div>
+        .antimate-ai-float::before {
+          content: "";
+          position: absolute;
+          inset: -5px;
+          border-radius: 50%;
+          background:
+            conic-gradient(
+              from 0deg,
+              #00c896,
+              #00e5ff,
+              #6366f1,
+              #a855f7,
+              #ec4899,
+              #00c896
+            );
+          animation: antimateAIColorFlow 3.5s linear infinite;
+          filter: blur(7px);
+          opacity: 0.55;
+          z-index: -2;
+        }
 
-          <div style={styles.heroContent}>
-            <h2
-              style={{
-                ...styles.heroTitle,
-                color: textPrimary,
-              }}
-            >
-              {content.heroTitle}
-            </h2>
+        .antimate-ai-ring {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          overflow: hidden;
+          background: #0b1220;
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.25),
+            0 0 22px rgba(0, 200, 150, 0.20);
+        }
+
+        .antimate-ai-ring::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          padding: 3px;
+          background:
+            conic-gradient(
+              from 0deg,
+              #00c896,
+              #00e5ff,
+              #6366f1,
+              #a855f7,
+              #ec4899,
+              #00c896
+            );
+          animation: antimateAIColorFlow 3.5s linear infinite;
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+        }
+
+        .antimate-ai-inner {
+          position: absolute;
+          inset: 7px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background:
+            radial-gradient(
+              circle at 35% 30%,
+              rgba(0, 200, 150, 0.16),
+              transparent 45%
+            ),
+            #0f172a;
+        }
+
+        .antimate-ai-text {
+          position: relative;
+          z-index: 3;
+          color: #ffffff;
+          font-size: 17px;
+          font-weight: 900;
+          letter-spacing: -0.5px;
+          line-height: 1;
+          font-family:
+            Inter,
+            Arial,
+            sans-serif;
+          user-select: none;
+        }
+
+        .antimate-ai-float:hover {
+          animation-play-state: paused;
+          transform: scale(1.08);
+        }
+
+        .antimate-ai-float:hover::before {
+          animation-duration: 1.8s;
+          opacity: 0.85;
+        }
+
+        .antimate-ai-float:active {
+          transform: scale(0.94);
+        }
+
+        .antimate-ai-float:focus-visible {
+          outline: 3px solid rgba(0, 200, 150, 0.45);
+          outline-offset: 4px;
+        }
+
+        @media (max-width: 600px) {
+          .antimate-ai-float {
+            right: 16px;
+            bottom: 76px;
+            width: 58px;
+            height: 58px;
+          }
+
+          .antimate-ai-inner {
+            inset: 6px;
+          }
+
+          .antimate-ai-text {
+            font-size: 16px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .antimate-ai-float,
+          .antimate-ai-float::before,
+          .antimate-ai-ring::before {
+            animation: none;
+          }
+        }
+      `}</style>
+
+      <div
+        style={{
+          minHeight: "100vh",
+          background: bgMain,
+          color: textPrimary,
+          paddingBottom: "100px",
+          fontFamily: "Inter, Arial, sans-serif",
+        }}
+      >
+        <AppHeader title={t.home || "Home"} />
+
+        <main style={styles.main}>
+          {/* =====================================================
+              GREETING
+          ===================================================== */}
+          <section>
+            <h1 style={styles.greeting}>
+              {content.greeting},{" "}
+              {user?.name ||
+                (t.home === "Ahabanza" ? "Mworozi" : "Farmer")}{" "}
+              👋
+            </h1>
 
             <p
               style={{
-                ...styles.heroDescription,
+                ...styles.greetingText,
                 color: textSecondary,
               }}
             >
-              {content.heroDescription}
+              {content.greetingText}
             </p>
+          </section>
 
-            <button
-              style={{
-                ...styles.primaryButton,
-                background: accent,
-              }}
-            >
-              {content.readMore} →
-            </button>
-          </div>
-        </section>
+          {/* =====================================================
+              FEATURED ARTICLE
+          ===================================================== */}
+          <section
+            style={{
+              ...styles.heroCard,
+              background: bgCard,
+              border: `1px solid ${borderColor}`,
+              boxShadow: isDark
+                ? "none"
+                : "0 12px 30px rgba(0,0,0,0.06)",
+            }}
+          >
+            <div style={styles.heroImageWrapper}>
+              <img
+                src={HERO_ARTICLE.image}
+                alt="Smart farming"
+                style={styles.heroImage}
+              />
 
-        {/* =================================================
-            POULTRY TIPS
-        ================================================= */}
-
-        <section>
-          <SectionTitle
-            title={content.poultryTips}
-            color={textPrimary}
-          />
-
-          <div style={styles.horizontalScroll}>
-            {POULTRY_TIPS.map((tip, index) => (
-              <div
-                key={tip.id}
-                style={{
-                  ...styles.tipCard,
-                  background: bgCard,
-                  border: `1px solid ${borderColor}`,
-                }}
-              >
-                <img
-                  src={tip.image}
-                  alt={tips[index].title}
-                  style={styles.tipImage}
-                />
-
-                <h3
+              <div style={styles.imageOverlay}>
+                <span
                   style={{
-                    ...styles.tipTitle,
-                    color: textPrimary,
+                    ...styles.badge,
+                    background: accent,
                   }}
                 >
-                  {tips[index].title}
-                </h3>
-
-                <p
-                  style={{
-                    ...styles.tipDescription,
-                    color: textSecondary,
-                  }}
-                >
-                  {tips[index].description}
-                </p>
+                  {content.featured}
+                </span>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
 
-        {/* =================================================
-            AGRICULTURE NEWS
-        ================================================= */}
-
-        <section>
-          <SectionTitle
-            title={content.agricultureNews}
-            color={textPrimary}
-          />
-
-          <div style={styles.newsList}>
-            {AGRI_NEWS.map((item, index) => (
-              <article
-                key={item.id}
+            <div style={styles.heroContent}>
+              <h2
                 style={{
-                  ...styles.newsCard,
-                  background: bgCard,
-                  border: `1px solid ${borderColor}`,
+                  ...styles.heroTitle,
+                  color: textPrimary,
                 }}
               >
-                <img
-                  src={item.image}
-                  alt={news[index].title}
-                  style={styles.newsImage}
-                />
+                {content.heroTitle}
+              </h2>
 
-                <div style={styles.newsContent}>
-                  <span
-                    style={{
-                      color: accent,
-                      fontSize: "10px",
-                      fontWeight: 800,
-                    }}
-                  >
-                    {news[index].category}
-                  </span>
-
-                  <h3
-                    style={{
-                      ...styles.newsTitle,
-                      color: textPrimary,
-                    }}
-                  >
-                    {news[index].title}
-                  </h3>
-
-                  <p
-                    style={{
-                      ...styles.newsDescription,
-                      color: textSecondary,
-                    }}
-                  >
-                    {news[index].description}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* =================================================
-            VIDEOS
-        ================================================= */}
-
-        <section>
-          <SectionTitle
-            title={content.videos}
-            color={textPrimary}
-          />
-
-          <div style={styles.videoList}>
-            {YOUTUBE_VIDEOS.map((video, index) => (
-              <article
-                key={video.id}
+              <p
                 style={{
-                  ...styles.videoCard,
-                  background: bgCard,
-                  border: `1px solid ${borderColor}`,
+                  ...styles.heroDescription,
+                  color: textSecondary,
                 }}
               >
-                <div style={styles.videoWrapper}>
-                  <iframe
-                    src={`https://www.youtube.com/embed/${video.embedId}`}
-                    title={videos[index].title}
-                    style={styles.video}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
+                {content.heroDescription}
+              </p>
+
+              <button
+                style={{
+                  ...styles.primaryButton,
+                  background: accent,
+                }}
+              >
+                {content.readMore} →
+              </button>
+            </div>
+          </section>
+
+          {/* =====================================================
+              POULTRY TIPS
+          ===================================================== */}
+          <section>
+            <SectionTitle
+              title={content.poultryTips}
+              color={textPrimary}
+            />
+
+            <div style={styles.horizontalScroll}>
+              {POULTRY_TIPS.map((tip, index) => (
+                <div
+                  key={tip.id}
+                  style={{
+                    ...styles.tipCard,
+                    background: bgCard,
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <img
+                    src={tip.image}
+                    alt={tips[index].title}
+                    style={styles.tipImage}
                   />
-                </div>
 
-                <div style={styles.videoContent}>
                   <h3
                     style={{
-                      ...styles.videoTitle,
+                      ...styles.tipTitle,
                       color: textPrimary,
                     }}
                   >
-                    {videos[index].title}
+                    {tips[index].title}
                   </h3>
 
                   <p
                     style={{
-                      ...styles.videoDescription,
+                      ...styles.tipDescription,
                       color: textSecondary,
                     }}
                   >
-                    {videos[index].description}
+                    {tips[index].description}
                   </p>
-
-                  <a
-                    href={`https://www.youtube.com/watch?v=${video.embedId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      ...styles.youtubeLink,
-                      color: accent,
-                    }}
-                  >
-                    {content.watchYoutube}
-                  </a>
                 </div>
-              </article>
-            ))}
+              ))}
+            </div>
+          </section>
+
+          {/* =====================================================
+              AGRICULTURE NEWS
+          ===================================================== */}
+          <section>
+            <SectionTitle
+              title={content.agricultureNews}
+              color={textPrimary}
+            />
+
+            <div style={styles.newsList}>
+              {AGRI_NEWS.map((item, index) => (
+                <article
+                  key={item.id}
+                  style={{
+                    ...styles.newsCard,
+                    background: bgCard,
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <img
+                    src={item.image}
+                    alt={news[index].title}
+                    style={styles.newsImage}
+                  />
+
+                  <div style={styles.newsContent}>
+                    <span
+                      style={{
+                        color: accent,
+                        fontSize: "10px",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {news[index].category}
+                    </span>
+
+                    <h3
+                      style={{
+                        ...styles.newsTitle,
+                        color: textPrimary,
+                      }}
+                    >
+                      {news[index].title}
+                    </h3>
+
+                    <p
+                      style={{
+                        ...styles.newsDescription,
+                        color: textSecondary,
+                      }}
+                    >
+                      {news[index].description}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {/* =====================================================
+              VIDEOS
+          ===================================================== */}
+          <section>
+            <SectionTitle
+              title={content.videos}
+              color={textPrimary}
+            />
+
+            <div style={styles.videoList}>
+              {YOUTUBE_VIDEOS.map((video, index) => (
+                <article
+                  key={video.id}
+                  style={{
+                    ...styles.videoCard,
+                    background: bgCard,
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <div style={styles.videoWrapper}>
+                    <iframe
+                      src={`https://www.youtube.com/embed/${video.embedId}`}
+                      title={videos[index].title}
+                      style={styles.video}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+
+                  <div style={styles.videoContent}>
+                    <h3
+                      style={{
+                        ...styles.videoTitle,
+                        color: textPrimary,
+                      }}
+                    >
+                      {videos[index].title}
+                    </h3>
+
+                    <p
+                      style={{
+                        ...styles.videoDescription,
+                        color: textSecondary,
+                      }}
+                    >
+                      {videos[index].description}
+                    </p>
+
+                    <a
+                      href={`https://www.youtube.com/watch?v=${video.embedId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        ...styles.youtubeLink,
+                        color: accent,
+                      }}
+                    >
+                      {content.watchYoutube}
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        {/* =========================================================
+            ANTIMATE AI FLOATING BUTTON
+            Fixed bottom-right
+        ========================================================= */}
+        <Link
+          to="/antimate-ai"
+          className="antimate-ai-float"
+          aria-label="Open ANTIMATE AI"
+          title="ANTIMATE AI"
+        >
+          <div className="antimate-ai-ring">
+            <div className="antimate-ai-inner">
+              <span className="antimate-ai-text">
+                AI
+              </span>
+            </div>
           </div>
-        </section>
-      </main>
+        </Link>
 
-      {/* =====================================================
-          ANTIMATE AI FLOATING LOGO
-          Fixed bottom-right
-      ===================================================== */}
-
-      <AntimateAIFloatingButton isDark={isDark} />
-
-      {/* =====================================================
-          BOTTOM NAV
-      ===================================================== */}
-
-      <BottomNav />
-    </div>
+        <BottomNav />
+      </div>
+    </>
   );
 }
 

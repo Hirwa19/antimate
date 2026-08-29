@@ -4,6 +4,8 @@ const API_BASE =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
+const MAX_RECORDING_SECONDS = 30;
+
 function AntimateAI() {
   const [messages, setMessages] = useState([]);
   const [textInput, setTextInput] = useState("");
@@ -21,13 +23,37 @@ function AntimateAI() {
   const [micChecking, setMicChecking] =
     useState(false);
 
+  // =====================================================
+  // RECORDING COUNTDOWN
+  // =====================================================
+
+  const [recordingSeconds, setRecordingSeconds] =
+    useState(MAX_RECORDING_SECONDS);
+
+  const [recordedAudioUrl, setRecordedAudioUrl] =
+    useState(null);
+
+  const [isAudioPlaying, setIsAudioPlaying] =
+    useState(false);
+
+  // =====================================================
+  // REFS
+  // =====================================================
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
 
+  const recordingTimerRef = useRef(null);
+  const recordingStartTimeRef = useRef(null);
+
   const messagesEndRef = useRef(null);
   const textInputRef = useRef(null);
+
   const audioUrlRef = useRef(null);
+  const recordedAudioUrlRef = useRef(null);
+
+  const recordedAudioElementRef = useRef(null);
 
   // =====================================================
   // INITIAL MESSAGE
@@ -99,11 +125,18 @@ function AntimateAI() {
 
   useEffect(() => {
     return () => {
+      stopRecordingTimer();
       stopAllMicrophoneTracks();
 
       if (audioUrlRef.current) {
         URL.revokeObjectURL(
           audioUrlRef.current
+        );
+      }
+
+      if (recordedAudioUrlRef.current) {
+        URL.revokeObjectURL(
+          recordedAudioUrlRef.current
         );
       }
     };
@@ -119,6 +152,79 @@ function AntimateAI() {
       minute: "2-digit",
     });
   }
+
+  // =====================================================
+  // RECORDING TIMER
+  // =====================================================
+
+  const stopRecordingTimer = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(
+        recordingTimerRef.current
+      );
+
+      recordingTimerRef.current = null;
+    }
+  };
+
+  const resetRecordingTimer = () => {
+    stopRecordingTimer();
+
+    setRecordingSeconds(
+      MAX_RECORDING_SECONDS
+    );
+
+    recordingStartTimeRef.current = null;
+  };
+
+  const startRecordingTimer = () => {
+    stopRecordingTimer();
+
+    recordingStartTimeRef.current =
+      Date.now();
+
+    setRecordingSeconds(
+      MAX_RECORDING_SECONDS
+    );
+
+    recordingTimerRef.current =
+      setInterval(() => {
+        const elapsed = Math.floor(
+          (Date.now() -
+            recordingStartTimeRef.current) /
+            1000
+        );
+
+        const remaining = Math.max(
+          0,
+          MAX_RECORDING_SECONDS -
+            elapsed
+        );
+
+        setRecordingSeconds(
+          remaining
+        );
+
+        if (remaining <= 0) {
+          stopRecordingTimer();
+
+          const recorder =
+            mediaRecorderRef.current;
+
+          if (
+            recorder &&
+            recorder.state !==
+              "inactive"
+          ) {
+            console.log(
+              "⏰ 30 seconds reached. Auto stopping recording..."
+            );
+
+            recorder.stop();
+          }
+        }
+      }, 200);
+  };
 
   // =====================================================
   // STOP MICROPHONE TRACKS
@@ -145,6 +251,50 @@ function AntimateAI() {
         err
       );
     }
+  };
+
+  // =====================================================
+  // CLEAR RECORDED AUDIO PREVIEW
+  // =====================================================
+
+  const clearRecordedAudioPreview = () => {
+    if (recordedAudioElementRef.current) {
+      try {
+        recordedAudioElementRef.current.pause();
+        recordedAudioElementRef.current.currentTime = 0;
+      } catch {
+        // ignore
+      }
+    }
+
+    setIsAudioPlaying(false);
+
+    if (recordedAudioUrlRef.current) {
+      URL.revokeObjectURL(
+        recordedAudioUrlRef.current
+      );
+
+      recordedAudioUrlRef.current = null;
+    }
+
+    setRecordedAudioUrl(null);
+  };
+
+  // =====================================================
+  // CREATE RECORDED AUDIO PREVIEW
+  // =====================================================
+
+  const setRecordedAudioPreview = (
+    file
+  ) => {
+    clearRecordedAudioPreview();
+
+    const url =
+      URL.createObjectURL(file);
+
+    recordedAudioUrlRef.current = url;
+
+    setRecordedAudioUrl(url);
   };
 
   // =====================================================
@@ -255,22 +405,6 @@ function AntimateAI() {
       setError("");
 
       try {
-        /*
-         * IMPORTANT:
-         *
-         * Do NOT use:
-         *
-         * audio: {
-         *   deviceId: ...
-         *   sampleRate: ...
-         * }
-         *
-         * here.
-         *
-         * First request the simplest possible
-         * microphone stream.
-         */
-
         const stream =
           await navigator.mediaDevices.getUserMedia(
             {
@@ -324,14 +458,6 @@ function AntimateAI() {
           err.name ===
           "DevicesNotFoundError"
         ) {
-          /*
-           * Don't immediately assume the hardware
-           * does not exist.
-           *
-           * Browser can return NotFoundError when
-           * the current audio input is unavailable.
-           */
-
           const devices =
             await getMicrophoneDevices();
 
@@ -396,14 +522,6 @@ function AntimateAI() {
     async () => {
       ensureMicrophoneSupport();
 
-      /*
-       * Even if permission says "granted",
-       * we still call getUserMedia().
-       *
-       * This confirms that the browser can
-       * actually open an audio input.
-       */
-
       try {
         const stream =
           await navigator.mediaDevices.getUserMedia(
@@ -425,11 +543,6 @@ function AntimateAI() {
           "❌ Granted microphone could not be opened:",
           err
         );
-
-        /*
-         * Permission can be "granted" while the
-         * physical device is temporarily unavailable.
-         */
 
         if (
           err.name ===
@@ -504,11 +617,15 @@ function AntimateAI() {
         "====================================================="
       );
 
-      /*
-       * Clean any old stream first.
-       */
+      // Clear old recording preview.
+      clearRecordedAudioPreview();
+      setAudioFile(null);
 
+      // Clean old microphone.
       stopAllMicrophoneTracks();
+
+      // Reset timer.
+      resetRecordingTimer();
 
       let stream = null;
 
@@ -536,12 +653,6 @@ function AntimateAI() {
         micPermission ===
         "denied"
       ) {
-        /*
-         * Calling getUserMedia here may NOT show a
-         * popup because browser already remembers
-         * the denial.
-         */
-
         throw new Error(
           "Microphone ntiyemerewe kuri iyi website. Kanda kuri 🔒 cyangwa microphone icon iri muri address bar → Microphone → Allow, hanyuma refresh page wongere ukande 🎤."
         );
@@ -662,7 +773,7 @@ function AntimateAI() {
             break;
           }
         } catch {
-          // ignore unsupported type
+          // ignore
         }
       }
 
@@ -736,6 +847,8 @@ function AntimateAI() {
           event
         );
 
+        stopRecordingTimer();
+
         setError(
           "Habaye ikibazo mu gufata amajwi."
         );
@@ -753,6 +866,8 @@ function AntimateAI() {
         console.log(
           "⏹ MediaRecorder stopped."
         );
+
+        stopRecordingTimer();
 
         const actualType =
           recorder.mimeType ||
@@ -772,12 +887,21 @@ function AntimateAI() {
           "bytes"
         );
 
+        setRecording(false);
+
+        stopAllMicrophoneTracks();
+
+        mediaRecorderRef.current =
+          null;
+
         if (!blob.size) {
+          audioChunksRef.current = [];
+
           setError(
             "Nta majwi yafashwe. Ongera ugerageze."
           );
 
-          stopAllMicrophoneTracks();
+          resetRecordingTimer();
 
           return;
         }
@@ -808,24 +932,9 @@ function AntimateAI() {
 
         setAudioFile(file);
 
-        setMessages((previous) => [
-          ...previous,
-          {
-            id:
-              Date.now() +
-              "-voice",
-            role: "user",
-            type: "voice",
-            text:
-              "🎤 Ubutumwa bw'amajwi",
-            time: getTime(),
-          },
-        ]);
-
-        stopAllMicrophoneTracks();
-
-        mediaRecorderRef.current =
-          null;
+        setRecordedAudioPreview(
+          file
+        );
 
         audioChunksRef.current = [];
 
@@ -834,6 +943,10 @@ function AntimateAI() {
           file.name,
           file.size,
           file.type
+        );
+
+        console.log(
+          "🎧 Waiting for user action: Listen / Cancel / Send"
         );
       };
 
@@ -845,12 +958,24 @@ function AntimateAI() {
 
       setRecording(true);
 
+      setRecordingSeconds(
+        MAX_RECORDING_SECONDS
+      );
+
+      startRecordingTimer();
+
       console.log(
         "====================================================="
       );
 
       console.log(
         "🎙️ RECORDING STARTED"
+      );
+
+      console.log(
+        "⏱️ Maximum duration:",
+        MAX_RECORDING_SECONDS,
+        "seconds"
       );
 
       console.log(
@@ -885,17 +1010,11 @@ function AntimateAI() {
         "====================================================="
       );
 
+      stopRecordingTimer();
+
       setRecording(false);
 
-      /*
-       * Do not keep a broken stream alive.
-       */
-
       stopAllMicrophoneTracks();
-
-      /*
-       * Permission state may have changed.
-       */
 
       await checkMicrophonePermission();
 
@@ -917,6 +1036,8 @@ function AntimateAI() {
       "⏹ Stopping ANTIMATE recording..."
     );
 
+    stopRecordingTimer();
+
     const recorder =
       mediaRecorderRef.current;
 
@@ -931,6 +1052,114 @@ function AntimateAI() {
 
       setRecording(false);
     }
+  };
+
+  // =====================================================
+  // LISTEN RECORDED AUDIO
+  // =====================================================
+
+  const toggleRecordedAudio = () => {
+    if (!recordedAudioUrl) {
+      return;
+    }
+
+    const audio =
+      recordedAudioElementRef.current;
+
+    if (!audio) {
+      return;
+    }
+
+    try {
+      if (audio.paused) {
+        audio.play();
+
+        setIsAudioPlaying(true);
+      } else {
+        audio.pause();
+
+        setIsAudioPlaying(false);
+      }
+    } catch (err) {
+      console.error(
+        "Recorded audio playback error:",
+        err
+      );
+
+      setError(
+        "Audio ntiyashoboye gukinwa."
+      );
+    }
+  };
+
+  // =====================================================
+  // RECORDED AUDIO ENDED
+  // =====================================================
+
+  const handleRecordedAudioEnded =
+    () => {
+      setIsAudioPlaying(false);
+    };
+
+  // =====================================================
+  // CANCEL RECORDED AUDIO
+  // =====================================================
+
+  const cancelVoiceRecording = () => {
+    if (loading) {
+      return;
+    }
+
+    console.log(
+      "❌ Cancelling recorded voice..."
+    );
+
+    stopRecordingTimer();
+
+    const recorder =
+      mediaRecorderRef.current;
+
+    if (
+      recorder &&
+      recorder.state !==
+        "inactive"
+    ) {
+      try {
+        recorder.ondataavailable =
+          null;
+
+        recorder.onstop = null;
+
+        recorder.onerror = null;
+
+        recorder.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    mediaRecorderRef.current =
+      null;
+
+    audioChunksRef.current = [];
+
+    stopAllMicrophoneTracks();
+
+    clearRecordedAudioPreview();
+
+    setAudioFile(null);
+
+    setRecording(false);
+
+    setRecordingSeconds(
+      MAX_RECORDING_SECONDS
+    );
+
+    setError("");
+
+    console.log(
+      "✅ Recorded voice cancelled."
+    );
   };
 
   // =====================================================
@@ -958,21 +1187,14 @@ function AntimateAI() {
     }
 
     setError("");
+
+    clearRecordedAudioPreview();
+
     setAudioFile(file);
 
-    setMessages((previous) => [
-      ...previous,
-      {
-        id:
-          Date.now() +
-          "-file",
-        role: "user",
-        type: "voice",
-        text:
-          "🎧 Audio yatoranyijwe",
-        time: getTime(),
-      },
-    ]);
+    setRecordedAudioPreview(
+      file
+    );
 
     event.target.value = "";
   };
@@ -1018,13 +1240,49 @@ function AntimateAI() {
       return;
     }
 
+    const fileToSend =
+      audioFile;
+
     setError("");
 
-    await sendAudioToAntimate(
-      audioFile
-    );
+    // Stop preview playback.
+    if (
+      recordedAudioElementRef.current
+    ) {
+      try {
+        recordedAudioElementRef.current.pause();
+
+        recordedAudioElementRef.current.currentTime = 0;
+      } catch {
+        // ignore
+      }
+    }
+
+    setIsAudioPlaying(false);
+
+    // Add message ONLY when user clicks SEND.
+    setMessages((previous) => [
+      ...previous,
+      {
+        id:
+          Date.now() +
+          "-voice",
+        role: "user",
+        type: "voice",
+        text:
+          "🎤 Ubutumwa bw'amajwi",
+        time: getTime(),
+      },
+    ]);
+
+    // Hide local preview.
+    clearRecordedAudioPreview();
 
     setAudioFile(null);
+
+    await sendAudioToAntimate(
+      fileToSend
+    );
   };
 
   // =====================================================
@@ -1093,6 +1351,15 @@ function AntimateAI() {
     setLoading(true);
 
     try {
+      console.log(
+        "🎤 Sending voice file:",
+        {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        }
+      );
+
       const formData =
         new FormData();
 
@@ -1430,9 +1697,15 @@ function AntimateAI() {
   // =====================================================
 
   const clearConversation = () => {
-    if (loading) return;
+    if (loading || recording) {
+      return;
+    }
+
+    stopRecordingTimer();
 
     stopAllMicrophoneTracks();
+
+    clearRecordedAudioPreview();
 
     if (audioUrlRef.current) {
       URL.revokeObjectURL(
@@ -1446,6 +1719,9 @@ function AntimateAI() {
     setAudioFile(null);
     setError("");
     setRecording(false);
+    setRecordingSeconds(
+      MAX_RECORDING_SECONDS
+    );
 
     setMessages([
       {
@@ -1743,39 +2019,172 @@ function AntimateAI() {
           </div>
         )}
 
-        {/* VOICE READY */}
+        {/* =================================================
+            RECORDING PANEL
+            ================================================= */}
+
+        {recording && (
+          <div
+            style={
+              styles.recordingPanel
+            }
+          >
+            <div
+              style={
+                styles.recordingLeft
+              }
+            >
+              <div
+                style={
+                  styles.recordingPulse
+                }
+              >
+                🎙️
+              </div>
+
+              <div>
+                <div
+                  style={
+                    styles.recordingTitle
+                  }
+                >
+                  Ndimo gufata amajwi...
+                </div>
+
+                <div
+                  style={
+                    styles.recordingSubtitle
+                  }
+                >
+                  Vuga ubu. Kanda ⏹ kugira ngo uhagarike.
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={
+                styles.countdown
+              }
+            >
+              <span>
+                {recordingSeconds}
+              </span>
+
+              <small>
+                sec
+              </small>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================
+            VOICE PREVIEW
+            ================================================= */}
 
         {audioFile &&
           !recording && (
             <div
               style={
-                styles.voiceReady
+                styles.voicePreview
               }
             >
-              <div>
-                <span>🎧</span>
+              <div
+                style={
+                  styles.voicePreviewTop
+                }
+              >
+                <div
+                  style={
+                    styles.voicePreviewInfo
+                  }
+                >
+                  <div
+                    style={
+                      styles.voicePreviewIcon
+                    }
+                  >
+                    🎧
+                  </div>
 
-                <span>
-                  Audio yiteguye
-                </span>
+                  <div>
+                    <div
+                      style={
+                        styles.voicePreviewTitle
+                      }
+                    >
+                      Audio yiteguye
+                    </div>
+
+                    <div
+                      style={
+                        styles.voicePreviewSubtitle
+                      }
+                    >
+                      {audioFile.name}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={
+                    styles.voicePreviewDuration
+                  }
+                >
+                  {recordingSeconds ===
+                  MAX_RECORDING_SECONDS
+                    ? "Audio"
+                    : `${MAX_RECORDING_SECONDS - recordingSeconds}s`}
+                </div>
               </div>
+
+              <audio
+                ref={
+                  recordedAudioElementRef
+                }
+                src={
+                  recordedAudioUrl ||
+                  undefined
+                }
+                onEnded={
+                  handleRecordedAudioEnded
+                }
+                preload="metadata"
+                style={
+                  styles.hiddenAudio
+                }
+              />
 
               <div
                 style={
-                  styles.voiceReadyActions
+                  styles.voicePreviewActions
                 }
               >
                 <button
                   type="button"
-                  onClick={() =>
-                    setAudioFile(null)
+                  onClick={
+                    toggleRecordedAudio
+                  }
+                  disabled={loading}
+                  style={
+                    styles.listenButton
+                  }
+                >
+                  {isAudioPlaying
+                    ? "⏸ Hagarika"
+                    : "▶ Umva amajwi"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    cancelVoiceRecording
                   }
                   disabled={loading}
                   style={
                     styles.cancelVoice
                   }
                 >
-                  Kuraho
+                  ❌ Kuraho
                 </button>
 
                 <button
@@ -1790,7 +2199,7 @@ function AntimateAI() {
                 >
                   {loading
                     ? "Irategereza..."
-                    : "Ohereza 🎤"}
+                    : "📤 Ohereza"}
                 </button>
               </div>
             </div>
@@ -1811,9 +2220,13 @@ function AntimateAI() {
             {/* FILE */}
 
             <label
-              style={
-                styles.attachButton
-              }
+              style={{
+                ...styles.attachButton,
+                ...(recording ||
+                loading
+                  ? styles.disabledControl
+                  : {}),
+              }}
               title="Hitamo audio"
             >
               ＋
@@ -1823,6 +2236,10 @@ function AntimateAI() {
                 accept="audio/*"
                 onChange={
                   handleFileChange
+                }
+                disabled={
+                  recording ||
+                  loading
                 }
                 style={
                   styles.hiddenInput
@@ -1843,7 +2260,11 @@ function AntimateAI() {
               onKeyDown={
                 handleKeyDown
               }
-              placeholder="Andika ubutumwa bwawe..."
+              placeholder={
+                recording
+                  ? "Ndimo gufata amajwi..."
+                  : "Andika ubutumwa bwawe..."
+              }
               rows={1}
               disabled={
                 loading ||
@@ -1869,10 +2290,10 @@ function AntimateAI() {
               }
               title={
                 recording
-                  ? "Hagarika"
+                  ? "Hagarika recording"
                   : micChecking
                   ? "Irimo kugenzura microphone..."
-                  : "Vuga"
+                  : "Tangira gufata amajwi"
               }
               style={{
                 ...styles.micButton,
@@ -1891,7 +2312,7 @@ function AntimateAI() {
                 : "🎤"}
             </button>
 
-            {/* SEND */}
+            {/* SEND TEXT */}
 
             <button
               type="button"
@@ -1924,8 +2345,9 @@ function AntimateAI() {
             }
           >
             <span>
-              Vuga cyangwa wandike mu
-              Kinyarwanda
+              {recording
+                ? `🎙️ Recording • ${recordingSeconds}s zisigaye`
+                : "Vuga cyangwa wandike mu Kinyarwanda"}
             </span>
 
             <span>
@@ -2373,6 +2795,10 @@ const styles = {
     background: "#6d8299",
   },
 
+  // =====================================================
+  // AUDIO RESPONSE
+  // =====================================================
+
   audioResponse: {
     display: "flex",
     alignItems: "center",
@@ -2421,6 +2847,10 @@ const styles = {
     height: "35px",
   },
 
+  // =====================================================
+  // ERROR
+  // =====================================================
+
   errorBar: {
     display: "flex",
     alignItems: "center",
@@ -2445,23 +2875,167 @@ const styles = {
     cursor: "pointer",
   },
 
-  voiceReady: {
+  // =====================================================
+  // RECORDING PANEL
+  // =====================================================
+
+  recordingPanel: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "15px",
+    padding: "12px 18px",
+    borderTop:
+      "1px solid rgba(239,68,68,0.12)",
+    background:
+      "rgba(239,68,68,0.055)",
+  },
+
+  recordingLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    minWidth: 0,
+  },
+
+  recordingPulse: {
+    width: "38px",
+    height: "38px",
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "12px",
+    background:
+      "rgba(239,68,68,0.14)",
+    border:
+      "1px solid rgba(239,68,68,0.20)",
+    fontSize: "17px",
+    boxShadow:
+      "0 0 0 5px rgba(239,68,68,0.04)",
+  },
+
+  recordingTitle: {
+    fontSize: "12px",
+    fontWeight: 800,
+    color: "#fca5a5",
+  },
+
+  recordingSubtitle: {
+    marginTop: "3px",
+    color: "#7e6874",
+    fontSize: "9px",
+  },
+
+  countdown: {
+    flexShrink: 0,
+    minWidth: "62px",
+    height: "45px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "3px",
+    borderRadius: "12px",
+    background:
+      "rgba(239,68,68,0.10)",
+    border:
+      "1px solid rgba(239,68,68,0.16)",
+    color: "#f87171",
+    fontSize: "22px",
+    fontWeight: 900,
+    fontVariantNumeric:
+      "tabular-nums",
+  },
+
+  countdownSmall: {
+    fontSize: "9px",
+  },
+
+  // =====================================================
+  // VOICE PREVIEW
+  // =====================================================
+
+  voicePreview: {
+    padding: "12px 18px",
+    borderTop:
+      "1px solid rgba(37,99,235,0.10)",
+    background:
+      "rgba(37,99,235,0.045)",
+  },
+
+  voicePreviewTop: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "10px",
-    padding: "9px 15px",
-    borderTop:
-      "1px solid rgba(255,255,255,0.05)",
-    background:
-      "rgba(37,99,235,0.05)",
-    color: "#9fb4ca",
-    fontSize: "11px",
+    marginBottom: "10px",
   },
 
-  voiceReadyActions: {
+  voicePreviewInfo: {
     display: "flex",
+    alignItems: "center",
+    gap: "9px",
+    minWidth: 0,
+  },
+
+  voicePreviewIcon: {
+    width: "37px",
+    height: "37px",
+    flexShrink: 0,
+    borderRadius: "11px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "rgba(37,99,235,0.12)",
+    fontSize: "17px",
+  },
+
+  voicePreviewTitle: {
+    fontSize: "11px",
+    fontWeight: 800,
+    color: "#b9cbe0",
+  },
+
+  voicePreviewSubtitle: {
+    marginTop: "3px",
+    maxWidth: "400px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: "#60758c",
+    fontSize: "9px",
+  },
+
+  voicePreviewDuration: {
+    flexShrink: 0,
+    color: "#66809b",
+    fontSize: "9px",
+  },
+
+  hiddenAudio: {
+    display: "none",
+  },
+
+  voicePreviewActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
     gap: "7px",
+    flexWrap: "wrap",
+  },
+
+  listenButton: {
+    border:
+      "1px solid rgba(6,182,212,0.20)",
+    background:
+      "rgba(6,182,212,0.08)",
+    color: "#67e8f9",
+    borderRadius: "8px",
+    padding: "7px 11px",
+    cursor: "pointer",
+    fontSize: "10px",
+    fontWeight: 700,
   },
 
   cancelVoice: {
@@ -2486,6 +3060,10 @@ const styles = {
     fontSize: "10px",
     fontWeight: 700,
   },
+
+  // =====================================================
+  // INPUT
+  // =====================================================
 
   inputArea: {
     padding: "13px 20px 15px",
@@ -2522,6 +3100,11 @@ const styles = {
     color: "#71869d",
     fontSize: "21px",
     cursor: "pointer",
+  },
+
+  disabledControl: {
+    opacity: 0.35,
+    cursor: "not-allowed",
   },
 
   hiddenInput: {

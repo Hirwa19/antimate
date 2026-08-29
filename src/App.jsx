@@ -21,7 +21,7 @@ import Analysis from "./pages/Analysis";
 import Systems from "./pages/Systems";
 import DeviceManagement from "./pages/DeviceManager";
 import ForgotPassword from "./pages/ForgotPassword";
-
+import AntimateAI from "./pages/AntimateAI";
 
 
 function App() {
@@ -165,6 +165,17 @@ function App() {
  element={
  <ForgotPassword />
  } />
+
+{/* Antimate AI*/}
+<Route
+  path="/antimate-ai"
+  element={
+    <ProtectedRoute>
+      <AntimateAI />
+    </ProtectedRoute>
+  }
+/>
+
       </Routes>
     </BrowserRouter>
   );

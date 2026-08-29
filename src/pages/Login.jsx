@@ -93,7 +93,8 @@ function Login() {
       live: "Amakuru y'igihe nyacyo",
       smart: "Ubworozi bw'ikoranabuhanga",
 
-      featuresTitle: "Ikoranabuhanga rikora ku bworozi bwawe",
+      featuresTitle:
+        "Ikoranabuhanga rikora ku bworozi bwawe",
 
       feature1Title: "Kurikira ubworozi",
       feature1Text:
@@ -107,7 +108,8 @@ function Login() {
       feature3Text:
         "Amakuru yoroheje kandi asobanutse agufasha gukora ibikwiye ku gihe.",
 
-      visionTitle: "Duharanira ubworozi bwiza kandi bwunguka",
+      visionTitle:
+        "Duharanira ubworozi bwiza kandi bwunguka",
 
       visionText:
         "Duhuza ubworozi n'ikoranabuhanga kugira ngo umuhinzi cyangwa umworozi abashe gukora byinshi, mu buryo bworoshye kandi bwizewe.",
@@ -243,491 +245,784 @@ function Login() {
   }
 
   return (
-    <div
-      className={`login-page ${
-        darkMode ? "dark" : "light"
-      }`}
-    >
-      <div className="background-orb orb-one" />
-      <div className="background-orb orb-two" />
-
-      <header className="login-navbar">
-        <div className="brand">
-          <div className="brand-logo">
-            <AntimateLogo size={39} />
-          </div>
-
-          <div>
-            <strong>ANTIMATE</strong>
-            <span>
-              SMART FARMING
-            </span>
-          </div>
-        </div>
-
-        <nav
-          className={
-            mobileMenu
-              ? "navigation mobile-open"
-              : "navigation"
+    <>
+      {/* =========================================================
+          ANTIMATE AI FLOATING ICON
+          Shared visual identity with Home.jsx
+      ========================================================= */}
+      <style>{`
+        @keyframes antimateAIColorFlow {
+          0% {
+            transform: rotate(0deg);
           }
-        >
-          <a href="#home">
-            {t.navHome}
-          </a>
 
-          <a href="#features">
-            {t.navHow}
-          </a>
+          100% {
+            transform: rotate(360deg);
+          }
+        }
 
-          <a href="#vision">
-            {t.navVision}
-          </a>
+        @keyframes antimateAIGlow {
+          0%,
+          100% {
+            opacity: 0.45;
+            transform: scale(0.96);
+          }
 
-          <button
-            onClick={() => {
-              setShowLogin(true);
-              setMobileMenu(false);
-            }}
-            className="nav-login"
-          >
-            {t.login}
-          </button>
+          50% {
+            opacity: 0.85;
+            transform: scale(1.04);
+          }
+        }
 
-          <Link
-            to="/signup"
-            className="nav-signup"
-          >
-            {t.signup}
-            <ArrowRight size={15} />
-          </Link>
-        </nav>
+        @keyframes antimateAIFloat {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
 
-        <div className="navbar-tools">
-          <button
-            className="language-button"
-            onClick={() =>
-              setLanguage(
-                language === "rw"
-                  ? "en"
-                  : "rw"
-              )
+          50% {
+            transform: translateY(-4px);
+          }
+        }
+
+        .antimate-ai-float-login {
+          position: fixed;
+          right: 20px;
+          bottom: 24px;
+          width: 64px;
+          height: 64px;
+          z-index: 9998;
+          text-decoration: none;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 50%;
+
+          animation:
+            antimateAIFloat
+            4s
+            ease-in-out
+            infinite;
+
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .antimate-ai-float-login::before {
+          content: "";
+          position: absolute;
+          inset: -5px;
+
+          border-radius: 50%;
+
+          background:
+            conic-gradient(
+              from 0deg,
+              #00c896,
+              #00e5ff,
+              #6366f1,
+              #a855f7,
+              #ec4899,
+              #00c896
+            );
+
+          animation:
+            antimateAIColorFlow
+            3.5s
+            linear
+            infinite;
+
+          filter: blur(7px);
+          opacity: 0.55;
+
+          z-index: -2;
+        }
+
+        .antimate-ai-login-ring {
+          position: absolute;
+          inset: 0;
+
+          border-radius: 50%;
+          overflow: hidden;
+
+          background: #0b1220;
+
+          box-shadow:
+            0 10px 28px rgba(0, 0, 0, 0.25),
+            0 0 22px rgba(0, 200, 150, 0.20);
+        }
+
+        .antimate-ai-login-ring::before {
+          content: "";
+
+          position: absolute;
+          inset: 0;
+
+          border-radius: 50%;
+
+          padding: 3px;
+
+          background:
+            conic-gradient(
+              from 0deg,
+              #00c896,
+              #00e5ff,
+              #6366f1,
+              #a855f7,
+              #ec4899,
+              #00c896
+            );
+
+          animation:
+            antimateAIColorFlow
+            3.5s
+            linear
+            infinite;
+
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+
+          -webkit-mask-composite: xor;
+
+          mask-composite: exclude;
+        }
+
+        .antimate-ai-login-inner {
+          position: absolute;
+          inset: 7px;
+
+          border-radius: 50%;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background:
+            radial-gradient(
+              circle at 35% 30%,
+              rgba(0, 200, 150, 0.16),
+              transparent 45%
+            ),
+            #0f172a;
+        }
+
+        .antimate-ai-login-text {
+          position: relative;
+          z-index: 3;
+
+          color: #ffffff;
+
+          font-size: 17px;
+          font-weight: 900;
+
+          letter-spacing: -0.5px;
+          line-height: 1;
+
+          font-family:
+            Inter,
+            Arial,
+            sans-serif;
+
+          user-select: none;
+        }
+
+        .antimate-ai-float-login:hover {
+          animation-play-state: paused;
+          transform: scale(1.08);
+        }
+
+        .antimate-ai-float-login:hover::before {
+          animation-duration: 1.8s;
+          opacity: 0.85;
+        }
+
+        .antimate-ai-float-login:active {
+          transform: scale(0.94);
+        }
+
+        .antimate-ai-float-login:focus-visible {
+          outline: 3px solid rgba(0, 200, 150, 0.45);
+          outline-offset: 4px;
+        }
+
+        @media (max-width: 600px) {
+          .antimate-ai-float-login {
+            right: 16px;
+            bottom: 18px;
+
+            width: 58px;
+            height: 58px;
+          }
+
+          .antimate-ai-login-inner {
+            inset: 6px;
+          }
+
+          .antimate-ai-login-text {
+            font-size: 16px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .antimate-ai-float-login,
+          .antimate-ai-float-login::before,
+          .antimate-ai-login-ring::before {
+            animation: none;
+          }
+        }
+      `}</style>
+
+      <div
+        className={`login-page ${
+          darkMode ? "dark" : "light"
+        }`}
+      >
+        <div className="background-orb orb-one" />
+        <div className="background-orb orb-two" />
+
+        <header className="login-navbar">
+          <div className="brand">
+            <div className="brand-logo">
+              <AntimateLogo size={39} />
+            </div>
+
+            <div>
+              <strong>ANTIMATE</strong>
+
+              <span>
+                SMART FARMING
+              </span>
+            </div>
+          </div>
+
+          <nav
+            className={
+              mobileMenu
+                ? "navigation mobile-open"
+                : "navigation"
             }
           >
-            {language === "rw"
-              ? "RW"
-              : "EN"}
-          </button>
+            <a href="#home">
+              {t.navHome}
+            </a>
 
-          <button
-            className="theme-button"
-            onClick={() =>
-              setDarkMode(!darkMode)
-            }
-          >
-            {darkMode ? (
-              <Sun size={17} />
-            ) : (
-              <Moon size={17} />
-            )}
-          </button>
+            <a href="#features">
+              {t.navHow}
+            </a>
 
-          <button
-            className="mobile-menu-button"
-            onClick={() =>
-              setMobileMenu(!mobileMenu)
-            }
-          >
-            {mobileMenu ? (
-              <X />
-            ) : (
-              <Menu />
-            )}
-          </button>
-        </div>
-      </header>
+            <a href="#vision">
+              {t.navVision}
+            </a>
 
-      <main>
-        <section
-          id="home"
-          className="hero-section"
-        >
-          <div className="hero-content">
-            <div className="hero-badge">
-              <Sparkles size={15} />
-              {t.eyebrow}
-            </div>
-
-            <h1>
-              {t.title1}
-              <br />
-              <span>{t.title2}</span>
-            </h1>
-
-            <div className="animated-words">
-              <span>
-                Ubworozi bwiza.
-              </span>
-
-              <span>
-                Ikoranabuhanga ryoroshye.
-              </span>
-
-              <span>
-                Umusaruro mwiza.
-              </span>
-
-              <span>
-                Ejo hazaza heza.
-              </span>
-            </div>
-
-            <p className="hero-description">
-              {t.description}
-            </p>
-
-            <div className="hero-buttons">
-              <button
-                className="primary-button"
-                onClick={() =>
-                  setShowLogin(true)
-                }
-              >
-                {t.start}
-                <ArrowRight size={18} />
-              </button>
-
-              <a
-                href="#features"
-                className="secondary-button"
-              >
-                {t.learn}
-              </a>
-            </div>
-
-            <div className="hero-trust">
-              <div>
-                <ShieldCheck size={17} />
-                <span>
-                  {t.live}
-                </span>
-              </div>
-
-              <div>
-                <Leaf size={17} />
-                <span>
-                  {t.smart}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-visual">
-            <div className="visual-glow" />
-
-            <div className="farm-image">
-              <img
-                src="https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=900&q=85"
-                alt="Chickens on a farm"
-              />
-            </div>
-
-            <div className="floating-card card-temperature">
-              <div className="floating-icon">
-                <Leaf size={17} />
-              </div>
-
-              <div>
-                <span>
-                  Farm conditions
-                </span>
-                <strong>
-                  Healthy
-                </strong>
-              </div>
-            </div>
-
-            <div className="floating-card card-ai">
-              <div className="ai-icon">
-                <Brain size={18} />
-              </div>
-
-              <div>
-                <span>
-                  ANTIMATE
-                </span>
-                <strong>
-                  Smart insights
-                </strong>
-              </div>
-            </div>
-
-            <div className="floating-circle circle-one" />
-            <div className="floating-circle circle-two" />
-          </div>
-        </section>
-
-        <section
-          id="features"
-          className="features-section"
-        >
-          <div className="section-heading">
-            <span>
-              ANTIMATE
-            </span>
-
-            <h2>
-              {t.featuresTitle}
-            </h2>
-          </div>
-
-          <div className="feature-grid">
-            <Feature
-              icon={<Wifi />}
-              title={t.feature1Title}
-              text={t.feature1Text}
-            />
-
-            <Feature
-              icon={<Brain />}
-              title={t.feature2Title}
-              text={t.feature2Text}
-            />
-
-            <Feature
-              icon={<LineChart />}
-              title={t.feature3Title}
-              text={t.feature3Text}
-            />
-          </div>
-        </section>
-
-        <section
-          id="vision"
-          className="vision-section"
-        >
-          <div className="vision-image">
-            <img
-              src="https://a-z-animals.com/media/2022/01/group-of-funny-baby-chicks-on-the-farm-picture-id1243389108.jpg"
-              alt="Modern poultry farming"
-            />
-          </div>
-
-          <div className="vision-content">
-            <div className="small-heading">
-              <HeartHandshake size={17} />
-              OUR PURPOSE
-            </div>
-
-            <h2>
-              {t.visionTitle}
-            </h2>
-
-            <p>
-              {t.visionText}
-            </p>
-
-            <div className="vision-points">
-              <div>
-                <Cloud size={18} />
-                <span>
-                  Simple technology
-                </span>
-              </div>
-
-              <div>
-                <ShieldCheck size={18} />
-                <span>
-                  Reliable information
-                </span>
-              </div>
-
-              <div>
-                <Lock size={18} />
-                <span>
-                  Secure platform
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="join-section">
-          <div className="join-content">
-            <Sparkles size={28} />
-
-            <h2>
-              {t.joinTitle}
-            </h2>
-
-            <p>
-              {t.joinText}
-            </p>
+            <button
+              onClick={() => {
+                setShowLogin(true);
+                setMobileMenu(false);
+              }}
+              className="nav-login"
+            >
+              {t.login}
+            </button>
 
             <Link
               to="/signup"
-              className="primary-button"
+              className="nav-signup"
             >
               {t.signup}
-              <ArrowRight size={18} />
+
+              <ArrowRight size={15} />
             </Link>
-          </div>
-        </section>
-      </main>
+          </nav>
 
-      <footer className="login-footer">
-        <div className="footer-brand">
-          <AntimateLogo size={30} />
-          <strong>ANTIMATE</strong>
-        </div>
-
-        <p>{t.footer}</p>
-      </footer>
-
-      {showLogin && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(e) => {
-            if (
-              e.target === e.currentTarget
-            ) {
-              setShowLogin(false);
-            }
-          }}
-        >
-          <div className="login-modal">
+          <div className="navbar-tools">
             <button
-              className="close-modal"
+              className="language-button"
               onClick={() =>
-                setShowLogin(false)
+                setLanguage(
+                  language === "rw"
+                    ? "en"
+                    : "rw"
+                )
               }
             >
-              <X size={19} />
+              {language === "rw"
+                ? "RW"
+                : "EN"}
             </button>
 
-            <div className="modal-logo">
-              <AntimateLogo size={42} />
+            <button
+              className="theme-button"
+              onClick={() =>
+                setDarkMode(!darkMode)
+              }
+            >
+              {darkMode ? (
+                <Sun size={17} />
+              ) : (
+                <Moon size={17} />
+              )}
+            </button>
+
+            <button
+              className="mobile-menu-button"
+              onClick={() =>
+                setMobileMenu(!mobileMenu)
+              }
+            >
+              {mobileMenu ? (
+                <X />
+              ) : (
+                <Menu />
+              )}
+            </button>
+          </div>
+        </header>
+
+        <main>
+          {/* =====================================================
+              HERO
+          ===================================================== */}
+          <section
+            id="home"
+            className="hero-section"
+          >
+            <div className="hero-content">
+              <div className="hero-badge">
+                <Sparkles size={15} />
+
+                {t.eyebrow}
+              </div>
+
+              <h1>
+                {t.title1}
+                <br />
+
+                <span>
+                  {t.title2}
+                </span>
+              </h1>
+
+              <div className="animated-words">
+                <span>
+                  Ubworozi bwiza.
+                </span>
+
+                <span>
+                  Ikoranabuhanga ryoroshye.
+                </span>
+
+                <span>
+                  Umusaruro mwiza.
+                </span>
+
+                <span>
+                  Ejo hazaza heza.
+                </span>
+              </div>
+
+              <p className="hero-description">
+                {t.description}
+              </p>
+
+              <div className="hero-buttons">
+                <button
+                  className="primary-button"
+                  onClick={() =>
+                    setShowLogin(true)
+                  }
+                >
+                  {t.start}
+
+                  <ArrowRight size={18} />
+                </button>
+
+                <a
+                  href="#features"
+                  className="secondary-button"
+                >
+                  {t.learn}
+                </a>
+              </div>
+
+              <div className="hero-trust">
+                <div>
+                  <ShieldCheck size={17} />
+
+                  <span>
+                    {t.live}
+                  </span>
+                </div>
+
+                <div>
+                  <Leaf size={17} />
+
+                  <span>
+                    {t.smart}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <h2>{t.loginTitle}</h2>
+            <div className="hero-visual">
+              <div className="visual-glow" />
 
-            <p className="modal-subtitle">
-              {t.loginSubtitle}
-            </p>
-
-            <form
-              onSubmit={handleLogin}
-            >
-              <div className="input-group">
-                <label>
-                  {t.identifier}
-                </label>
-
-                <input
-                  type="text"
-                  placeholder={
-                    t.identifierPlaceholder
-                  }
-                  value={identifier}
-                  onChange={(e) =>
-                    setIdentifier(
-                      e.target.value
-                    )
-                  }
-                  required
+              <div className="farm-image">
+                <img
+                  src="https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=900&q=85"
+                  alt="Chickens on a farm"
                 />
               </div>
 
-              <div className="input-group">
-                <label>
-                  {t.password}
-                </label>
+              <div className="floating-card card-temperature">
+                <div className="floating-icon">
+                  <Leaf size={17} />
+                </div>
 
-                <div className="password-input">
+                <div>
+                  <span>
+                    Farm conditions
+                  </span>
+
+                  <strong>
+                    Healthy
+                  </strong>
+                </div>
+              </div>
+
+              <div className="floating-card card-ai">
+                <div className="ai-icon">
+                  <Brain size={18} />
+                </div>
+
+                <div>
+                  <span>
+                    ANTIMATE
+                  </span>
+
+                  <strong>
+                    Smart insights
+                  </strong>
+                </div>
+              </div>
+
+              <div className="floating-circle circle-one" />
+
+              <div className="floating-circle circle-two" />
+            </div>
+          </section>
+
+          {/* =====================================================
+              FEATURES
+          ===================================================== */}
+          <section
+            id="features"
+            className="features-section"
+          >
+            <div className="section-heading">
+              <span>
+                ANTIMATE
+              </span>
+
+              <h2>
+                {t.featuresTitle}
+              </h2>
+            </div>
+
+            <div className="feature-grid">
+              <Feature
+                icon={<Wifi />}
+                title={t.feature1Title}
+                text={t.feature1Text}
+              />
+
+              <Feature
+                icon={<Brain />}
+                title={t.feature2Title}
+                text={t.feature2Text}
+              />
+
+              <Feature
+                icon={<LineChart />}
+                title={t.feature3Title}
+                text={t.feature3Text}
+              />
+            </div>
+          </section>
+
+          {/* =====================================================
+              VISION
+          ===================================================== */}
+          <section
+            id="vision"
+            className="vision-section"
+          >
+            <div className="vision-image">
+              <img
+                src="https://a-z-animals.com/media/2022/01/group-of-funny-baby-chicks-on-the-farm-picture-id1243389108.jpg"
+                alt="Modern poultry farming"
+              />
+            </div>
+
+            <div className="vision-content">
+              <div className="small-heading">
+                <HeartHandshake size={17} />
+
+                OUR PURPOSE
+              </div>
+
+              <h2>
+                {t.visionTitle}
+              </h2>
+
+              <p>
+                {t.visionText}
+              </p>
+
+              <div className="vision-points">
+                <div>
+                  <Cloud size={18} />
+
+                  <span>
+                    Simple technology
+                  </span>
+                </div>
+
+                <div>
+                  <ShieldCheck size={18} />
+
+                  <span>
+                    Reliable information
+                  </span>
+                </div>
+
+                <div>
+                  <Lock size={18} />
+
+                  <span>
+                    Secure platform
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* =====================================================
+              JOIN
+          ===================================================== */}
+          <section className="join-section">
+            <div className="join-content">
+              <Sparkles size={28} />
+
+              <h2>
+                {t.joinTitle}
+              </h2>
+
+              <p>
+                {t.joinText}
+              </p>
+
+              <Link
+                to="/signup"
+                className="primary-button"
+              >
+                {t.signup}
+
+                <ArrowRight size={18} />
+              </Link>
+            </div>
+          </section>
+        </main>
+
+        {/* =====================================================
+            FOOTER
+        ===================================================== */}
+        <footer className="login-footer">
+          <div className="footer-brand">
+            <AntimateLogo size={30} />
+
+            <strong>
+              ANTIMATE
+            </strong>
+          </div>
+
+          <p>
+            {t.footer}
+          </p>
+        </footer>
+
+        {/* =====================================================
+            LOGIN MODAL
+        ===================================================== */}
+        {showLogin && (
+          <div
+            className="modal-overlay"
+            onMouseDown={(e) => {
+              if (
+                e.target ===
+                e.currentTarget
+              ) {
+                setShowLogin(false);
+              }
+            }}
+          >
+            <div className="login-modal">
+              <button
+                className="close-modal"
+                onClick={() =>
+                  setShowLogin(false)
+                }
+              >
+                <X size={19} />
+              </button>
+
+              <div className="modal-logo">
+                <AntimateLogo size={42} />
+              </div>
+
+              <h2>
+                {t.loginTitle}
+              </h2>
+
+              <p className="modal-subtitle">
+                {t.loginSubtitle}
+              </p>
+
+              <form
+                onSubmit={handleLogin}
+              >
+                <div className="input-group">
+                  <label>
+                    {t.identifier}
+                  </label>
+
                   <input
-                    type={
-                      showPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type="text"
                     placeholder={
-                      t.passwordPlaceholder
+                      t.identifierPlaceholder
                     }
-                    value={password}
+                    value={identifier}
                     onChange={(e) =>
-                      setPassword(
+                      setIdentifier(
                         e.target.value
                       )
                     }
                     required
                   />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword(
-                        !showPassword
-                      )
-                    }
-                  >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
                 </div>
-              </div>
 
-              {message && (
-                <div className="login-error">
-                  {message}
-                </div>
-              )}
+                <div className="input-group">
+                  <label>
+                    {t.password}
+                  </label>
 
-              <button
-                className="modal-login-button"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="loader" />
-                ) : (
-                  <>
-                    {t.signIn}
-                    <ArrowRight
-                      size={17}
+                  <div className="password-input">
+                    <input
+                      type={
+                        showPassword
+                          ? "text"
+                          : "password"
+                      }
+                      placeholder={
+                        t.passwordPlaceholder
+                      }
+                      value={password}
+                      onChange={(e) =>
+                        setPassword(
+                          e.target.value
+                        )
+                      }
+                      required
                     />
-                  </>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPassword(
+                          !showPassword
+                        )
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {message && (
+                  <div className="login-error">
+                    {message}
+                  </div>
                 )}
-              </button>
-            </form>
 
-            <div className="modal-bottom">
-              <Link
-                to="/forgot-password"
-                onClick={() =>
-                  setShowLogin(false)
-                }
-              >
-                {t.forgot}
-              </Link>
+                <button
+                  className="modal-login-button"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="loader" />
+                  ) : (
+                    <>
+                      {t.signIn}
 
-              <span>
-                {t.noAccount}{" "}
+                      <ArrowRight
+                        size={17}
+                      />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="modal-bottom">
                 <Link
-                  to="/signup"
+                  to="/forgot-password"
                   onClick={() =>
                     setShowLogin(false)
                   }
                 >
-                  {t.create}
+                  {t.forgot}
                 </Link>
+
+                <span>
+                  {t.noAccount}{" "}
+
+                  <Link
+                    to="/signup"
+                    onClick={() =>
+                      setShowLogin(false)
+                    }
+                  >
+                    {t.create}
+                  </Link>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================
+            ANTIMATE AI FLOATING BUTTON
+        ========================================================= */}
+        <Link
+          to="/antimate-ai"
+          className="antimate-ai-float-login"
+          aria-label="Open ANTIMATE AI"
+          title="ANTIMATE AI"
+        >
+          <div className="antimate-ai-login-ring">
+            <div className="antimate-ai-login-inner">
+              <span className="antimate-ai-login-text">
+                AI
               </span>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </Link>
+      </div>
+    </>
   );
 }
 
@@ -742,9 +1037,13 @@ function Feature({
         {icon}
       </div>
 
-      <h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
-      <p>{text}</p>
+      <p>
+        {text}
+      </p>
 
       <div className="feature-line" />
     </div>

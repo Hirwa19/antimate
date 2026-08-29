@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import AppHeader from "../components/AppHeader";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -130,6 +131,24 @@ function Home() {
       (t.home === "Ahabanza"
         ? "Reba kuri YouTube ↗"
         : "Watch on YouTube ↗"),
+
+    aiTitle:
+      t.aiTitle ||
+      (t.home === "Ahabanza"
+        ? "Vugana na ANTIMATE AI"
+        : "Talk to ANTIMATE AI"),
+
+    aiDescription:
+      t.aiDescription ||
+      (t.home === "Ahabanza"
+        ? "Ufite ikibazo ku bworozi? ANTIMATE AI iragufasha kubona inama mu buryo bworoshye."
+        : "Have a question about your farm? ANTIMATE AI can help you with useful guidance."),
+
+    aiButton:
+      t.aiButton ||
+      (t.home === "Ahabanza"
+        ? "Tangira kuganira"
+        : "Start conversation"),
   };
 
   const tips =
@@ -268,12 +287,16 @@ function Home() {
       <AppHeader title={t.home || "Home"} />
 
       <main style={styles.main}>
-        {/* GREETING */}
 
+        {/* GREETING */}
         <section>
           <h1 style={styles.greeting}>
             {content.greeting},{" "}
-            {user?.name || (t.home === "Ahabanza" ? "Mworozi" : "Farmer")} 👋
+            {user?.name ||
+              (t.home === "Ahabanza"
+                ? "Mworozi"
+                : "Farmer")}{" "}
+            👋
           </h1>
 
           <p
@@ -286,8 +309,69 @@ function Home() {
           </p>
         </section>
 
-        {/* FEATURED ARTICLE */}
+        {/* =================================================
+            ANTIMATE AI BUTTON
+        ================================================= */}
+        <section
+          style={{
+            ...styles.aiCard,
+            border: `1px solid ${
+              isDark
+                ? "rgba(0,200,150,0.20)"
+                : "rgba(0,180,135,0.18)"
+            }`,
+            boxShadow: isDark
+              ? "0 15px 35px rgba(0,0,0,0.18)"
+              : "0 12px 30px rgba(0,120,90,0.08)",
+          }}
+        >
+          <div style={styles.aiGlow} />
 
+          <div style={styles.aiContent}>
+            <div style={styles.aiIcon}>
+              🤖
+            </div>
+
+            <div style={styles.aiTextContent}>
+              <span style={styles.aiLabel}>
+                ANTIMATE INTELLIGENCE
+              </span>
+
+              <h2
+                style={{
+                  ...styles.aiTitle,
+                  color: textPrimary,
+                }}
+              >
+                {content.aiTitle}
+              </h2>
+
+              <p
+                style={{
+                  ...styles.aiDescription,
+                  color: textSecondary,
+                }}
+              >
+                {content.aiDescription}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/antimate-ai"
+            style={styles.aiButton}
+          >
+            <span>
+              {content.aiButton}
+            </span>
+
+            <span style={styles.aiArrow}>
+              →
+            </span>
+          </Link>
+        </section>
+
+        {/* FEATURED ARTICLE */}
         <section
           style={{
             ...styles.heroCard,
@@ -348,7 +432,6 @@ function Home() {
         </section>
 
         {/* POULTRY TIPS */}
-
         <section>
           <SectionTitle
             title={content.poultryTips}
@@ -394,7 +477,6 @@ function Home() {
         </section>
 
         {/* AGRICULTURE NEWS */}
-
         <section>
           <SectionTitle
             title={content.agricultureNews}
@@ -452,7 +534,6 @@ function Home() {
         </section>
 
         {/* VIDEOS */}
-
         <section>
           <SectionTitle
             title={content.videos}
@@ -561,6 +642,114 @@ const styles = {
     lineHeight: 1.6,
   },
 
+  /* =====================================================
+     ANTIMATE AI CARD
+  ===================================================== */
+
+  aiCard: {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: "22px",
+    padding: "18px",
+    background:
+      "linear-gradient(135deg, rgba(0,200,150,0.10), rgba(14,165,233,0.08), rgba(99,102,241,0.08))",
+  },
+
+  aiGlow: {
+    position: "absolute",
+    width: "180px",
+    height: "180px",
+    borderRadius: "50%",
+    background:
+      "rgba(0,200,150,0.10)",
+    filter: "blur(55px)",
+    top: "-90px",
+    right: "-50px",
+    pointerEvents: "none",
+  },
+
+  aiContent: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    marginBottom: "15px",
+  },
+
+  aiIcon: {
+    width: "52px",
+    height: "52px",
+    minWidth: "52px",
+    borderRadius: "16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "linear-gradient(135deg, #00c896, #0891b2)",
+    fontSize: "25px",
+    boxShadow:
+      "0 10px 25px rgba(0,200,150,0.20)",
+  },
+
+  aiTextContent: {
+    minWidth: 0,
+    flex: 1,
+  },
+
+  aiLabel: {
+    display: "block",
+    color: "#00a982",
+    fontSize: "9px",
+    fontWeight: 900,
+    letterSpacing: "1.2px",
+    marginBottom: "4px",
+  },
+
+  aiTitle: {
+    margin: 0,
+    fontSize: "17px",
+    fontWeight: 800,
+    lineHeight: 1.3,
+  },
+
+  aiDescription: {
+    margin: "5px 0 0",
+    fontSize: "11px",
+    lineHeight: 1.5,
+  },
+
+  aiButton: {
+    position: "relative",
+    zIndex: 1,
+    width: "100%",
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    textDecoration: "none",
+    padding: "12px 15px",
+    borderRadius: "12px",
+    background:
+      "linear-gradient(135deg, #00c896, #0891b2)",
+    color: "#ffffff",
+    fontSize: "12px",
+    fontWeight: 800,
+    boxShadow:
+      "0 10px 25px rgba(0,160,130,0.18)",
+    transition:
+      "transform 0.2s ease, box-shadow 0.2s ease",
+  },
+
+  aiArrow: {
+    fontSize: "17px",
+    lineHeight: 1,
+  },
+
+  /* =====================================================
+     HERO
+  ===================================================== */
+
   heroCard: {
     overflow: "hidden",
     borderRadius: "22px",
@@ -622,6 +811,10 @@ const styles = {
     cursor: "pointer",
   },
 
+  /* =====================================================
+     TIPS
+  ===================================================== */
+
   horizontalScroll: {
     display: "flex",
     gap: "12px",
@@ -657,6 +850,10 @@ const styles = {
     fontSize: "11px",
     lineHeight: 1.55,
   },
+
+  /* =====================================================
+     NEWS
+  ===================================================== */
 
   newsList: {
     display: "flex",
@@ -696,6 +893,10 @@ const styles = {
     fontSize: "11px",
     lineHeight: 1.5,
   },
+
+  /* =====================================================
+     VIDEOS
+  ===================================================== */
 
   videoList: {
     display: "flex",

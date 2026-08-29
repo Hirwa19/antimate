@@ -1,4 +1,3 @@
-```jsx
 import { useEffect, useRef, useState } from "react";
 
 const API_BASE =
@@ -1271,7 +1270,7 @@ function AntimateAI() {
         role: "user",
         type: "voice",
         text:
-          "🎤 Ubutumwa bw'amajwi",
+          "🎙️ Ubutumwa bw'amajwi",
         time: getTime(),
       },
     ]);
@@ -1353,7 +1352,7 @@ function AntimateAI() {
 
     try {
       console.log(
-        "🎤 Sending voice file:",
+        "🎙️ Sending voice file:",
         {
           name: file.name,
           type: file.type,
@@ -2422,7 +2421,7 @@ function ChatMessage({
                 styles.voiceMessageIcon
               }
             >
-              🎤
+              🎙️
             </div>
           )}
 

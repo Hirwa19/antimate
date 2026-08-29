@@ -755,12 +755,12 @@ function ChatMessage({ message }) {
     </div>
   );
 }
-
+backg
 // MODERN DARK THEME STYLES (PURE INLINE OBJECT)
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#090d16",
+    background: "#648be6",
     color: "#f8fafc",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
     display: "flex",

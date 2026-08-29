@@ -2821,7 +2821,7 @@ export default function AntimateAI() {
 
                 <p>
                   {language === "rw"
-                    ? "Andika ubutumwa cyangwa ukoreshe microphone uvuge mu Kinyarwanda. Ndi hano kugufasha."
+                    ? "Andika ubutumwa cyangwa ukoreshe microphone uvuge mu Kinyarwanda. Niteguye kugufasha."
                     : "Write a message or use the microphone to speak. I'm here to help you."}
                 </p>
 

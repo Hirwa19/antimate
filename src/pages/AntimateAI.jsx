@@ -6,7 +6,7 @@ const API_BASE =
 
 const MAX_RECORDING_SECONDS = 30;
 
-function AntimateAI() {
+export default function AntimateAI() {
   const [messages, setMessages] = useState([]);
   const [textInput, setTextInput] = useState("");
 
@@ -1024,9 +1024,9 @@ function AntimateAI() {
                 </div>
 
                 <div style={styles.typing}>
-                  <span />
-                  <span />
-                  <span />
+                  <span style={styles.dot} />
+                  <span style={styles.dot} />
+                  <span style={styles.dot} />
                 </div>
               </div>
             )}
@@ -1076,7 +1076,7 @@ function AntimateAI() {
                 ● Recording
               </strong>
 
-              <span>
+              <span style={{ marginLeft: "8px" }}>
                 Vuga ubu...
               </span>
             </div>
@@ -1100,8 +1100,8 @@ function AntimateAI() {
                 <strong>
                   Audio ready
                 </strong>
-
-                <small>
+                <br />
+                <small style={{ color: "#6b7280" }}>
                   {audioFile.name}
                 </small>
               </div>
@@ -1341,9 +1341,9 @@ function ChatMessage({ message }) {
         >
           {message.type ===
             "voice" && (
-            <div style={styles.voiceMessage}>
-              🎤
-            </div>
+            <span style={styles.voiceMessage}>
+              🎤{" "}
+            </span>
           )}
 
           {message.text}
@@ -1364,7 +1364,7 @@ function ChatMessage({ message }) {
 }
 
 // =======================================================
-// STYLES
+// INLINE STYLES (NO EXTERNAL .CSS NEEDED)
 // =======================================================
 
 const styles = {
@@ -1392,13 +1392,8 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    boxShadow:
-      "0 12px 40px rgba(15,23,42,0.08)",
+    boxShadow: "0 12px 40px rgba(15,23,42,0.08)",
   },
-
-  // =====================================================
-  // HEADER
-  // =====================================================
 
   header: {
     height: "68px",
@@ -1463,10 +1458,6 @@ const styles = {
     cursor: "pointer",
   },
 
-  // =====================================================
-  // CHAT
-  // =====================================================
-
   chatArea: {
     flex: 1,
     overflowY: "auto",
@@ -1495,38 +1486,37 @@ const styles = {
   },
 
   avatar: {
-    width: "30px",
-    height: "30px",
-    flexShrink: 0,
-    borderRadius: "9px",
-    background: "#111827",
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    background: "#1e293b",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "9px",
-    fontWeight: 800,
+    fontSize: "10px",
+    fontWeight: 700,
+    flexShrink: 0,
   },
 
   userAvatar: {
-    width: "30px",
-    height: "30px",
-    flexShrink: 0,
-    borderRadius: "9px",
-    background: "#eef2f7",
-    color: "#64748b",
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    background: "#2563eb",
+    color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "9px",
+    fontSize: "10px",
     fontWeight: 700,
+    flexShrink: 0,
   },
 
   messageContent: {
-    maxWidth: "72%",
     display: "flex",
     flexDirection: "column",
-    alignItems: "flex-start",
+    maxWidth: "70%",
   },
 
   userContent: {
@@ -1534,262 +1524,233 @@ const styles = {
   },
 
   bubble: {
-    padding: "11px 14px",
+    padding: "12px 16px",
     borderRadius: "14px",
-    fontSize: "13px",
-    lineHeight: 1.6,
-    whiteSpace: "pre-wrap",
+    fontSize: "13.5px",
+    lineHeight: "1.5",
     wordBreak: "break-word",
   },
 
   assistantBubble: {
     background: "#ffffff",
-    border: "1px solid #e7ebf2",
-    color: "#263246",
-    borderBottomLeftRadius: "4px",
+    color: "#1e293b",
+    border: "1px solid #e2e8f0",
+    borderBottomLeftRadius: "2px",
   },
 
   userBubble: {
-    background: "#111827",
+    background: "#2563eb",
     color: "#ffffff",
-    borderBottomRightRadius: "4px",
+    borderBottomRightRadius: "2px",
   },
 
   errorBubble: {
-    background: "#fff5f5",
+    background: "#fef2f2",
+    color: "#991b1b",
     border: "1px solid #fecaca",
-    color: "#b91c1c",
-  },
-
-  voiceMessage: {
-    marginBottom: "4px",
-    fontSize: "14px",
   },
 
   messageTime: {
+    fontSize: "10px",
+    color: "#94a3b8",
     marginTop: "4px",
-    padding: "0 3px",
-    color: "#9aa5b5",
-    fontSize: "9px",
+    padding: "0 2px",
   },
 
-  // =====================================================
-  // TYPING
-  // =====================================================
+  voiceMessage: {
+    marginRight: "4px",
+  },
 
   typing: {
     display: "flex",
+    alignItems: "center",
     gap: "4px",
-    padding: "13px 14px",
-    borderRadius: "13px",
-    borderBottomLeftRadius: "4px",
     background: "#ffffff",
-    border: "1px solid #e7ebf2",
+    padding: "12px 16px",
+    borderRadius: "14px",
+    border: "1px solid #e2e8f0",
   },
 
-  // =====================================================
-  // RESPONSE AUDIO
-  // =====================================================
+  dot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+    background: "#94a3b8",
+  },
 
   responseAudio: {
-    minHeight: "54px",
-    padding: "8px 20px",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
     gap: "12px",
-    borderTop: "1px solid #edf0f5",
-    background: "#ffffff",
+    padding: "10px 20px",
+    background: "#f1f5f9",
+    borderTop: "1px solid #e2e8f0",
   },
 
   audioLabel: {
-    color: "#667085",
-    fontSize: "10px",
-    fontWeight: 700,
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "#475569",
   },
 
   audioPlayer: {
-    height: "34px",
-    maxWidth: "400px",
-    width: "100%",
+    height: "32px",
+    flex: 1,
   },
 
-  // =====================================================
-  // ERROR
-  // =====================================================
-
   error: {
-    margin: "0 20px 8px",
-    padding: "9px 12px",
-    borderRadius: "8px",
-    background: "#fff5f5",
-    border: "1px solid #fee2e2",
-    color: "#b91c1c",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontSize: "11px",
+    justifyContent: "space-between",
+    padding: "10px 16px",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    fontSize: "12px",
+    borderTop: "1px solid #fecaca",
   },
 
   closeError: {
-    marginLeft: "auto",
-    border: "none",
     background: "transparent",
+    border: "none",
     color: "#b91c1c",
-    cursor: "pointer",
     fontSize: "16px",
+    cursor: "pointer",
   },
 
-  // =====================================================
-  // RECORDING
-  // =====================================================
-
   recordingBar: {
-    padding: "10px 20px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    padding: "10px 20px",
+    background: "#fef2f2",
+    color: "#dc2626",
+    fontSize: "12px",
     borderTop: "1px solid #fee2e2",
-    background: "#fffafa",
-    color: "#b91c1c",
-    fontSize: "11px",
-  },
-
-  recordingBar div: {
-    display: "flex",
-    gap: "8px",
-    alignItems: "center",
   },
 
   timer: {
+    fontWeight: 700,
     fontVariantNumeric: "tabular-nums",
-    fontWeight: 800,
-    fontSize: "14px",
   },
 
-  // =====================================================
-  // VOICE PREVIEW
-  // =====================================================
-
   voicePreview: {
-    padding: "10px 20px",
-    borderTop: "1px solid #e6edf8",
-    background: "#f8faff",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "12px",
-    flexWrap: "wrap",
+    padding: "12px 20px",
+    background: "#f8fafc",
+    borderTop: "1px solid #e2e8f0",
   },
 
   voiceInfo: {
     display: "flex",
     alignItems: "center",
-    gap: "9px",
-    minWidth: 0,
+    gap: "10px",
+    fontSize: "12px",
   },
 
   voiceIcon: {
-    width: "34px",
-    height: "34px",
-    borderRadius: "9px",
-    background: "#eef4ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-
-  voiceInfo strong: {
-    display: "block",
-    fontSize: "11px",
-    color: "#344054",
-  },
-
-  voiceInfo small: {
-    display: "block",
-    maxWidth: "300px",
-    marginTop: "2px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    color: "#98a2b3",
-    fontSize: "9px",
+    fontSize: "18px",
   },
 
   voiceActions: {
     display: "flex",
-    gap: "6px",
+    gap: "8px",
   },
 
-  secondaryButton: {
-    border: "1px solid #dce2ea",
-    background: "#ffffff",
-    color: "#475467",
-    borderRadius: "7px",
-    padding: "7px 10px",
-    fontSize: "10px",
+  primaryButton: {
+    background: "#2563eb",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    padding: "6px 14px",
+    fontSize: "12px",
     fontWeight: 600,
     cursor: "pointer",
   },
 
-  primaryButton: {
-    border: "none",
-    background: "#111827",
-    color: "#ffffff",
-    borderRadius: "7px",
-    padding: "7px 12px",
-    fontSize: "10px",
-    fontWeight: 700,
+  secondaryButton: {
+    background: "#ffffff",
+    color: "#475569",
+    border: "1px solid #cbd5e1",
+    borderRadius: "6px",
+    padding: "6px 12px",
+    fontSize: "12px",
+    fontWeight: 500,
     cursor: "pointer",
   },
 
-  // =====================================================
-  // FOOTER
-  // =====================================================
-
   footer: {
-    padding: "12px 20px 10px",
-    borderTop: "1px solid #edf0f5",
+    padding: "16px 20px",
     background: "#ffffff",
+    borderTop: "1px solid #edf0f5",
   },
 
   inputBox: {
-    maxWidth: "760px",
-    minHeight: "48px",
-    margin: "0 auto",
     display: "flex",
     alignItems: "center",
-    gap: "6px",
-    padding: "5px 6px",
-    border: "1px solid #dfe4eb",
+    gap: "8px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
     borderRadius: "12px",
-    background: "#ffffff",
-    boxSizing: "border-box",
+    padding: "6px 10px",
+  },
+
+  textarea: {
+    flex: 1,
+    border: "none",
+    background: "transparent",
+    outline: "none",
+    resize: "none",
+    fontSize: "13.5px",
+    color: "#0f172a",
+    fontFamily: "inherit",
+    maxHeight: "100px",
+    lineHeight: "1.4",
   },
 
   iconButton: {
     width: "34px",
     height: "34px",
-    flexShrink: 0,
-    border: "none",
     borderRadius: "8px",
-    background: "#f4f6f8",
-    color: "#667085",
+    border: "none",
+    background: "transparent",
+    color: "#64748b",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    fontSize: "15px",
+    fontSize: "16px",
   },
 
   recordingButton: {
-    background: "#fef2f2",
-    color: "#dc2626",
+    background: "#ef4444",
+    color: "#ffffff",
+  },
+
+  sendButton: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "8px",
+    border: "none",
+    background: "#2563eb",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: 700,
+  },
+
+  sendDisabled: {
+    background: "#e2e8f0",
+    color: "#94a3b8",
+    cursor: "not-allowed",
   },
 
   disabled: {
-    opacity: 0.4,
+    opacity: 0.5,
     cursor: "not-allowed",
   },
 
@@ -1797,50 +1758,12 @@ const styles = {
     display: "none",
   },
 
-  textarea: {
-    flex: 1,
-    minWidth: 0,
-    resize: "none",
-    border: "none",
-    outline: "none",
-    background: "transparent",
-    color: "#172033",
-    fontFamily: "inherit",
-    fontSize: "13px",
-    lineHeight: 1.5,
-    padding: "7px 3px",
-    maxHeight: "100px",
-  },
-
-  sendButton: {
-    width: "36px",
-    height: "36px",
-    flexShrink: 0,
-    border: "none",
-    borderRadius: "9px",
-    background: "#111827",
-    color: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    fontSize: "18px",
-    fontWeight: 700,
-  },
-
-  sendDisabled: {
-    opacity: 0.3,
-    cursor: "not-allowed",
-  },
-
   footerHint: {
-    maxWidth: "760px",
-    margin: "6px auto 0",
     display: "flex",
     justifyContent: "space-between",
-    color: "#98a2b3",
-    fontSize: "9px",
+    marginTop: "8px",
+    fontSize: "10.5px",
+    color: "#94a3b8",
+    padding: "0 4px",
   },
 };
-
-export default AntimateAI;

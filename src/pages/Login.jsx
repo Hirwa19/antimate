@@ -69,7 +69,11 @@ function Login() {
   const [message, setMessage] = useState("");
 
   const [language, setLanguage] = useState("rw");
-  const [darkMode, setDarkMode] = useState(true);
+
+  // ============================================================
+  // DEFAULT THEME = LIGHT
+  // ============================================================
+  const [darkMode, setDarkMode] = useState(false);
 
   const content = {
     rw: {
@@ -468,6 +472,9 @@ function Login() {
         <div className="background-orb orb-one" />
         <div className="background-orb orb-two" />
 
+        {/* =====================================================
+            FIXED HEADER
+        ===================================================== */}
         <header className="login-navbar">
           <div className="brand">
             <div className="brand-logo">
@@ -489,15 +496,24 @@ function Login() {
                 : "navigation"
             }
           >
-            <a href="#home">
+            <a
+              href="#home"
+              onClick={() => setMobileMenu(false)}
+            >
               {t.navHome}
             </a>
 
-            <a href="#features">
+            <a
+              href="#features"
+              onClick={() => setMobileMenu(false)}
+            >
               {t.navHow}
             </a>
 
-            <a href="#vision">
+            <a
+              href="#vision"
+              onClick={() => setMobileMenu(false)}
+            >
               {t.navVision}
             </a>
 
@@ -514,6 +530,7 @@ function Login() {
             <Link
               to="/signup"
               className="nav-signup"
+              onClick={() => setMobileMenu(false)}
             >
               {t.signup}
               <ArrowRight size={15} />
@@ -530,6 +547,7 @@ function Login() {
                     : "rw"
                 )
               }
+              aria-label="Change language"
             >
               {language === "rw"
                 ? "RW"
@@ -540,6 +558,12 @@ function Login() {
               className="theme-button"
               onClick={() =>
                 setDarkMode(!darkMode)
+              }
+              aria-label="Toggle theme"
+              title={
+                darkMode
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
               }
             >
               {darkMode ? (
@@ -554,6 +578,7 @@ function Login() {
               onClick={() =>
                 setMobileMenu(!mobileMenu)
               }
+              aria-label="Toggle menu"
             >
               {mobileMenu ? (
                 <X />
@@ -808,7 +833,6 @@ function Login() {
 
         {/* =========================================================
             PUBLIC ANTIMATE AI
-            NO LOGIN
         ========================================================= */}
         <Link
           to="/antimate-ai"
@@ -858,6 +882,7 @@ function Login() {
                 onClick={() =>
                   setShowLogin(false)
                 }
+                aria-label="Close login"
               >
                 <X size={19} />
               </button>
@@ -928,6 +953,11 @@ function Login() {
                           !showPassword
                         )
                       }
+                      aria-label={
+                        showPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
                     >
                       {showPassword ? (
                         <EyeOff size={18} />
@@ -945,6 +975,7 @@ function Login() {
                 )}
 
                 <button
+                  type="submit"
                   className="modal-login-button"
                   disabled={loading}
                 >

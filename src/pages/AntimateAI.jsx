@@ -65,7 +65,7 @@ function AntimateAI() {
         id: "welcome",
         role: "assistant",
         text:
-          "Muraho 👋 Ndi ANTIMATE AI. Ndi hano kugira ngo tuganire, nkwumve kandi ngufashe. Ushobora kuvuga cyangwa ukandika ubutumwa bwawe mu Kinyarwanda.",
+          "Muraho 👋 Ndi ANTIMATE AI. Ndi hano kugira ngo ngufashe nkuko ubyifuza.",
         time: getTime(),
       },
     ]);
@@ -1612,7 +1612,7 @@ function AntimateAI() {
         role: "assistant",
         type: "error",
         text:
-          "Mbabarira, habaye ikibazo. Ongera ugerageze.",
+          "Habayeho ikibazo, muzekongera mugerageze",
         time: getTime(),
       },
     ]);
@@ -2309,7 +2309,7 @@ function AntimateAI() {
                 ? "⏳"
                 : recording
                 ? "⏹"
-                : "🎤"}
+                : "🎙️"}
             </button>
 
             {/* SEND TEXT */}
@@ -2353,7 +2353,7 @@ function AntimateAI() {
             <span>
               {micPermission ===
               "granted"
-                ? "🎤 Microphone Allowed"
+                ? "🎙️ Microphone Allowed"
                 : "Enter = Ohereza"}
             </span>
           </div>

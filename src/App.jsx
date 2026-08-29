@@ -167,13 +167,14 @@ function App() {
  } />
 
 {/* Antimate AI*/}
+{/* ==================================================
+    ANTIMATE AI — PUBLIC
+    User can use AI without login
+================================================== */}
+
 <Route
   path="/antimate-ai"
-  element={
-    <ProtectedRoute>
-      <AntimateAI />
-    </ProtectedRoute>
-  }
+  element={<AntimateAI />}
 />
 
       </Routes>

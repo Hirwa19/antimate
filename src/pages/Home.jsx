@@ -61,167 +61,322 @@ const YOUTUBE_VIDEOS = [
 ];
 
 /* ============================================================
-   ANTIMATE AI LOGO
-   Simple + Professional
+   ANTIMATE AI FLOATING ICON
+   O-SHAPED INTELLIGENT WHEEL
 ============================================================ */
 
-function AntimateAILogo({ isDark = false }) {
+function AntimateAIFloatingButton({ isDark }) {
   return (
-    <svg
-      width="30"
-      height="30"
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      {/* Outer AI circuit ring */}
-      <circle
-        cx="50"
-        cy="50"
-        r="43"
-        stroke="#00C896"
-        strokeWidth="4"
-        strokeDasharray="8 5"
-        opacity="0.95"
-      />
+    <>
+      <style>{`
+        @keyframes antimateWheelRotate {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
 
-      {/* Main AI head */}
-      <rect
-        x="27"
-        y="29"
-        width="46"
-        height="40"
-        rx="13"
-        fill={isDark ? "#0F172A" : "#FFFFFF"}
-        stroke="#00C896"
-        strokeWidth="4"
-      />
+        @keyframes antimateWheelReverse {
+          from {
+            transform: rotate(360deg);
+          }
+          to {
+            transform: rotate(0deg);
+          }
+        }
 
-      {/* Antimate AI eyes */}
-      <circle
-        cx="41"
-        cy="48"
-        r="4"
-        fill="#00C896"
-      />
+        @keyframes antimatePulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.75;
+          }
 
-      <circle
-        cx="59"
-        cy="48"
-        r="4"
-        fill="#00C896"
-      />
+          50% {
+            transform: scale(1.08);
+            opacity: 1;
+          }
+        }
 
-      {/* AI mouth */}
-      <path
-        d="M40 58C44 62 56 62 60 58"
-        stroke="#00C896"
-        strokeWidth="3.5"
-        strokeLinecap="round"
-      />
+        @keyframes antimateGlow {
+          0%, 100% {
+            opacity: 0.35;
+            transform: scale(0.92);
+          }
 
-      {/* Antenna */}
-      <path
-        d="M50 29V20"
-        stroke="#00C896"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
+          50% {
+            opacity: 0.7;
+            transform: scale(1.08);
+          }
+        }
 
-      <circle
-        cx="50"
-        cy="16"
-        r="4"
-        fill="#00C896"
-      />
+        @keyframes antimateDot {
+          0%, 100% {
+            opacity: 0.35;
+            transform: scale(0.8);
+          }
 
-      {/* Side nodes */}
-      <circle
-        cx="21"
-        cy="49"
-        r="3.5"
-        fill="#00C896"
-      />
+          50% {
+            opacity: 1;
+            transform: scale(1.25);
+          }
+        }
 
-      <circle
-        cx="79"
-        cy="49"
-        r="3.5"
-        fill="#00C896"
-      />
+        .antimate-ai-floating {
+          animation: antimatePulse 3s ease-in-out infinite;
+        }
 
-      <path
-        d="M24 49H27"
-        stroke="#00C896"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
+        .antimate-ai-wheel {
+          animation: antimateWheelRotate 8s linear infinite;
+        }
 
-      <path
-        d="M73 49H76"
-        stroke="#00C896"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+        .antimate-ai-inner-wheel {
+          animation: antimateWheelReverse 5s linear infinite;
+        }
 
-/* ============================================================
-   FLOATING ANTIMATE AI BUTTON
-============================================================ */
+        .antimate-ai-glow {
+          animation: antimateGlow 3s ease-in-out infinite;
+        }
 
-function FloatingAntimateAI({ isDark }) {
-  return (
-    <Link
-      to="/antimate-ai"
-      aria-label="Open ANTIMATE AI"
-      title="ANTIMATE AI"
-      style={{
-        ...styles.aiFloatingButton,
-        background: isDark
-          ? "linear-gradient(145deg, #172033, #0f172a)"
-          : "linear-gradient(145deg, #ffffff, #f4fffc)",
-        border: isDark
-          ? "1px solid rgba(0,200,150,0.45)"
-          : "1px solid rgba(0,180,135,0.25)",
-        boxShadow: isDark
-          ? "0 12px 35px rgba(0,0,0,0.40), 0 0 25px rgba(0,200,150,0.13)"
-          : "0 12px 30px rgba(0,90,70,0.18), 0 0 22px rgba(0,200,150,0.12)",
-      }}
-    >
-      {/* Outer animated glow */}
-      <span style={styles.aiFloatingGlow} />
+        .antimate-ai-dot {
+          animation: antimateDot 1.8s ease-in-out infinite;
+        }
 
-      {/* Logo container */}
-      <span
+        .antimate-ai-floating:hover {
+          animation-play-state: paused;
+          transform: scale(1.1);
+        }
+
+        .antimate-ai-floating:active {
+          transform: scale(0.94);
+        }
+
+        @media (max-width: 480px) {
+          .antimate-ai-floating {
+            right: 16px !important;
+            bottom: 82px !important;
+          }
+        }
+      `}</style>
+
+      <Link
+        to="/antimate-ai"
+        aria-label="Open ANTIMATE AI"
+        title="ANTIMATE AI"
+        className="antimate-ai-floating"
         style={{
-          ...styles.aiLogoContainer,
-          background: isDark
-            ? "rgba(0,200,150,0.10)"
-            : "rgba(0,200,150,0.08)",
-          border: isDark
-            ? "1px solid rgba(0,200,150,0.22)"
-            : "1px solid rgba(0,200,150,0.15)",
+          position: "fixed",
+          right: "22px",
+          bottom: "88px",
+          width: "64px",
+          height: "64px",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textDecoration: "none",
+          borderRadius: "50%",
+          WebkitTapHighlightColor: "transparent",
         }}
       >
-        <AntimateAILogo isDark={isDark} />
-      </span>
+        {/* OUTER GLOW */}
+        <div
+          className="antimate-ai-glow"
+          style={{
+            position: "absolute",
+            inset: "-10px",
+            borderRadius: "50%",
+            background:
+              "conic-gradient(from 0deg, #00F5A0, #00D9FF, #7C3AED, #FF3CAC, #00F5A0)",
+            filter: "blur(12px)",
+            zIndex: 0,
+          }}
+        />
 
-      {/* Small online indicator */}
-      <span style={styles.aiOnlineDot} />
+        {/* DARK / LIGHT BASE */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background: isDark
+              ? "rgba(10, 18, 30, 0.96)"
+              : "rgba(255, 255, 255, 0.97)",
+            border: isDark
+              ? "1px solid rgba(255,255,255,0.12)"
+              : "1px solid rgba(15,23,42,0.10)",
+            boxShadow: isDark
+              ? "0 12px 35px rgba(0,0,0,0.50), inset 0 0 18px rgba(0,255,190,0.06)"
+              : "0 12px 30px rgba(15,23,42,0.20), inset 0 0 18px rgba(0,200,150,0.05)",
+            zIndex: 1,
+          }}
+        />
 
-      {/* AI label */}
-      <span
-        style={{
-          ...styles.aiFloatingLabel,
-          color: isDark ? "#ffffff" : "#0f172a",
-        }}
-      >
-        AI
-      </span>
-    </Link>
+        {/* ROTATING OUTER WHEEL */}
+        <svg
+          className="antimate-ai-wheel"
+          width="58"
+          height="58"
+          viewBox="0 0 58 58"
+          style={{
+            position: "absolute",
+            zIndex: 2,
+            overflow: "visible",
+          }}
+        >
+          <defs>
+            <linearGradient
+              id="antimateGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="#00F5A0" />
+              <stop offset="25%" stopColor="#00D9FF" />
+              <stop offset="50%" stopColor="#7C3AED" />
+              <stop offset="75%" stopColor="#FF3CAC" />
+              <stop offset="100%" stopColor="#00F5A0" />
+            </linearGradient>
+
+            <filter id="antimateWheelGlow">
+              <feGaussianBlur
+                stdDeviation="1.5"
+                result="coloredBlur"
+              />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Main O ring */}
+          <circle
+            cx="29"
+            cy="29"
+            r="22"
+            fill="none"
+            stroke="url(#antimateGradient)"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray="28 8 12 8"
+            filter="url(#antimateWheelGlow)"
+          />
+
+          {/* Secondary ring */}
+          <circle
+            cx="29"
+            cy="29"
+            r="17"
+            fill="none"
+            stroke="url(#antimateGradient)"
+            strokeWidth="1.5"
+            strokeOpacity="0.42"
+            strokeDasharray="3 6"
+          />
+
+          {/* Intelligent wheel nodes */}
+          <circle
+            cx="29"
+            cy="6"
+            r="2"
+            fill="#00F5A0"
+          />
+
+          <circle
+            cx="51"
+            cy="29"
+            r="2"
+            fill="#00D9FF"
+          />
+
+          <circle
+            cx="29"
+            cy="52"
+            r="2"
+            fill="#FF3CAC"
+          />
+
+          <circle
+            cx="7"
+            cy="29"
+            r="2"
+            fill="#7C3AED"
+          />
+        </svg>
+
+        {/* INNER ROTATING O */}
+        <svg
+          className="antimate-ai-inner-wheel"
+          width="42"
+          height="42"
+          viewBox="0 0 42 42"
+          style={{
+            position: "absolute",
+            zIndex: 3,
+          }}
+        >
+          <defs>
+            <linearGradient
+              id="antimateInnerGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="#00D9FF" />
+              <stop offset="50%" stopColor="#A855F7" />
+              <stop offset="100%" stopColor="#00F5A0" />
+            </linearGradient>
+          </defs>
+
+          <circle
+            cx="21"
+            cy="21"
+            r="14"
+            fill="none"
+            stroke="url(#antimateInnerGradient)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="9 5"
+          />
+        </svg>
+
+        {/* CENTER AI CORE */}
+        <div
+          style={{
+            position: "absolute",
+            zIndex: 4,
+            width: "22px",
+            height: "22px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: isDark
+              ? "radial-gradient(circle, #102a32 0%, #07131c 70%)"
+              : "radial-gradient(circle, #eafff8 0%, #ffffff 70%)",
+            boxShadow:
+              "0 0 12px rgba(0,245,160,0.45), 0 0 24px rgba(0,217,255,0.18)",
+          }}
+        >
+          <div
+            className="antimate-ai-dot"
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(135deg, #00F5A0, #00D9FF)",
+              boxShadow:
+                "0 0 8px rgba(0,245,160,0.9)",
+            }}
+          />
+        </div>
+      </Link>
+    </>
   );
 }
 
@@ -440,6 +595,7 @@ function Home() {
         {/* =================================================
             GREETING
         ================================================= */}
+
         <section>
           <h1 style={styles.greeting}>
             {content.greeting},{" "}
@@ -463,6 +619,7 @@ function Home() {
         {/* =================================================
             FEATURED ARTICLE
         ================================================= */}
+
         <section
           style={{
             ...styles.heroCard,
@@ -525,6 +682,7 @@ function Home() {
         {/* =================================================
             POULTRY TIPS
         ================================================= */}
+
         <section>
           <SectionTitle
             title={content.poultryTips}
@@ -572,6 +730,7 @@ function Home() {
         {/* =================================================
             AGRICULTURE NEWS
         ================================================= */}
+
         <section>
           <SectionTitle
             title={content.agricultureNews}
@@ -631,6 +790,7 @@ function Home() {
         {/* =================================================
             VIDEOS
         ================================================= */}
+
         <section>
           <SectionTitle
             title={content.videos}
@@ -695,16 +855,16 @@ function Home() {
       </main>
 
       {/* =====================================================
-          FIXED ANTIMATE AI ICON
-          
-          This replaces the old ANTIMATE AI card/button.
-          It stays fixed at bottom-right.
+          ANTIMATE AI FLOATING LOGO
+          Fixed bottom-right
       ===================================================== */}
-      <FloatingAntimateAI isDark={isDark} />
+
+      <AntimateAIFloatingButton isDark={isDark} />
 
       {/* =====================================================
-          BOTTOM NAVIGATION
+          BOTTOM NAV
       ===================================================== */}
+
       <BottomNav />
     </div>
   );
@@ -748,76 +908,6 @@ const styles = {
     margin: "7px 0 0",
     fontSize: "13px",
     lineHeight: 1.6,
-  },
-
-  /* =====================================================
-     FLOATING ANTIMATE AI
-  ===================================================== */
-
-  aiFloatingButton: {
-    position: "fixed",
-    right: "18px",
-    bottom: "82px",
-    width: "66px",
-    height: "66px",
-    borderRadius: "22px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    textDecoration: "none",
-    zIndex: 9999,
-    boxSizing: "border-box",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    transition:
-      "transform 0.22s ease, box-shadow 0.22s ease",
-  },
-
-  aiFloatingGlow: {
-    position: "absolute",
-    width: "52px",
-    height: "52px",
-    borderRadius: "50%",
-    background: "rgba(0,200,150,0.18)",
-    filter: "blur(16px)",
-    pointerEvents: "none",
-  },
-
-  aiLogoContainer: {
-    position: "relative",
-    zIndex: 2,
-    width: "45px",
-    height: "45px",
-    borderRadius: "15px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxSizing: "border-box",
-  },
-
-  aiOnlineDot: {
-    position: "absolute",
-    right: "8px",
-    top: "8px",
-    width: "9px",
-    height: "9px",
-    borderRadius: "50%",
-    background: "#00c896",
-    border: "2px solid #ffffff",
-    boxSizing: "border-box",
-    zIndex: 4,
-    boxShadow: "0 0 8px rgba(0,200,150,0.7)",
-  },
-
-  aiFloatingLabel: {
-    position: "absolute",
-    bottom: "4px",
-    right: "7px",
-    fontSize: "7px",
-    fontWeight: 900,
-    letterSpacing: "0.6px",
-    lineHeight: 1,
-    zIndex: 3,
   },
 
   /* =====================================================

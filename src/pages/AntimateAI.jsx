@@ -55,14 +55,11 @@ function AntimateAI() {
 
   useEffect(() => {
     return () => {
-      if (streamRef.current) {
-        streamRef.current
-          .getTracks()
-          .forEach((track) => track.stop());
-      }
+      stopMicrophoneTracks();
 
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
       }
     };
   }, []);
@@ -79,30 +76,209 @@ function AntimateAI() {
   }
 
   // =====================================================
+  // STOP MICROPHONE TRACKS
+  // =====================================================
+
+  const stopMicrophoneTracks = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {
+          console.warn(
+            "Could not stop microphone track:",
+            e
+          );
+        }
+      });
+
+      streamRef.current = null;
+    }
+  };
+
+  // =====================================================
+  // CHECK MICROPHONE PERMISSION
+  // =====================================================
+
+  const getMicrophonePermissionState = async () => {
+    /*
+     * Browser zimwe ntizishyigikira Permissions API kuri
+     * microphone. Ni yo mpamvu tutagomba gufata failure
+     * hano nk'uko microphone yanze.
+     */
+
+    if (!navigator.permissions?.query) {
+      return "unknown";
+    }
+
+    try {
+      const permission =
+        await navigator.permissions.query({
+          name: "microphone",
+        });
+
+      console.log(
+        "🎤 Microphone permission:",
+        permission.state
+      );
+
+      return permission.state;
+    } catch (err) {
+      console.warn(
+        "⚠️ Microphone permission query unsupported:",
+        err
+      );
+
+      return "unknown";
+    }
+  };
+
+  // =====================================================
+  // REQUEST MICROPHONE
+  // =====================================================
+
+  const requestMicrophoneAccess = async () => {
+    /*
+     * Iyi ni yo nzira nyayo ituma browser yerekana:
+     *
+     * "Allow this site to use your microphone?"
+     *
+     * Iyo permission itaraba granted.
+     */
+
+    try {
+      console.log(
+        "🎤 Requesting microphone permission..."
+      );
+
+      const stream =
+        await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+
+      console.log(
+        "✅ Microphone permission granted."
+      );
+
+      return stream;
+    } catch (err) {
+      console.error(
+        "❌ Microphone permission request failed:",
+        err
+      );
+
+      throw err;
+    }
+  };
+
+  // =====================================================
   // START RECORDING
   // =====================================================
 
   const startRecording = async () => {
-    if (loading) return;
+    if (loading || recording) {
+      return;
+    }
 
     try {
       setError("");
+
+      // -------------------------------------------------
+      // BROWSER SUPPORT
+      // -------------------------------------------------
 
       if (
         !navigator.mediaDevices ||
         !navigator.mediaDevices.getUserMedia
       ) {
-        throw new Error(
-          "Browser yawe ntabwo ishyigikira microphone."
+        setError(
+          "Browser yawe ntabwo ishigikira gufata amajwi. Gerageza Chrome cyangwa Edge."
         );
+
+        return;
       }
 
+      if (
+        typeof MediaRecorder === "undefined"
+      ) {
+        setError(
+          "Browser yawe ntabwo ishigikira audio recording."
+        );
+
+        return;
+      }
+
+      // -------------------------------------------------
+      // CHECK PERMISSION
+      // -------------------------------------------------
+
+      const permissionState =
+        await getMicrophonePermissionState();
+
+      console.log(
+        "🎤 Current microphone permission:",
+        permissionState
+      );
+
+      // -------------------------------------------------
+      // DENIED
+      // -------------------------------------------------
+
+      if (permissionState === "denied") {
+        setError(
+          "Microphone yanze. Jya muri browser settings yemere microphone kuri uru rubuga, hanyuma wongere ukande 🎤."
+        );
+
+        return;
+      }
+
+      // -------------------------------------------------
+      // GET MICROPHONE
+      //
+      // If permission is:
+      // granted  -> starts immediately
+      // prompt    -> browser asks Allow
+      // unknown   -> getUserMedia decides
+      // -------------------------------------------------
+
       const stream =
-        await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
+        await requestMicrophoneAccess();
+
+      // -------------------------------------------------
+      // SAVE STREAM
+      // -------------------------------------------------
 
       streamRef.current = stream;
+
+      // -------------------------------------------------
+      // CHECK AUDIO TRACK
+      // -------------------------------------------------
+
+      const audioTracks =
+        stream.getAudioTracks();
+
+      if (!audioTracks.length) {
+        stopMicrophoneTracks();
+
+        setError(
+          "Microphone yabonetse ariko nta audio input yabonetse kuri device."
+        );
+
+        return;
+      }
+
+      console.log(
+        "🎤 Microphone:",
+        audioTracks[0].label
+      );
+
+      // -------------------------------------------------
+      // FIND SUPPORTED MIME TYPE
+      // -------------------------------------------------
 
       let mimeType = "";
 
@@ -110,26 +286,61 @@ function AntimateAI() {
         "audio/webm;codecs=opus",
         "audio/webm",
         "audio/ogg;codecs=opus",
+        "audio/ogg",
         "audio/mp4",
       ];
 
       for (const type of supportedTypes) {
-        if (
-          MediaRecorder.isTypeSupported(type)
-        ) {
-          mimeType = type;
-          break;
+        try {
+          if (
+            MediaRecorder.isTypeSupported(type)
+          ) {
+            mimeType = type;
+            break;
+          }
+        } catch {
+          // Ignore unsupported MIME checks
         }
       }
 
-      const recorder = mimeType
-        ? new MediaRecorder(stream, {
-            mimeType,
-          })
-        : new MediaRecorder(stream);
+      console.log(
+        "🎧 Selected MIME:",
+        mimeType || "browser default"
+      );
+
+      // -------------------------------------------------
+      // CREATE RECORDER
+      // -------------------------------------------------
+
+      let recorder;
+
+      try {
+        recorder = mimeType
+          ? new MediaRecorder(stream, {
+              mimeType,
+            })
+          : new MediaRecorder(stream);
+      } catch (recorderError) {
+        console.error(
+          "❌ MediaRecorder creation failed:",
+          recorderError
+        );
+
+        stopMicrophoneTracks();
+
+        setError(
+          "Browser yananiwe gutegura gufata amajwi. Gerageza Chrome cyangwa Edge."
+        );
+
+        return;
+      }
 
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
+
+      // -------------------------------------------------
+      // DATA AVAILABLE
+      // -------------------------------------------------
 
       recorder.ondataavailable = (event) => {
         if (
@@ -142,9 +353,13 @@ function AntimateAI() {
         }
       };
 
+      // -------------------------------------------------
+      // ERROR
+      // -------------------------------------------------
+
       recorder.onerror = (event) => {
         console.error(
-          "MediaRecorder error:",
+          "❌ MediaRecorder error:",
           event
         );
 
@@ -153,100 +368,209 @@ function AntimateAI() {
         );
 
         setRecording(false);
+
+        stopMicrophoneTracks();
       };
+
+      // -------------------------------------------------
+      // STOP
+      // -------------------------------------------------
 
       recorder.onstop = () => {
-        const actualType =
-          recorder.mimeType ||
-          mimeType ||
-          "audio/webm";
+        try {
+          const actualType =
+            recorder.mimeType ||
+            mimeType ||
+            "audio/webm";
 
-        const blob = new Blob(
-          audioChunksRef.current,
-          {
-            type: actualType,
-          }
-        );
-
-        if (!blob.size) {
-          setError(
-            "Nta majwi yafashwe. Ongera ugerageze."
+          const blob = new Blob(
+            audioChunksRef.current,
+            {
+              type: actualType,
+            }
           );
-          return;
-        }
 
-        const extension =
-          actualType.includes("ogg")
-            ? "ogg"
-            : actualType.includes("mp4")
-            ? "mp4"
-            : "webm";
+          console.log(
+            "🎧 Recorded audio size:",
+            blob.size,
+            "bytes"
+          );
 
-        const file = new File(
-          [blob],
-          `antimate-voice.${extension}`,
-          {
-            type: actualType,
-          }
-        );
-
-        setAudioFile(file);
-
-        setMessages((previous) => [
-          ...previous,
-          {
-            id:
-              Date.now() +
-              "-voice",
-            role: "user",
-            type: "voice",
-            text: "🎤 Ubutumwa bw'amajwi",
-            time: getTime(),
-          },
-        ]);
-
-        if (streamRef.current) {
-          streamRef.current
-            .getTracks()
-            .forEach((track) =>
-              track.stop()
+          if (!blob.size) {
+            setError(
+              "Nta majwi yafashwe. Ongera ugerageze."
             );
 
-          streamRef.current = null;
+            stopMicrophoneTracks();
+
+            return;
+          }
+
+          // -------------------------------------------------
+          // FILE EXTENSION
+          // -------------------------------------------------
+
+          let extension = "webm";
+
+          if (
+            actualType.includes("ogg")
+          ) {
+            extension = "ogg";
+          } else if (
+            actualType.includes("mp4")
+          ) {
+            extension = "mp4";
+          }
+
+          // -------------------------------------------------
+          // CREATE FILE
+          // -------------------------------------------------
+
+          const file = new File(
+            [blob],
+            `antimate-voice-${Date.now()}.${extension}`,
+            {
+              type: actualType,
+            }
+          );
+
+          console.log(
+            "✅ Audio file created:",
+            file.name,
+            file.type,
+            file.size
+          );
+
+          setAudioFile(file);
+
+          // -------------------------------------------------
+          // ADD USER VOICE MESSAGE
+          // -------------------------------------------------
+
+          setMessages((previous) => [
+            ...previous,
+            {
+              id:
+                Date.now() +
+                "-voice",
+              role: "user",
+              type: "voice",
+              text:
+                "🎤 Ubutumwa bw'amajwi",
+              time: getTime(),
+            },
+          ]);
+
+          // -------------------------------------------------
+          // RELEASE MICROPHONE
+          // -------------------------------------------------
+
+          stopMicrophoneTracks();
+
+          mediaRecorderRef.current = null;
+        } catch (stopError) {
+          console.error(
+            "❌ Recording stop processing error:",
+            stopError
+          );
+
+          setError(
+            "Habaye ikibazo mu gutunganya audio wafashe."
+          );
+
+          stopMicrophoneTracks();
         }
       };
 
-      recorder.start();
+      // -------------------------------------------------
+      // START
+      // -------------------------------------------------
+
+      recorder.start(250);
 
       setRecording(true);
+
+      console.log(
+        "🎙️ ANTIMATE recording started."
+      );
     } catch (err) {
       console.error(
-        "Microphone error:",
+        "❌ Microphone error:",
         err
       );
 
       setRecording(false);
 
+      stopMicrophoneTracks();
+
+      // =================================================
+      // PERMISSION DENIED
+      // =================================================
+
       if (
-        err.name ===
+        err?.name ===
         "NotAllowedError"
       ) {
         setError(
-          "Microphone ntiyemerewe. Jya muri browser settings uyemere."
+          "Microphone ntiyemerewe. Browser igusaba gukanda Allow/Permitir kuri microphone. Niba wayanze mbere, jya muri browser settings uyemere kuri uru rubuga."
         );
-      } else if (
-        err.name ===
+
+        return;
+      }
+
+      // =================================================
+      // NO MICROPHONE
+      // =================================================
+
+      if (
+        err?.name ===
         "NotFoundError"
       ) {
         setError(
-          "Nta microphone yabonetse kuri device yawe."
+          "Nta microphone yabonetse kuri device yawe. Huza microphone cyangwa urebe niba device yawe ifite microphone ikora."
         );
-      } else {
-        setError(
-          err.message ||
-            "Habaye ikibazo kuri microphone."
-        );
+
+        return;
       }
+
+      // =================================================
+      // DEVICE BUSY
+      // =================================================
+
+      if (
+        err?.name ===
+        "NotReadableError"
+      ) {
+        setError(
+          "Microphone ntiyashoboye gukoreshwa. Ishobora kuba iri gukoreshwa n'indi application cyangwa browser tab."
+        );
+
+        return;
+      }
+
+      // =================================================
+      // SECURITY / HTTPS
+      // =================================================
+
+      if (
+        err?.name ===
+        "SecurityError"
+      ) {
+        setError(
+          "Browser yabujije microphone kubera security. Fungura uru rubuga kuri HTTPS hanyuma wongere ugerageze."
+        );
+
+        return;
+      }
+
+      // =================================================
+      // GENERIC ERROR
+      // =================================================
+
+      setError(
+        err?.message ||
+          "Habaye ikibazo kuri microphone. Ongera ugerageze."
+      );
     }
   };
 
@@ -262,10 +586,15 @@ function AntimateAI() {
       recorder &&
       recorder.state !== "inactive"
     ) {
-      recorder.stop();
-    }
+      console.log(
+        "⏹️ Stopping recording..."
+      );
 
-    setRecording(false);
+      recorder.stop();
+    } else {
+      stopMicrophoneTracks();
+      setRecording(false);
+    }
   };
 
   // =====================================================
@@ -301,7 +630,8 @@ function AntimateAI() {
           "-file",
         role: "user",
         type: "voice",
-        text: "🎧 Audio yatoranyijwe",
+        text:
+          "🎧 Audio yatoranyijwe",
         time: getTime(),
       },
     ]);
@@ -392,6 +722,7 @@ function AntimateAI() {
             headers,
             body: JSON.stringify({
               message: text,
+              language: "rw",
             }),
           }
         );
@@ -510,14 +841,14 @@ function AntimateAI() {
           }
         }
       } catch {
-        // keep default message
+        // Keep default
       }
 
       throw new Error(message);
     }
 
     // ===================================================
-    // JSON RESPONSE
+    // JSON
     // ===================================================
 
     if (
@@ -527,6 +858,11 @@ function AntimateAI() {
     ) {
       const data =
         await response.json();
+
+      console.log(
+        "📦 ANTIMATE API response:",
+        data
+      );
 
       if (
         data.success === false
@@ -540,6 +876,7 @@ function AntimateAI() {
 
       const answer =
         data.answer_rw ||
+        data.answer_kinyarwanda ||
         data.answer ||
         data.response ||
         data.reply ||
@@ -553,10 +890,6 @@ function AntimateAI() {
           answer
         );
       }
-
-      // -----------------------------------------------
-      // AUDIO
-      // -----------------------------------------------
 
       const returnedAudio =
         data.audio_url ||
@@ -580,7 +913,7 @@ function AntimateAI() {
     }
 
     // ===================================================
-    // DIRECT AUDIO RESPONSE
+    // DIRECT AUDIO
     // ===================================================
 
     if (
@@ -606,7 +939,7 @@ function AntimateAI() {
     }
 
     // ===================================================
-    // TEXT RESPONSE
+    // TEXT
     // ===================================================
 
     const text =
@@ -661,7 +994,8 @@ function AntimateAI() {
       {
         id:
           Date.now() +
-          "-error",
+          "-error-" +
+          Math.random(),
         role: "assistant",
         type: "error",
         text:
@@ -692,15 +1026,15 @@ function AntimateAI() {
   const setResponseAudio = (
     returnedUrl
   ) => {
-    let finalUrl =
-      returnedUrl;
-
     if (
       typeof returnedUrl !==
       "string"
     ) {
       return;
     }
+
+    let finalUrl =
+      returnedUrl;
 
     if (
       !returnedUrl.startsWith(
@@ -751,6 +1085,12 @@ function AntimateAI() {
 
   const clearConversation = () => {
     if (loading) return;
+
+    if (recording) {
+      stopRecording();
+    }
+
+    stopMicrophoneTracks();
 
     if (audioUrlRef.current) {
       URL.revokeObjectURL(
@@ -1193,8 +1533,13 @@ function AntimateAI() {
               disabled={loading}
               title={
                 recording
-                  ? "Hagarika"
+                  ? "Hagarika gufata amajwi"
                   : "Vuga"
+              }
+              aria-label={
+                recording
+                  ? "Hagarika gufata amajwi"
+                  : "Tangira gufata amajwi"
               }
               style={{
                 ...styles.micButton,
@@ -1360,8 +1705,7 @@ const styles = {
     background:
       "radial-gradient(circle at 10% 0%, rgba(37,99,235,0.15), transparent 32%), radial-gradient(circle at 90% 100%, rgba(6,182,212,0.10), transparent 30%), #07111f",
     color: "#ffffff",
-    padding:
-      "20px",
+    padding: "20px",
     fontFamily:
       "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     position: "relative",
@@ -1417,14 +1761,9 @@ const styles = {
       "blur(20px)",
   },
 
-  // =====================================================
-  // HEADER
-  // =====================================================
-
   header: {
     minHeight: "76px",
-    padding:
-      "14px 20px",
+    padding: "14px 20px",
     display: "flex",
     justifyContent:
       "space-between",
@@ -1490,30 +1829,23 @@ const styles = {
     background:
       "rgba(255,255,255,0.035)",
     color: "#a9bbcf",
-    padding:
-      "9px 13px",
+    padding: "9px 13px",
     borderRadius: "10px",
     cursor: "pointer",
     fontSize: "11px",
     fontWeight: 700,
   },
 
-  // =====================================================
-  // CHAT
-  // =====================================================
-
   chatArea: {
     flex: 1,
     overflowY: "auto",
-    padding:
-      "30px 25px 20px",
+    padding: "30px 25px 20px",
     scrollBehavior: "smooth",
   },
 
   welcomePanel: {
     maxWidth: "600px",
-    margin:
-      "15px auto 35px",
+    margin: "15px auto 35px",
     textAlign: "center",
   },
 
@@ -1539,8 +1871,7 @@ const styles = {
   },
 
   welcomeText: {
-    margin:
-      "10px auto 20px",
+    margin: "10px auto 20px",
     maxWidth: "500px",
     color: "#8296ad",
     fontSize: "13px",
@@ -1560,8 +1891,7 @@ const styles = {
     background:
       "rgba(255,255,255,0.035)",
     color: "#9fb2c8",
-    padding:
-      "9px 12px",
+    padding: "9px 12px",
     borderRadius: "10px",
     fontSize: "11px",
     cursor: "pointer",
@@ -1629,8 +1959,7 @@ const styles = {
   },
 
   messageBubble: {
-    padding:
-      "12px 15px",
+    padding: "12px 15px",
     borderRadius: "16px",
     fontSize: "14px",
     lineHeight: 1.65,
@@ -1687,16 +2016,11 @@ const styles = {
     paddingRight: "3px",
   },
 
-  // =====================================================
-  // TYPING
-  // =====================================================
-
   typingBubble: {
     display: "flex",
     alignItems: "center",
     gap: "4px",
-    padding:
-      "13px 15px",
+    padding: "13px 15px",
     borderRadius: "15px",
     borderBottomLeftRadius:
       "5px",
@@ -1713,18 +2037,13 @@ const styles = {
     background: "#6d8299",
   },
 
-  // =====================================================
-  // AUDIO
-  // =====================================================
-
   audioResponse: {
     display: "flex",
     alignItems: "center",
     justifyContent:
       "space-between",
     gap: "15px",
-    padding:
-      "12px 18px",
+    padding: "12px 18px",
     borderTop:
       "1px solid rgba(255,255,255,0.05)",
     background:
@@ -1767,18 +2086,12 @@ const styles = {
     height: "35px",
   },
 
-  // =====================================================
-  // ERROR
-  // =====================================================
-
   errorBar: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    margin:
-      "0 20px 10px",
-    padding:
-      "9px 12px",
+    margin: "0 20px 10px",
+    padding: "9px 12px",
     borderRadius: "9px",
     background:
       "rgba(239,68,68,0.07)",
@@ -1797,18 +2110,13 @@ const styles = {
     cursor: "pointer",
   },
 
-  // =====================================================
-  // VOICE READY
-  // =====================================================
-
   voiceReady: {
     display: "flex",
     alignItems: "center",
     justifyContent:
       "space-between",
     gap: "10px",
-    padding:
-      "9px 15px",
+    padding: "9px 15px",
     borderTop:
       "1px solid rgba(255,255,255,0.05)",
     background:
@@ -1825,12 +2133,10 @@ const styles = {
   cancelVoice: {
     border:
       "1px solid rgba(255,255,255,0.08)",
-    background:
-      "transparent",
+    background: "transparent",
     color: "#778ba2",
     borderRadius: "8px",
-    padding:
-      "7px 10px",
+    padding: "7px 10px",
     cursor: "pointer",
     fontSize: "10px",
   },
@@ -1841,20 +2147,14 @@ const styles = {
       "linear-gradient(135deg,#2563eb,#06b6d4)",
     color: "#ffffff",
     borderRadius: "8px",
-    padding:
-      "7px 12px",
+    padding: "7px 12px",
     cursor: "pointer",
     fontSize: "10px",
     fontWeight: 700,
   },
 
-  // =====================================================
-  // INPUT
-  // =====================================================
-
   inputArea: {
-    padding:
-      "13px 20px 15px",
+    padding: "13px 20px 15px",
     borderTop:
       "1px solid rgba(255,255,255,0.06)",
     background:
@@ -1868,8 +2168,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "7px",
-    padding:
-      "6px 7px",
+    padding: "6px 7px",
     borderRadius: "15px",
     background:
       "rgba(255,255,255,0.045)",
@@ -1885,8 +2184,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: "10px",
-    background:
-      "transparent",
+    background: "transparent",
     color: "#71869d",
     fontSize: "21px",
     cursor: "pointer",
@@ -1902,15 +2200,12 @@ const styles = {
     resize: "none",
     border: "none",
     outline: "none",
-    background:
-      "transparent",
+    background: "transparent",
     color: "#e6eef7",
-    fontFamily:
-      "inherit",
+    fontFamily: "inherit",
     fontSize: "13px",
     lineHeight: 1.5,
-    padding:
-      "8px 4px",
+    padding: "8px 4px",
     maxHeight: "120px",
   },
 
@@ -1962,8 +2257,7 @@ const styles = {
 
   inputHint: {
     maxWidth: "800px",
-    margin:
-      "7px auto 0",
+    margin: "7px auto 0",
     display: "flex",
     justifyContent:
       "space-between",

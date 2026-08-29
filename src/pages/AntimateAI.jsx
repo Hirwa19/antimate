@@ -25,10 +25,12 @@ FEATURES
 - Send icon when user is typing
 - Thinking/status messages
 - ANTIMATE O-SHAPED animated logo
+- AI text inside logo stays COMPLETELY STATIC
+- Logo does NOT appear in center welcome area
+- Fixed header
 - Theme controlled by AppSettingsContext
 - Language controlled by AppSettingsContext
 - Native CSS only
-- No Tailwind
 ============================================================
 */
 
@@ -1167,9 +1169,7 @@ export default function AntimateAI() {
             ${isDark ? "#10141a" : "#ffffff"};
 
           --ai-user-bg:
-            ${isDark
-              ? "#273142"
-              : "#111827"};
+            ${isDark ? "#273142" : "#111827"};
 
           --ai-user-text:
             #ffffff;
@@ -1211,10 +1211,16 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           HEADER
+           FIXED HEADER
         ==================================================== */
 
         .antimate-header {
+          position: fixed;
+
+          top: 0;
+          left: 0;
+          right: 0;
+
           height: 76px;
           min-height: 76px;
 
@@ -1230,17 +1236,23 @@ export default function AntimateAI() {
             var(--ai-border);
 
           background:
-            color-mix(
-              in srgb,
-              var(--ai-bg) 92%,
-              transparent
-            );
+            ${isDark
+              ? "rgba(9, 11, 16, 0.94)"
+              : "rgba(247, 249, 252, 0.94)"};
 
-          position: relative;
-          z-index: 10;
+          z-index: 100;
 
           backdrop-filter:
             blur(16px);
+
+          -webkit-backdrop-filter:
+            blur(16px);
+
+          box-shadow:
+            0 4px 18px
+            ${isDark
+              ? "rgba(0,0,0,0.18)"
+              : "rgba(15,23,42,0.04)"};
         }
 
         .antimate-title-area {
@@ -1249,11 +1261,16 @@ export default function AntimateAI() {
           gap: 13px;
         }
 
-        /*
-        ========================================================
-        O-SHAPED LOGO
-        ========================================================
-        */
+        /* ====================================================
+           O-SHAPED LOGO
+           
+           IMPORTANT:
+           The animated gradient is now on ::before.
+           The actual ring/core stay static.
+           
+           Therefore:
+           AI DOES NOT ROTATE.
+        ==================================================== */
 
         .antimate-logo-o {
           position: relative;
@@ -1269,12 +1286,18 @@ export default function AntimateAI() {
           isolation: isolate;
         }
 
+        /*
+        --------------------------------------------------------
+        Animated glow
+        --------------------------------------------------------
+        */
+
         .antimate-logo-o::before {
           content: "";
 
           position: absolute;
 
-          inset: -4px;
+          inset: -5px;
 
           border-radius: 50%;
 
@@ -1294,19 +1317,59 @@ export default function AntimateAI() {
             3.5s linear infinite;
 
           filter:
-            blur(7px);
+            blur(8px);
 
           opacity:
             0.55;
 
-          z-index: -2;
+          z-index:
+            -2;
         }
+
+        /*
+        --------------------------------------------------------
+        Ring itself
+        --------------------------------------------------------
+        
+        The ring contains a pseudo element that rotates.
+        The core containing AI is NOT part of the animation.
+        --------------------------------------------------------
+        */
 
         .antimate-logo-ring {
           width: 100%;
           height: 100%;
 
           padding: 3px;
+
+          border-radius: 50%;
+
+          position: relative;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background:
+            transparent;
+
+          isolation: isolate;
+
+          overflow: hidden;
+        }
+
+        /*
+        --------------------------------------------------------
+        ONLY THIS GRADIENT ROTATES
+        --------------------------------------------------------
+        */
+
+        .antimate-logo-ring::before {
+          content: "";
+
+          position: absolute;
+
+          inset: 0;
 
           border-radius: 50%;
 
@@ -1325,23 +1388,51 @@ export default function AntimateAI() {
             antimateAIColorFlow
             3.5s linear infinite;
 
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          box-shadow:
-            0 0 20px
-            rgba(99, 102, 241, 0.20);
+          z-index:
+            -1;
         }
 
         /*
         --------------------------------------------------------
-        IMPORTANT:
-        The core changes according to theme.
-        This prevents black disappearing in dark mode and
-        white disappearing in light mode.
+        CORE
+        --------------------------------------------------------
+        
+        NO animation here.
+        AI stays perfectly centered and static.
         --------------------------------------------------------
         */
+
+        .antimate-logo-core {
+          width: calc(100% - 6px);
+          height: calc(100% - 6px);
+
+          border-radius: 50%;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          position: relative;
+
+          z-index: 2;
+
+          box-shadow:
+            inset
+            0 0 0 1px
+            rgba(255,255,255,0.08);
+
+          transition:
+            background 0.25s ease,
+            color 0.25s ease;
+
+          /*
+          IMPORTANT:
+          NO transform animation.
+          NO rotation.
+          */
+          transform:
+            none !important;
+        }
 
         .theme-dark
         .antimate-logo-core {
@@ -1361,35 +1452,31 @@ export default function AntimateAI() {
             #ffffff;
         }
 
-        .antimate-logo-core {
-          width: 100%;
-          height: 100%;
-
-          border-radius: 50%;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          position: relative;
-
-          box-shadow:
-            inset
-            0 0 0 1px
-            rgba(255,255,255,0.08);
-
-          transition:
-            background 0.25s ease,
-            color 0.25s ease;
-        }
-
         .antimate-logo-core span {
-          font-size: 38%;
+          display:
+            block;
 
-          font-weight: 800;
+          font-size:
+            38%;
+
+          font-weight:
+            800;
+
+          line-height:
+            1;
 
           letter-spacing:
             -0.5px;
+
+          /*
+          IMPORTANT:
+          AI stays static.
+          */
+          transform:
+            none !important;
+
+          animation:
+            none !important;
         }
 
         @keyframes antimateAIColorFlow {
@@ -1482,8 +1569,12 @@ export default function AntimateAI() {
 
           overflow-y: auto;
 
+          /*
+          IMPORTANT:
+          Space for fixed header + bottom composer.
+          */
           padding:
-            34px 24px 160px;
+            108px 24px 160px;
 
           scrollbar-width:
             thin;
@@ -1505,11 +1596,14 @@ export default function AntimateAI() {
         ========================================================
         WELCOME
         ========================================================
+        
+        LOGO REMOVED FROM CENTER.
+        ========================================================
         */
 
         .antimate-welcome {
           min-height:
-            58vh;
+            calc(100vh - 250px);
 
           display: flex;
 
@@ -1529,16 +1623,11 @@ export default function AntimateAI() {
             35px 20px;
         }
 
-        .antimate-welcome-icon {
-          margin-bottom:
-            24px;
-
-          filter:
-            drop-shadow(
-              0 12px 30px
-              rgba(99,102,241,0.14)
-            );
-        }
+        /*
+        --------------------------------------------------------
+        No welcome logo anymore.
+        --------------------------------------------------------
+        */
 
         .antimate-welcome h1 {
           margin:
@@ -2067,7 +2156,7 @@ export default function AntimateAI() {
             0;
 
           z-index:
-            30;
+            110;
 
           padding:
             16px 18px 19px;
@@ -2309,7 +2398,7 @@ export default function AntimateAI() {
             translateX(-50%);
 
           z-index:
-            40;
+            120;
 
           display:
             flex;
@@ -2413,7 +2502,7 @@ export default function AntimateAI() {
             translateX(-50%);
 
           z-index:
-            50;
+            130;
 
           max-width:
             calc(100% - 30px);
@@ -2491,7 +2580,7 @@ export default function AntimateAI() {
 
           .antimate-chat {
             padding:
-              24px 12px 145px;
+              88px 12px 145px;
           }
 
           .antimate-message-content {
@@ -2527,9 +2616,15 @@ export default function AntimateAI() {
               11px 13px;
           }
 
+          /*
+          ------------------------------------------------------
+          Welcome
+          ------------------------------------------------------
+          */
+
           .antimate-welcome {
             min-height:
-              56vh;
+              calc(100vh - 230px);
 
             padding:
               25px 12px;
@@ -2639,11 +2734,17 @@ export default function AntimateAI() {
         @media (prefers-reduced-motion: reduce) {
 
           .antimate-logo-o::before,
-          .antimate-logo-ring,
+          .antimate-logo-ring::before,
           .antimate-action-button.recording,
           .antimate-recording-dot,
           .antimate-thinking-dots span {
             animation:
+              none !important;
+          }
+
+          .antimate-logo-core,
+          .antimate-logo-core span {
+            transform:
               none !important;
           }
         }
@@ -2657,7 +2758,7 @@ export default function AntimateAI() {
       >
 
         {/* ==================================================
-            HEADER
+            FIXED HEADER
         ================================================== */}
 
         <header className="antimate-header">
@@ -2706,16 +2807,16 @@ export default function AntimateAI() {
             !thinkingText && (
               <div className="antimate-welcome">
 
-                <div className="antimate-welcome-icon">
-                  <AntimateLogo
-                    size={76}
-                  />
-                </div>
+                {/*
+                ==================================================
+                LOGO REMOVED FROM CENTER
+                ==================================================
+                */}
 
                 <h1>
                   {language === "rw"
-                    ? "Muraho, ndi ANTIMATE"
-                    : "Hello, I'm ANTIMATE"}
+                    ? "Muraho, ndi ANTIMATE AI"
+                    : "Hello, I'm ANTIMATE AI"}
                 </h1>
 
                 <p>
@@ -2746,9 +2847,11 @@ export default function AntimateAI() {
                 {message.role ===
                   "assistant" && (
                   <div className="antimate-avatar antimate-avatar-ai">
+
                     <AntimateLogo
                       size={34}
                     />
+
                   </div>
                 )}
 
@@ -3069,7 +3172,7 @@ export default function AntimateAI() {
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.8"
                     strokeLinecap="round"
                   >
                     <path d="M4 10v4" />

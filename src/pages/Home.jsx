@@ -60,208 +60,379 @@ const YOUTUBE_VIDEOS = [
   },
 ];
 
+/* ============================================================
+   ANTIMATE AI LOGO
+   ============================================================ */
+
+function AntimateAILogo({ size = 54 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient
+          id="antimateAiGradient"
+          x1="10"
+          y1="10"
+          x2="90"
+          y2="90"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="#00E0A4" />
+          <stop offset="0.5" stopColor="#00C896" />
+          <stop offset="1" stopColor="#0891B2" />
+        </linearGradient>
+
+        <linearGradient
+          id="antimateAiGlow"
+          x1="20"
+          y1="15"
+          x2="80"
+          y2="85"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
+
+      {/* Outer AI orbit */}
+      <circle
+        cx="50"
+        cy="50"
+        r="42"
+        stroke="url(#antimateAiGradient)"
+        strokeWidth="5"
+        strokeDasharray="8 5"
+      />
+
+      {/* Main AI Core */}
+      <rect
+        x="25"
+        y="25"
+        width="50"
+        height="50"
+        rx="16"
+        fill="url(#antimateAiGradient)"
+      />
+
+      {/* AI face / processor */}
+      <rect
+        x="34"
+        y="36"
+        width="32"
+        height="28"
+        rx="9"
+        fill="#07111F"
+        opacity="0.96"
+      />
+
+      {/* Eyes */}
+      <circle
+        cx="44"
+        cy="48"
+        r="3.2"
+        fill="url(#antimateAiGlow)"
+      />
+
+      <circle
+        cx="56"
+        cy="48"
+        r="3.2"
+        fill="url(#antimateAiGlow)"
+      />
+
+      {/* AI mouth */}
+      <path
+        d="M43 56C46 59 54 59 57 56"
+        stroke="url(#antimateAiGlow)"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+      />
+
+      {/* AI circuit nodes */}
+      <circle
+        cx="20"
+        cy="50"
+        r="3"
+        fill="#00E0A4"
+      />
+
+      <circle
+        cx="80"
+        cy="50"
+        r="3"
+        fill="#0891B2"
+      />
+
+      <circle
+        cx="50"
+        cy="20"
+        r="3"
+        fill="#00C896"
+      />
+
+      <circle
+        cx="50"
+        cy="80"
+        r="3"
+        fill="#0891B2"
+      />
+    </svg>
+  );
+}
+
+/* ============================================================
+   FIXED ANTIMATE AI BUTTON
+   ============================================================ */
+
+function AntimateAIFloatingButton({ isDark }) {
+  return (
+    <Link
+      to="/antimate-ai"
+      aria-label="Open ANTIMATE AI"
+      title="ANTIMATE AI"
+      style={{
+        ...styles.aiFloatingButton,
+        background: isDark
+          ? "rgba(15, 23, 42, 0.94)"
+          : "rgba(255, 255, 255, 0.96)",
+        border: isDark
+          ? "1px solid rgba(0, 200, 150, 0.38)"
+          : "1px solid rgba(0, 180, 135, 0.25)",
+        boxShadow: isDark
+          ? "0 12px 35px rgba(0,0,0,0.42), 0 0 25px rgba(0,200,150,0.10)"
+          : "0 10px 30px rgba(0,80,70,0.16), 0 0 20px rgba(0,200,150,0.08)",
+      }}
+    >
+      {/* Glow */}
+      <span
+        style={{
+          ...styles.aiFloatingGlow,
+          background: isDark
+            ? "rgba(0, 200, 150, 0.16)"
+            : "rgba(0, 200, 150, 0.12)",
+        }}
+      />
+
+      {/* Logo */}
+      <span style={styles.aiFloatingLogo}>
+        <AntimateAILogo size={48} />
+      </span>
+
+      {/* Online indicator */}
+      <span
+        style={{
+          ...styles.aiOnlineDot,
+          borderColor: isDark ? "#0f172a" : "#ffffff",
+        }}
+      />
+    </Link>
+  );
+}
+
 function Home() {
   const user = JSON.parse(localStorage.getItem("user") || "null");
   const { isDark, text } = useAppSettings();
 
   const t = text || {};
 
-  const isKinyarwanda = t.home === "Ahabanza";
-
-  const bgMain = isDark ? "#0b1220" : "#f7f9fc";
-  const bgCard = isDark ? "#172033" : "#ffffff";
-  const textPrimary = isDark ? "#f8fafc" : "#0f172a";
+  const bgMain = isDark ? "#0f172a" : "#f8fafc";
+  const bgCard = isDark ? "#1e293b" : "#ffffff";
+  const textPrimary = isDark ? "#ffffff" : "#0f172a";
   const textSecondary = isDark ? "#94a3b8" : "#64748b";
-  const borderColor = isDark ? "#263449" : "#e5eaf0";
-
+  const borderColor = isDark ? "#334155" : "#e2e8f0";
   const accent = "#00c896";
-  const accentDark = "#00a982";
 
   const content = {
     greeting:
       t.homeGreeting ||
-      (isKinyarwanda ? "Murakaza neza" : "Welcome"),
+      (t.home === "Ahabanza"
+        ? "Murakaza neza"
+        : "Welcome"),
 
     greetingText:
       t.homeGreetingText ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "Menya amakuru mashya, inyigisho n'uburyo bwagufasha guteza imbere ubworozi bwawe."
         : "Discover useful news, tips and ideas to help you improve your farm."),
 
     featured:
       t.featured ||
-      (isKinyarwanda ? "IBY'INGENZI" : "FEATURED"),
+      (t.home === "Ahabanza"
+        ? "IBY'INGENZI"
+        : "FEATURED"),
 
     heroTitle:
       t.heroTitle ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "Ikoranabuhanga rihindura ubworozi bw'inkoko"
         : "Technology transforming modern poultry farming"),
 
     heroDescription:
       t.heroDescription ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "Menya uburyo ikoranabuhanga, amakuru y'igihe nyacyo n'ubwenge bukorano bishobora gufasha umworozi gufata ibyemezo byiza no kongera umusaruro."
         : "Discover how intelligent technology, real-time information and AI can help farmers make better decisions and improve productivity."),
 
     readMore:
       t.readMore ||
-      (isKinyarwanda ? "Soma birambuye" : "Read more"),
+      (t.home === "Ahabanza"
+        ? "Soma birambuye"
+        : "Read more"),
 
     poultryTips:
       t.poultryTips ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "🐥 Inyigisho ku Bworozi bw'Inkoko"
         : "🐥 Poultry Farming Tips"),
 
     agricultureNews:
       t.agricultureNews ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "🌱 Amakuru y'Ubuhinzi n'Ikoranabuhanga"
         : "🌱 Agriculture & Technology News"),
 
     videos:
       t.educationVideos ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "🎥 Amashusho y'Inyigisho"
         : "🎥 Educational Videos"),
 
     watchYoutube:
       t.watchYoutube ||
-      (isKinyarwanda
+      (t.home === "Ahabanza"
         ? "Reba kuri YouTube ↗"
         : "Watch on YouTube ↗"),
-
-    aiTitle:
-      t.aiTitle ||
-      (isKinyarwanda
-        ? "Vugana na ANTIMATE AI"
-        : "Talk to ANTIMATE AI"),
-
-    aiDescription:
-      t.aiDescription ||
-      (isKinyarwanda
-        ? "Ufite ikibazo ku bworozi? ANTIMATE AI iragufasha kubona inama mu buryo bworoshye."
-        : "Have a question about your farm? ANTIMATE AI can help you with useful guidance."),
-
-    aiButton:
-      t.aiButton ||
-      (isKinyarwanda ? "Tangira kuganira" : "Start conversation"),
   };
 
-  const tips = isKinyarwanda
-    ? [
-        {
-          title: "Ubushyuhe bwiza mu cyumweru cya mbere",
-          description:
-            "Tangira ku bushyuhe bukwiye, hanyuma ubugabanye buhoro buhoro uko imishwi ikura.",
-        },
-        {
-          title: "Isuku n'amazi meza",
-          description:
-            "Sukura ibikoresho by'amazi buri munsi kandi uhore utanga amazi meza.",
-        },
-        {
-          title: "Umwuka mwiza",
-          description:
-            "Ventilation nziza ifasha inkoko kubona umwuka uhagije no gukura neza.",
-        },
-      ]
-    : [
-        {
-          title: "Proper brooder temperature",
-          description:
-            "Start with the right temperature and gradually reduce it as chicks grow.",
-        },
-        {
-          title: "Clean water and hygiene",
-          description:
-            "Clean drinking equipment regularly and always provide fresh water.",
-        },
-        {
-          title: "Good ventilation",
-          description:
-            "Proper ventilation helps birds get enough fresh air and grow well.",
-        },
-      ];
+  const tips =
+    t.home === "Ahabanza"
+      ? [
+          {
+            title: "Ubushyuhe bwiza mu cyumweru cya mbere",
+            description:
+              "Tangira ku bushyuhe bukwiye, hanyuma ubugabanye buhoro buhoro uko imishwi ikura.",
+          },
+          {
+            title: "Isuku n'amazi meza",
+            description:
+              "Sukura ibikoresho by'amazi buri munsi kandi uhore utanga amazi meza.",
+          },
+          {
+            title: "Umwuka mwiza",
+            description:
+              "Ventilation nziza ifasha inkoko kubona umwuka uhagije no gukura neza.",
+          },
+        ]
+      : [
+          {
+            title: "Proper brooder temperature",
+            description:
+              "Start with the right temperature and gradually reduce it as chicks grow.",
+          },
+          {
+            title: "Clean water and hygiene",
+            description:
+              "Clean drinking equipment regularly and always provide fresh water.",
+          },
+          {
+            title: "Good ventilation",
+            description:
+              "Proper ventilation helps birds get enough fresh air and grow well.",
+          },
+        ];
 
-  const news = isKinyarwanda
-    ? [
-        {
-          category: "Ikoranabuhanga",
-          title: "Ikoranabuhanga mu buhinzi",
-          description:
-            "Menya uko ibikoresho by'ikoranabuhanga bishobora gufasha gucunga amazi n'ibindi bikenerwa mu buhinzi.",
-        },
-        {
-          category: "Ubworozi",
-          title: "Kurinda imishwi mu ntangiriro",
-          description:
-            "Ubushyuhe bukwiye, amazi meza n'umwuka mwiza ni ingenzi cyane mu cyumweru cya mbere.",
-        },
-        {
-          category: "AI & Smart Farming",
-          title: "Ubwenge bukorano mu bworozi",
-          description:
-            "Koresha amakuru ava mu bikoresho byawe kugira ngo ubone ubumenyi bugufasha gufata ibyemezo.",
-        },
-      ]
-    : [
-        {
-          category: "Technology",
-          title: "Technology in agriculture",
-          description:
-            "Discover how modern technology can help farmers manage water and other farm resources.",
-        },
-        {
-          category: "Poultry",
-          title: "Protecting chicks early",
-          description:
-            "Proper temperature, clean water and fresh air are especially important during the first week.",
-        },
-        {
-          category: "AI & Smart Farming",
-          title: "AI in poultry farming",
-          description:
-            "Use information from your farm to gain insights that help you make better decisions.",
-        },
-      ];
+  const news =
+    t.home === "Ahabanza"
+      ? [
+          {
+            category: "Ikoranabuhanga",
+            title: "Ikoranabuhanga mu buhinzi",
+            description:
+              "Menya uko ibikoresho by'ikoranabuhanga bishobora gufasha gucunga amazi n'ibindi bikenerwa mu buhinzi.",
+          },
+          {
+            category: "Ubworozi",
+            title: "Kurinda imishwi mu ntangiriro",
+            description:
+              "Ubushyuhe bukwiye, amazi meza n'umwuka mwiza ni ingenzi cyane mu cyumweru cya mbere.",
+          },
+          {
+            category: "AI & Smart Farming",
+            title: "Ubwenge bukorano mu bworozi",
+            description:
+              "Koresha amakuru ava mu bikoresho byawe kugira ngo ubone ubumenyi bugufasha gufata ibyemezo.",
+          },
+        ]
+      : [
+          {
+            category: "Technology",
+            title: "Technology in agriculture",
+            description:
+              "Discover how modern technology can help farmers manage water and other farm resources.",
+          },
+          {
+            category: "Poultry",
+            title: "Protecting chicks early",
+            description:
+              "Proper temperature, clean water and fresh air are especially important during the first week.",
+          },
+          {
+            category: "AI & Smart Farming",
+            title: "AI in poultry farming",
+            description:
+              "Use information from your farm to gain insights that help you make better decisions.",
+          },
+        ];
 
-  const videos = isKinyarwanda
-    ? [
-        {
-          title: "Uko warinda inkoko indwara y'umuraramo",
-          description:
-            "Inyigisho igufasha kumenya uburyo bwo kurinda inkoko indwara y'umuraramo.",
-        },
-        {
-          title: "Uko watangira ubworozi bw'inkoko",
-          description:
-            "Urugero rw'umworozi wateje imbere ubworozi bwe mu Rwanda.",
-        },
-        {
-          title: "Ubworozi bw'inkoko bugezweho",
-          description:
-            "Menya uburyo bugezweho bushobora kongera umusaruro w'amagi n'inyama.",
-        },
-      ]
-    : [
-        {
-          title: "How to protect chickens from Newcastle disease",
-          description:
-            "Learn practical ways to protect your poultry from Newcastle disease.",
-        },
-        {
-          title: "How to start poultry farming",
-          description:
-            "Learn from a poultry farmer who developed a successful farming business.",
-        },
-        {
-          title: "Modern poultry farming",
-          description:
-            "Discover modern methods that can improve egg and meat production.",
-        },
-      ];
+  const videos =
+    t.home === "Ahabanza"
+      ? [
+          {
+            title:
+              "Uko warinda inkoko indwara y'umuraramo",
+            description:
+              "Inyigisho igufasha kumenya uburyo bwo kurinda inkoko indwara y'umuraramo.",
+          },
+          {
+            title:
+              "Uko watangira ubworozi bw'inkoko",
+            description:
+              "Urugero rw'umworozi wateje imbere ubworozi bwe mu Rwanda.",
+          },
+          {
+            title:
+              "Ubworozi bw'inkoko bugezweho",
+            description:
+              "Menya uburyo bugezweho bushobora kongera umusaruro w'amagi n'inyama.",
+          },
+        ]
+      : [
+          {
+            title:
+              "How to protect chickens from Newcastle disease",
+            description:
+              "Learn practical ways to protect your poultry from Newcastle disease.",
+          },
+          {
+            title:
+              "How to start poultry farming",
+            description:
+              "Learn from a poultry farmer who developed a successful farming business.",
+          },
+          {
+            title:
+              "Modern poultry farming",
+            description:
+              "Discover modern methods that can improve egg and meat production.",
+          },
+        ];
 
   return (
     <div
@@ -273,14 +444,24 @@ function Home() {
         fontFamily: "Inter, Arial, sans-serif",
       }}
     >
+      {/* ====================================================
+          FIXED ANTIMATE AI LOGO
+      ==================================================== */}
+      <AntimateAIFloatingButton isDark={isDark} />
+
       <AppHeader title={t.home || "Home"} />
 
       <main style={styles.main}>
+
         {/* GREETING */}
         <section>
           <h1 style={styles.greeting}>
             {content.greeting},{" "}
-            {user?.name || (isKinyarwanda ? "Mworozi" : "Farmer")} 👋
+            {user?.name ||
+              (t.home === "Ahabanza"
+                ? "Mworozi"
+                : "Farmer")}{" "}
+            👋
           </h1>
 
           <p
@@ -291,124 +472,6 @@ function Home() {
           >
             {content.greetingText}
           </p>
-        </section>
-
-        {/* =================================================
-            PROFESSIONAL ANTIMATE AI CARD
-        ================================================= */}
-        <section
-          className="antimate-ai-card"
-          style={{
-            ...styles.aiCard,
-            border: `1px solid ${
-              isDark
-                ? "rgba(0,200,150,0.28)"
-                : "rgba(0,180,135,0.20)"
-            }`,
-            boxShadow: isDark
-              ? "0 18px 45px rgba(0,0,0,0.28)"
-              : "0 18px 45px rgba(0,120,90,0.10)",
-          }}
-        >
-          {/* Decorative background */}
-          <div style={styles.aiOrbOne} />
-          <div style={styles.aiOrbTwo} />
-
-          {/* Top row */}
-          <div style={styles.aiTopRow}>
-            <div style={styles.aiBrand}>
-              <div style={styles.aiIconWrapper}>
-                <div style={styles.aiIcon}>
-                  <span style={styles.aiRobot}>✦</span>
-                </div>
-
-                <span style={styles.onlineDot} />
-              </div>
-
-              <div style={styles.aiBrandText}>
-                <div style={styles.aiLabel}>
-                  ANTIMATE AI
-                </div>
-
-                <div
-                  style={{
-                    ...styles.aiStatus,
-                    color: isDark ? "#a7f3d0" : "#047857",
-                  }}
-                >
-                  <span style={styles.statusDot} />
-                  {isKinyarwanda
-                    ? "AI irahari"
-                    : "AI is online"}
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                ...styles.aiBadge,
-                background: isDark
-                  ? "rgba(255,255,255,0.06)"
-                  : "rgba(255,255,255,0.72)",
-                border: `1px solid ${
-                  isDark
-                    ? "rgba(255,255,255,0.08)"
-                    : "rgba(0,0,0,0.05)"
-                }`,
-              }}
-            >
-              <span style={styles.sparkle}>✦</span>
-              AI
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div style={styles.aiMainContent}>
-            <h2
-              style={{
-                ...styles.aiTitle,
-                color: textPrimary,
-              }}
-            >
-              {content.aiTitle}
-            </h2>
-
-            <p
-              style={{
-                ...styles.aiDescription,
-                color: textSecondary,
-              }}
-            >
-              {content.aiDescription}
-            </p>
-          </div>
-
-          {/* Action */}
-          <Link
-            to="/antimate-ai"
-            className="antimate-ai-button"
-            style={styles.aiButton}
-            aria-label={content.aiButton}
-          >
-            <span style={styles.aiButtonLeft}>
-              <span style={styles.aiButtonIcon}>✦</span>
-
-              <span>{content.aiButton}</span>
-            </span>
-
-            <span style={styles.aiArrow}>→</span>
-          </Link>
-
-          <div
-            style={{
-              ...styles.aiHint,
-              color: isDark ? "#64748b" : "#94a3b8",
-            }}
-          >
-            {isKinyarwanda
-              ? "Inama z'ubworozi • Ibibazo • AI"
-              : "Farming advice • Questions • AI"}
-          </div>
         </section>
 
         {/* FEATURED ARTICLE */}
@@ -638,47 +701,13 @@ function Home() {
       </main>
 
       <BottomNav />
-
-      {/* =================================================
-          AI BUTTON INTERACTION
-      ================================================= */}
-      <style>{`
-        .antimate-ai-card {
-          transition:
-            transform 220ms ease,
-            box-shadow 220ms ease,
-            border-color 220ms ease;
-        }
-
-        .antimate-ai-card:hover {
-          transform: translateY(-2px);
-        }
-
-        .antimate-ai-button {
-          transition:
-            transform 160ms ease,
-            box-shadow 160ms ease,
-            filter 160ms ease;
-        }
-
-        .antimate-ai-button:hover {
-          transform: translateY(-1px);
-          filter: brightness(1.03);
-          box-shadow: 0 14px 30px rgba(0, 180, 140, 0.28) !important;
-        }
-
-        .antimate-ai-button:active {
-          transform: translateY(1px) scale(0.99);
-        }
-
-        .antimate-ai-button:focus-visible {
-          outline: 3px solid rgba(0, 200, 150, 0.30);
-          outline-offset: 3px;
-        }
-      `}</style>
     </div>
   );
 }
+
+/* ============================================================
+   SECTION TITLE
+   ============================================================ */
 
 function SectionTitle({ title, color }) {
   return (
@@ -695,7 +724,15 @@ function SectionTitle({ title, color }) {
   );
 }
 
+/* ============================================================
+   STYLES
+   ============================================================ */
+
 const styles = {
+  /* =====================================================
+     MAIN
+  ===================================================== */
+
   main: {
     width: "100%",
     maxWidth: "760px",
@@ -706,6 +743,67 @@ const styles = {
     flexDirection: "column",
     gap: "26px",
   },
+
+  /* =====================================================
+     FIXED ANTIMATE AI LOGO
+  ===================================================== */
+
+  aiFloatingButton: {
+    position: "fixed",
+    top: "16px",
+    left: "16px",
+    width: "58px",
+    height: "58px",
+    borderRadius: "19px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textDecoration: "none",
+    zIndex: 9999,
+    overflow: "visible",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    transition:
+      "transform 0.2s ease, box-shadow 0.2s ease",
+  },
+
+  aiFloatingGlow: {
+    position: "absolute",
+    width: "45px",
+    height: "45px",
+    borderRadius: "50%",
+    filter: "blur(18px)",
+    pointerEvents: "none",
+    zIndex: -1,
+  },
+
+  aiFloatingLogo: {
+    position: "relative",
+    zIndex: 2,
+    width: "48px",
+    height: "48px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  aiOnlineDot: {
+    position: "absolute",
+    right: "-2px",
+    bottom: "-2px",
+    width: "11px",
+    height: "11px",
+    borderRadius: "50%",
+    background: "#00d084",
+    border: "2px solid",
+    boxSizing: "border-box",
+    zIndex: 5,
+    boxShadow: "0 0 8px rgba(0,208,132,0.55)",
+  },
+
+  /* =====================================================
+     GREETING
+  ===================================================== */
 
   greeting: {
     margin: 0,
@@ -718,218 +816,6 @@ const styles = {
     margin: "7px 0 0",
     fontSize: "13px",
     lineHeight: 1.6,
-  },
-
-  /* =====================================================
-     PROFESSIONAL ANTIMATE AI
-  ===================================================== */
-
-  aiCard: {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: "24px",
-    padding: "18px",
-    background:
-      "linear-gradient(135deg, rgba(0,200,150,0.12) 0%, rgba(8,145,178,0.08) 48%, rgba(99,102,241,0.07) 100%)",
-  },
-
-  aiOrbOne: {
-    position: "absolute",
-    width: "190px",
-    height: "190px",
-    borderRadius: "50%",
-    background: "rgba(0,200,150,0.12)",
-    filter: "blur(65px)",
-    top: "-110px",
-    right: "-70px",
-    pointerEvents: "none",
-  },
-
-  aiOrbTwo: {
-    position: "absolute",
-    width: "130px",
-    height: "130px",
-    borderRadius: "50%",
-    background: "rgba(59,130,246,0.08)",
-    filter: "blur(55px)",
-    bottom: "-90px",
-    left: "-50px",
-    pointerEvents: "none",
-  },
-
-  aiTopRow: {
-    position: "relative",
-    zIndex: 2,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "12px",
-  },
-
-  aiBrand: {
-    display: "flex",
-    alignItems: "center",
-    gap: "11px",
-  },
-
-  aiIconWrapper: {
-    position: "relative",
-    width: "50px",
-    height: "50px",
-    flexShrink: 0,
-  },
-
-  aiIcon: {
-    width: "50px",
-    height: "50px",
-    borderRadius: "16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background:
-      "linear-gradient(135deg, #00c896 0%, #0891b2 55%, #2563eb 100%)",
-    boxShadow:
-      "0 10px 26px rgba(0,160,130,0.25)",
-  },
-
-  aiRobot: {
-    color: "#ffffff",
-    fontSize: "25px",
-    fontWeight: 900,
-    lineHeight: 1,
-  },
-
-  onlineDot: {
-    position: "absolute",
-    width: "11px",
-    height: "11px",
-    right: "-2px",
-    bottom: "-2px",
-    borderRadius: "50%",
-    background: "#22c55e",
-    border: "3px solid #ffffff",
-    boxSizing: "content-box",
-  },
-
-  aiBrandText: {
-    minWidth: 0,
-  },
-
-  aiLabel: {
-    color: "#00a982",
-    fontSize: "10px",
-    fontWeight: 900,
-    letterSpacing: "1.3px",
-    lineHeight: 1.2,
-  },
-
-  aiStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: "5px",
-    marginTop: "5px",
-    fontSize: "10px",
-    fontWeight: 700,
-  },
-
-  statusDot: {
-    width: "6px",
-    height: "6px",
-    borderRadius: "50%",
-    background: "#22c55e",
-    boxShadow: "0 0 0 3px rgba(34,197,94,0.10)",
-  },
-
-  aiBadge: {
-    display: "flex",
-    alignItems: "center",
-    gap: "5px",
-    padding: "6px 9px",
-    borderRadius: "999px",
-    color: "#64748b",
-    fontSize: "9px",
-    fontWeight: 900,
-    letterSpacing: "0.5px",
-    flexShrink: 0,
-  },
-
-  sparkle: {
-    color: "#00b486",
-    fontSize: "12px",
-  },
-
-  aiMainContent: {
-    position: "relative",
-    zIndex: 2,
-    padding: "18px 2px 16px",
-  },
-
-  aiTitle: {
-    margin: 0,
-    fontSize: "20px",
-    fontWeight: 850,
-    lineHeight: 1.3,
-    letterSpacing: "-0.25px",
-  },
-
-  aiDescription: {
-    margin: "7px 0 0",
-    maxWidth: "600px",
-    fontSize: "12px",
-    lineHeight: 1.6,
-  },
-
-  aiButton: {
-    position: "relative",
-    zIndex: 2,
-    width: "100%",
-    boxSizing: "border-box",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    textDecoration: "none",
-    padding: "13px 15px",
-    borderRadius: "14px",
-    background:
-      "linear-gradient(135deg, #00c896 0%, #00b889 45%, #0891b2 100%)",
-    color: "#ffffff",
-    fontSize: "12px",
-    fontWeight: 850,
-    boxShadow:
-      "0 10px 24px rgba(0,160,130,0.20)",
-  },
-
-  aiButtonLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "9px",
-  },
-
-  aiButtonIcon: {
-    width: "25px",
-    height: "25px",
-    borderRadius: "8px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "rgba(255,255,255,0.16)",
-    fontSize: "12px",
-  },
-
-  aiArrow: {
-    fontSize: "19px",
-    fontWeight: 400,
-    lineHeight: 1,
-  },
-
-  aiHint: {
-    position: "relative",
-    zIndex: 2,
-    marginTop: "9px",
-    textAlign: "center",
-    fontSize: "9px",
-    fontWeight: 600,
-    letterSpacing: "0.15px",
   },
 
   /* =====================================================

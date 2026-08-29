@@ -15,6 +15,10 @@ function AntimateAI() {
   const [audioUrl, setAudioUrl] = useState(null);
   const [error, setError] = useState("");
 
+  // Microphone permission state
+  const [micPermission, setMicPermission] =
+    useState("unknown");
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
@@ -22,6 +26,8 @@ function AntimateAI() {
   const messagesEndRef = useRef(null);
   const textInputRef = useRef(null);
   const audioUrlRef = useRef(null);
+
+  const permissionStatusRef = useRef(null);
 
   // =====================================================
   // INITIAL MESSAGE
@@ -40,6 +46,149 @@ function AntimateAI() {
   }, []);
 
   // =====================================================
+  // CHECK MICROPHONE PERMISSION
+  // =====================================================
+
+  useEffect(() => {
+    checkMicrophonePermission();
+
+    return () => {
+      if (permissionStatusRef.current) {
+        permissionStatusRef.current.onchange = null;
+      }
+    };
+  }, []);
+
+  const checkMicrophonePermission = async () => {
+    try {
+      if (
+        !navigator.permissions ||
+        !navigator.permissions.query
+      ) {
+        console.log(
+          "ℹ️ Permissions API ntabwo ishyigikiwe. Tuzakoresha getUserMedia."
+        );
+
+        setMicPermission("unknown");
+        return "unknown";
+      }
+
+      const permission =
+        await navigator.permissions.query({
+          name: "microphone",
+        });
+
+      permissionStatusRef.current =
+        permission;
+
+      setMicPermission(permission.state);
+
+      console.log(
+        "🎤 Microphone permission:",
+        permission.state
+      );
+
+      permission.onchange = () => {
+        console.log(
+          "🎤 Microphone permission changed:",
+          permission.state
+        );
+
+        setMicPermission(
+          permission.state
+        );
+      };
+
+      return permission.state;
+    } catch (err) {
+      console.warn(
+        "⚠️ Could not check microphone permission:",
+        err
+      );
+
+      setMicPermission("unknown");
+
+      return "unknown";
+    }
+  };
+
+  // =====================================================
+  // REQUEST MICROPHONE PERMISSION
+  // =====================================================
+
+  const requestMicrophonePermission =
+    async () => {
+      try {
+        setError("");
+
+        console.log(
+          "🎤 Requesting microphone permission..."
+        );
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: true,
+            }
+          );
+
+        console.log(
+          "✅ Microphone permission granted."
+        );
+
+        setMicPermission("granted");
+
+        return stream;
+      } catch (err) {
+        console.error(
+          "❌ Microphone permission request failed:",
+          err
+        );
+
+        if (
+          err.name ===
+          "NotAllowedError"
+        ) {
+          setMicPermission("denied");
+
+          setError(
+            "Microphone ntiyemerewe. Kanda kuri 🔒 iri hafi ya address ya website, ujye kuri Microphone uhitemo Allow, hanyuma wongere ukande 🎤."
+          );
+        } else if (
+          err.name ===
+          "NotFoundError"
+        ) {
+          setMicPermission("unknown");
+
+          setError(
+            "Nta microphone yabonetse kuri device yawe. Reba niba microphone ihari kandi ihujwe neza."
+          );
+        } else if (
+          err.name ===
+          "NotReadableError"
+        ) {
+          setError(
+            "Microphone iri gukoreshwa n'indi application cyangwa browser ntishoboye kuyifungura."
+          );
+        } else if (
+          err.name ===
+          "SecurityError"
+        ) {
+          setError(
+            "Browser yanze gukoresha microphone kubera security. Reba ko ukoresha HTTPS."
+          );
+        } else {
+          setError(
+            err.message ||
+              "Habaye ikibazo kuri microphone."
+          );
+        }
+
+        return null;
+      }
+    };
+
+  // =====================================================
   // AUTO SCROLL
   // =====================================================
 
@@ -55,11 +204,18 @@ function AntimateAI() {
 
   useEffect(() => {
     return () => {
-      stopMicrophoneTracks();
+      if (streamRef.current) {
+        streamRef.current
+          .getTracks()
+          .forEach((track) =>
+            track.stop()
+          );
+      }
 
       if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
+        URL.revokeObjectURL(
+          audioUrlRef.current
+        );
       }
     };
   }, []);
@@ -69,111 +225,14 @@ function AntimateAI() {
   // =====================================================
 
   function getTime() {
-    return new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return new Date().toLocaleTimeString(
+      [],
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
   }
-
-  // =====================================================
-  // STOP MICROPHONE TRACKS
-  // =====================================================
-
-  const stopMicrophoneTracks = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch (e) {
-          console.warn(
-            "Could not stop microphone track:",
-            e
-          );
-        }
-      });
-
-      streamRef.current = null;
-    }
-  };
-
-  // =====================================================
-  // CHECK MICROPHONE PERMISSION
-  // =====================================================
-
-  const getMicrophonePermissionState = async () => {
-    /*
-     * Browser zimwe ntizishyigikira Permissions API kuri
-     * microphone. Ni yo mpamvu tutagomba gufata failure
-     * hano nk'uko microphone yanze.
-     */
-
-    if (!navigator.permissions?.query) {
-      return "unknown";
-    }
-
-    try {
-      const permission =
-        await navigator.permissions.query({
-          name: "microphone",
-        });
-
-      console.log(
-        "🎤 Microphone permission:",
-        permission.state
-      );
-
-      return permission.state;
-    } catch (err) {
-      console.warn(
-        "⚠️ Microphone permission query unsupported:",
-        err
-      );
-
-      return "unknown";
-    }
-  };
-
-  // =====================================================
-  // REQUEST MICROPHONE
-  // =====================================================
-
-  const requestMicrophoneAccess = async () => {
-    /*
-     * Iyi ni yo nzira nyayo ituma browser yerekana:
-     *
-     * "Allow this site to use your microphone?"
-     *
-     * Iyo permission itaraba granted.
-     */
-
-    try {
-      console.log(
-        "🎤 Requesting microphone permission..."
-      );
-
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        });
-
-      console.log(
-        "✅ Microphone permission granted."
-      );
-
-      return stream;
-    } catch (err) {
-      console.error(
-        "❌ Microphone permission request failed:",
-        err
-      );
-
-      throw err;
-    }
-  };
 
   // =====================================================
   // START RECORDING
@@ -184,11 +243,11 @@ function AntimateAI() {
       return;
     }
 
-    try {
-      setError("");
+    setError("");
 
+    try {
       // -------------------------------------------------
-      // BROWSER SUPPORT
+      // CHECK BROWSER SUPPORT
       // -------------------------------------------------
 
       if (
@@ -196,41 +255,49 @@ function AntimateAI() {
         !navigator.mediaDevices.getUserMedia
       ) {
         setError(
-          "Browser yawe ntabwo ishigikira gufata amajwi. Gerageza Chrome cyangwa Edge."
+          "Browser yawe ntabwo ishyigikira microphone. Gerageza Chrome cyangwa Edge ukoresheje HTTPS."
         );
 
         return;
       }
 
       if (
-        typeof MediaRecorder === "undefined"
+        typeof MediaRecorder ===
+        "undefined"
       ) {
         setError(
-          "Browser yawe ntabwo ishigikira audio recording."
+          "Browser yawe ntabwo ishyigikira gufata amajwi."
         );
 
         return;
       }
 
       // -------------------------------------------------
-      // CHECK PERMISSION
+      // CHECK CURRENT PERMISSION
       // -------------------------------------------------
 
-      const permissionState =
-        await getMicrophonePermissionState();
+      let permission =
+        micPermission;
+
+      if (
+        permission === "unknown"
+      ) {
+        permission =
+          await checkMicrophonePermission();
+      }
 
       console.log(
         "🎤 Current microphone permission:",
-        permissionState
+        permission
       );
 
       // -------------------------------------------------
       // DENIED
       // -------------------------------------------------
 
-      if (permissionState === "denied") {
+      if (permission === "denied") {
         setError(
-          "Microphone yanze. Jya muri browser settings yemere microphone kuri uru rubuga, hanyuma wongere ukande 🎤."
+          "Microphone ntiyemerewe. Kanda kuri 🔒 iri hafi ya address ya website, ujye kuri Microphone uhitemo Allow, hanyuma wongere ukande 🎤."
         );
 
         return;
@@ -239,45 +306,39 @@ function AntimateAI() {
       // -------------------------------------------------
       // GET MICROPHONE
       //
-      // If permission is:
-      // granted  -> starts immediately
-      // prompt    -> browser asks Allow
-      // unknown   -> getUserMedia decides
+      // If permission = prompt:
+      // Browser will show Allow / Block popup.
+      //
+      // If permission = granted:
+      // No popup, stream opens directly.
       // -------------------------------------------------
 
       const stream =
-        await requestMicrophoneAccess();
-
-      // -------------------------------------------------
-      // SAVE STREAM
-      // -------------------------------------------------
-
-      streamRef.current = stream;
-
-      // -------------------------------------------------
-      // CHECK AUDIO TRACK
-      // -------------------------------------------------
-
-      const audioTracks =
-        stream.getAudioTracks();
-
-      if (!audioTracks.length) {
-        stopMicrophoneTracks();
-
-        setError(
-          "Microphone yabonetse ariko nta audio input yabonetse kuri device."
+        await navigator.mediaDevices.getUserMedia(
+          {
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          }
         );
 
-        return;
-      }
+      // -------------------------------------------------
+      // PERMISSION SUCCESS
+      // -------------------------------------------------
+
+      setMicPermission("granted");
+
+      streamRef.current =
+        stream;
 
       console.log(
-        "🎤 Microphone:",
-        audioTracks[0].label
+        "✅ Microphone stream acquired."
       );
 
       // -------------------------------------------------
-      // FIND SUPPORTED MIME TYPE
+      // SELECT MIME TYPE
       // -------------------------------------------------
 
       let mimeType = "";
@@ -286,25 +347,24 @@ function AntimateAI() {
         "audio/webm;codecs=opus",
         "audio/webm",
         "audio/ogg;codecs=opus",
-        "audio/ogg",
         "audio/mp4",
       ];
 
-      for (const type of supportedTypes) {
-        try {
-          if (
-            MediaRecorder.isTypeSupported(type)
-          ) {
-            mimeType = type;
-            break;
-          }
-        } catch {
-          // Ignore unsupported MIME checks
+      for (
+        const type of supportedTypes
+      ) {
+        if (
+          MediaRecorder.isTypeSupported(
+            type
+          )
+        ) {
+          mimeType = type;
+          break;
         }
       }
 
       console.log(
-        "🎧 Selected MIME:",
+        "🎵 Selected MIME type:",
         mimeType || "browser default"
       );
 
@@ -312,52 +372,52 @@ function AntimateAI() {
       // CREATE RECORDER
       // -------------------------------------------------
 
-      let recorder;
-
-      try {
-        recorder = mimeType
-          ? new MediaRecorder(stream, {
+      const recorder = mimeType
+        ? new MediaRecorder(
+            stream,
+            {
               mimeType,
-            })
-          : new MediaRecorder(stream);
-      } catch (recorderError) {
-        console.error(
-          "❌ MediaRecorder creation failed:",
-          recorderError
-        );
+            }
+          )
+        : new MediaRecorder(
+            stream
+          );
 
-        stopMicrophoneTracks();
+      mediaRecorderRef.current =
+        recorder;
 
-        setError(
-          "Browser yananiwe gutegura gufata amajwi. Gerageza Chrome cyangwa Edge."
-        );
-
-        return;
-      }
-
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
+      audioChunksRef.current =
+        [];
 
       // -------------------------------------------------
       // DATA AVAILABLE
       // -------------------------------------------------
 
-      recorder.ondataavailable = (event) => {
-        if (
-          event.data &&
-          event.data.size > 0
-        ) {
-          audioChunksRef.current.push(
-            event.data
-          );
-        }
-      };
+      recorder.ondataavailable =
+        (event) => {
+          if (
+            event.data &&
+            event.data.size > 0
+          ) {
+            audioChunksRef.current.push(
+              event.data
+            );
+
+            console.log(
+              "🎙️ Audio chunk:",
+              event.data.size,
+              "bytes"
+            );
+          }
+        };
 
       // -------------------------------------------------
-      // ERROR
+      // RECORDER ERROR
       // -------------------------------------------------
 
-      recorder.onerror = (event) => {
+      recorder.onerror = (
+        event
+      ) => {
         console.error(
           "❌ MediaRecorder error:",
           event
@@ -368,118 +428,112 @@ function AntimateAI() {
         );
 
         setRecording(false);
-
-        stopMicrophoneTracks();
       };
 
       // -------------------------------------------------
-      // STOP
+      // RECORDER STOP
       // -------------------------------------------------
 
       recorder.onstop = () => {
-        try {
-          const actualType =
-            recorder.mimeType ||
-            mimeType ||
-            "audio/webm";
+        console.log(
+          "🛑 Recording stopped."
+        );
 
-          const blob = new Blob(
-            audioChunksRef.current,
-            {
-              type: actualType,
-            }
-          );
+        const actualType =
+          recorder.mimeType ||
+          mimeType ||
+          "audio/webm";
 
-          console.log(
-            "🎧 Recorded audio size:",
-            blob.size,
-            "bytes"
-          );
-
-          if (!blob.size) {
-            setError(
-              "Nta majwi yafashwe. Ongera ugerageze."
-            );
-
-            stopMicrophoneTracks();
-
-            return;
+        const blob = new Blob(
+          audioChunksRef.current,
+          {
+            type: actualType,
           }
+        );
 
-          // -------------------------------------------------
-          // FILE EXTENSION
-          // -------------------------------------------------
+        console.log(
+          "📦 Recorded audio size:",
+          blob.size,
+          "bytes"
+        );
 
-          let extension = "webm";
-
-          if (
-            actualType.includes("ogg")
-          ) {
-            extension = "ogg";
-          } else if (
-            actualType.includes("mp4")
-          ) {
-            extension = "mp4";
-          }
-
-          // -------------------------------------------------
-          // CREATE FILE
-          // -------------------------------------------------
-
-          const file = new File(
-            [blob],
-            `antimate-voice-${Date.now()}.${extension}`,
-            {
-              type: actualType,
-            }
-          );
-
-          console.log(
-            "✅ Audio file created:",
-            file.name,
-            file.type,
-            file.size
-          );
-
-          setAudioFile(file);
-
-          // -------------------------------------------------
-          // ADD USER VOICE MESSAGE
-          // -------------------------------------------------
-
-          setMessages((previous) => [
-            ...previous,
-            {
-              id:
-                Date.now() +
-                "-voice",
-              role: "user",
-              type: "voice",
-              text:
-                "🎤 Ubutumwa bw'amajwi",
-              time: getTime(),
-            },
-          ]);
-
-          // -------------------------------------------------
-          // RELEASE MICROPHONE
-          // -------------------------------------------------
-
-          stopMicrophoneTracks();
-
-          mediaRecorderRef.current = null;
-        } catch (stopError) {
-          console.error(
-            "❌ Recording stop processing error:",
-            stopError
-          );
-
+        if (!blob.size) {
           setError(
-            "Habaye ikibazo mu gutunganya audio wafashe."
+            "Nta majwi yafashwe. Ongera ugerageze."
           );
 
-          stopMicrophoneTracks();
+          cleanupMicrophoneStream();
+
+          return;
         }
+
+        // -------------------------------------------------
+        // FILE EXTENSION
+        // -------------------------------------------------
+
+        let extension =
+          "webm";
+
+        if (
+          actualType.includes(
+            "ogg"
+          )
+        ) {
+          extension = "ogg";
+        } else if (
+          actualType.includes(
+            "mp4"
+          )
+        ) {
+          extension = "mp4";
+        } else if (
+          actualType.includes(
+            "wav"
+          )
+        ) {
+          extension = "wav";
+        }
+
+        // -------------------------------------------------
+        // CREATE FILE
+        // -------------------------------------------------
+
+        const file = new File(
+          [blob],
+          `antimate-voice-${Date.now()}.${extension}`,
+          {
+            type: actualType,
+          }
+        );
+
+        console.log(
+          "🎧 Audio file created:",
+          file.name,
+          file.type,
+          file.size
+        );
+
+        setAudioFile(file);
+
+        // -------------------------------------------------
+        // ADD MESSAGE
+        // -------------------------------------------------
+
+        setMessages((previous) => [
+          ...previous,
+          {
+            id:
+              Date.now() +
+              "-voice",
+            role: "user",
+            type: "voice",
+            text:
+              "🎤 Ubutumwa bw'amajwi",
+            time: getTime(),
+          },
+        ]);
+
+        cleanupMicrophoneStream();
       };
 
       // -------------------------------------------------
@@ -491,7 +545,7 @@ function AntimateAI() {
       setRecording(true);
 
       console.log(
-        "🎙️ ANTIMATE recording started."
+        "🔴 Recording started."
       );
     } catch (err) {
       console.error(
@@ -501,78 +555,93 @@ function AntimateAI() {
 
       setRecording(false);
 
-      stopMicrophoneTracks();
+      cleanupMicrophoneStream();
 
-      // =================================================
+      // -------------------------------------------------
       // PERMISSION DENIED
-      // =================================================
+      // -------------------------------------------------
 
       if (
-        err?.name ===
+        err.name ===
         "NotAllowedError"
       ) {
+        setMicPermission("denied");
+
         setError(
-          "Microphone ntiyemerewe. Browser igusaba gukanda Allow/Permitir kuri microphone. Niba wayanze mbere, jya muri browser settings uyemere kuri uru rubuga."
+          "Microphone ntiyemerewe. Kanda kuri 🔒 iri hafi ya address ya website, ujye kuri Microphone uhitemo Allow, hanyuma wongere ukande 🎤."
         );
 
         return;
       }
 
-      // =================================================
+      // -------------------------------------------------
       // NO MICROPHONE
-      // =================================================
+      // -------------------------------------------------
 
       if (
-        err?.name ===
+        err.name ===
         "NotFoundError"
       ) {
         setError(
-          "Nta microphone yabonetse kuri device yawe. Huza microphone cyangwa urebe niba device yawe ifite microphone ikora."
+          "Nta microphone yabonetse kuri device yawe. Reba niba microphone ihari kandi ihujwe neza."
         );
 
         return;
       }
 
-      // =================================================
-      // DEVICE BUSY
-      // =================================================
+      // -------------------------------------------------
+      // MICROPHONE BUSY
+      // -------------------------------------------------
 
       if (
-        err?.name ===
+        err.name ===
         "NotReadableError"
       ) {
         setError(
-          "Microphone ntiyashoboye gukoreshwa. Ishobora kuba iri gukoreshwa n'indi application cyangwa browser tab."
+          "Microphone ntishobora gukoreshwa ubu. Ishobora kuba iri gukoreshwa n'indi application."
         );
 
         return;
       }
 
-      // =================================================
-      // SECURITY / HTTPS
-      // =================================================
+      // -------------------------------------------------
+      // SECURITY
+      // -------------------------------------------------
 
       if (
-        err?.name ===
+        err.name ===
         "SecurityError"
       ) {
         setError(
-          "Browser yabujije microphone kubera security. Fungura uru rubuga kuri HTTPS hanyuma wongere ugerageze."
+          "Browser yanze microphone kubera security. Menya ko website ikoresha HTTPS."
         );
 
         return;
       }
 
-      // =================================================
-      // GENERIC ERROR
-      // =================================================
-
       setError(
-        err?.message ||
-          "Habaye ikibazo kuri microphone. Ongera ugerageze."
+        err.message ||
+          "Habaye ikibazo kuri microphone."
       );
     }
   };
+
+  // =====================================================
+  // CLEANUP MICROPHONE
+  // =====================================================
+
+  const cleanupMicrophoneStream =
+    () => {
+      if (streamRef.current) {
+        streamRef.current
+          .getTracks()
+          .forEach((track) => {
+            track.stop();
+          });
+
+        streamRef.current = null;
+      }
+    };
 
   // =====================================================
   // STOP RECORDING
@@ -582,19 +651,19 @@ function AntimateAI() {
     const recorder =
       mediaRecorderRef.current;
 
+    console.log(
+      "🛑 Stop recording requested."
+    );
+
     if (
       recorder &&
-      recorder.state !== "inactive"
+      recorder.state !==
+        "inactive"
     ) {
-      console.log(
-        "⏹️ Stopping recording..."
-      );
-
       recorder.stop();
-    } else {
-      stopMicrophoneTracks();
-      setRecording(false);
     }
+
+    setRecording(false);
   };
 
   // =====================================================
@@ -610,7 +679,9 @@ function AntimateAI() {
     if (!file) return;
 
     if (
-      !file.type.startsWith("audio/")
+      !file.type.startsWith(
+        "audio/"
+      )
     ) {
       setError(
         "Hitamo file y'amajwi gusa."
@@ -643,318 +714,332 @@ function AntimateAI() {
   // SEND TEXT
   // =====================================================
 
-  const sendTextMessage = async () => {
-    const cleanText =
-      textInput.trim();
+  const sendTextMessage =
+    async () => {
+      const cleanText =
+        textInput.trim();
 
-    if (!cleanText || loading) {
-      return;
-    }
+      if (
+        !cleanText ||
+        loading
+      ) {
+        return;
+      }
 
-    setTextInput("");
-    setError("");
+      setTextInput("");
+      setError("");
 
-    setMessages((previous) => [
-      ...previous,
-      {
-        id:
-          Date.now() +
-          "-user",
-        role: "user",
-        text: cleanText,
-        time: getTime(),
-      },
-    ]);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id:
+            Date.now() +
+            "-user",
+          role: "user",
+          text: cleanText,
+          time: getTime(),
+        },
+      ]);
 
-    await sendTextToAntimate(
-      cleanText
-    );
-  };
+      await sendTextToAntimate(
+        cleanText
+      );
+    };
 
   // =====================================================
   // SEND AUDIO
   // =====================================================
 
-  const sendVoiceMessage = async () => {
-    if (!audioFile || loading) {
-      return;
-    }
+  const sendVoiceMessage =
+    async () => {
+      if (
+        !audioFile ||
+        loading
+      ) {
+        return;
+      }
 
-    setError("");
+      setError("");
 
-    await sendAudioToAntimate(
-      audioFile
-    );
+      await sendAudioToAntimate(
+        audioFile
+      );
 
-    setAudioFile(null);
-  };
+      setAudioFile(null);
+    };
 
   // =====================================================
   // TEXT API
   // =====================================================
 
-  const sendTextToAntimate = async (
-    text
-  ) => {
-    setLoading(true);
+  const sendTextToAntimate =
+    async (text) => {
+      setLoading(true);
 
-    try {
-      const token =
-        localStorage.getItem(
-          "token"
+      try {
+        const token =
+          localStorage.getItem(
+            "token"
+          );
+
+        const headers = {
+          "Content-Type":
+            "application/json",
+        };
+
+        if (token) {
+          headers.Authorization =
+            `Bearer ${token}`;
+        }
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/antimate/chat`,
+            {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                message: text,
+                language: "rw",
+              }),
+            }
+          );
+
+        await processApiResponse(
+          response
+        );
+      } catch (err) {
+        console.error(
+          "ANTIMATE text error:",
+          err
         );
 
-      const headers = {
-        "Content-Type":
-          "application/json",
-      };
-
-      if (token) {
-        headers.Authorization =
-          `Bearer ${token}`;
+        addErrorMessage(
+          err.message ||
+            "ANTIMATE ntiyabashije gusubiza."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      const response =
-        await fetch(
-          `${API_BASE}/api/antimate/chat`,
-          {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              message: text,
-              language: "rw",
-            }),
-          }
-        );
-
-      await processApiResponse(
-        response
-      );
-    } catch (err) {
-      console.error(
-        "ANTIMATE text error:",
-        err
-      );
-
-      addErrorMessage(
-        err.message ||
-          "ANTIMATE ntiyabashije gusubiza."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   // =====================================================
   // AUDIO API
   // =====================================================
 
-  const sendAudioToAntimate = async (
-    file
-  ) => {
-    setLoading(true);
+  const sendAudioToAntimate =
+    async (file) => {
+      setLoading(true);
 
-    try {
-      const formData =
-        new FormData();
+      try {
+        const formData =
+          new FormData();
 
-      formData.append(
-        "audio",
-        file
-      );
-
-      const token =
-        localStorage.getItem(
-          "token"
+        formData.append(
+          "audio",
+          file
         );
 
-      const headers = {};
+        const token =
+          localStorage.getItem(
+            "token"
+          );
 
-      if (token) {
-        headers.Authorization =
-          `Bearer ${token}`;
+        const headers = {};
+
+        if (token) {
+          headers.Authorization =
+            `Bearer ${token}`;
+        }
+
+        const response =
+          await fetch(
+            `${API_BASE}/api/antimate/voice`,
+            {
+              method: "POST",
+              headers,
+              body: formData,
+            }
+          );
+
+        await processApiResponse(
+          response
+        );
+      } catch (err) {
+        console.error(
+          "ANTIMATE voice error:",
+          err
+        );
+
+        addErrorMessage(
+          err.message ||
+            "ANTIMATE ntiyabashije kwakira ubutumwa bw'amajwi."
+        );
+      } finally {
+        setLoading(false);
       }
-
-      const response =
-        await fetch(
-          `${API_BASE}/api/antimate/voice`,
-          {
-            method: "POST",
-            headers,
-            body: formData,
-          }
-        );
-
-      await processApiResponse(
-        response
-      );
-    } catch (err) {
-      console.error(
-        "ANTIMATE voice error:",
-        err
-      );
-
-      addErrorMessage(
-        err.message ||
-          "ANTIMATE ntiyabashije kwakira ubutumwa bw'amajwi."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   // =====================================================
   // PROCESS API RESPONSE
   // =====================================================
 
-  const processApiResponse = async (
-    response
-  ) => {
-    const contentType =
-      response.headers.get(
-        "content-type"
-      ) || "";
+  const processApiResponse =
+    async (response) => {
+      const contentType =
+        response.headers.get(
+          "content-type"
+        ) || "";
 
-    if (!response.ok) {
-      let message =
-        `ANTIMATE API error (${response.status})`;
+      if (!response.ok) {
+        let message =
+          `ANTIMATE API error (${response.status})`;
 
-      try {
-        if (
-          contentType.includes(
-            "application/json"
-          )
-        ) {
-          const data =
-            await response.json();
+        try {
+          if (
+            contentType.includes(
+              "application/json"
+            )
+          ) {
+            const data =
+              await response.json();
 
-          message =
-            data.message ||
-            data.error ||
-            message;
-        } else {
-          const text =
-            await response.text();
+            message =
+              data.message ||
+              data.error ||
+              message;
+          } else {
+            const text =
+              await response.text();
 
-          if (text) {
-            message = text;
+            if (text) {
+              message = text;
+            }
           }
+        } catch {
+          // keep default
         }
-      } catch {
-        // Keep default
+
+        throw new Error(
+          message
+        );
       }
 
-      throw new Error(message);
-    }
-
-    // ===================================================
-    // JSON
-    // ===================================================
-
-    if (
-      contentType.includes(
-        "application/json"
-      )
-    ) {
-      const data =
-        await response.json();
-
-      console.log(
-        "📦 ANTIMATE API response:",
-        data
-      );
+      // ===================================================
+      // JSON
+      // ===================================================
 
       if (
-        data.success === false
+        contentType.includes(
+          "application/json"
+        )
       ) {
-        throw new Error(
+        const data =
+          await response.json();
+
+        console.log(
+          "📦 ANTIMATE API response:",
+          data
+        );
+
+        if (
+          data.success === false
+        ) {
+          throw new Error(
+            data.message ||
+              data.error ||
+              "ANTIMATE returned an error."
+          );
+        }
+
+        const answer =
+          data.answer_rw ||
+          data.answer_kinyarwanda ||
+          data.answer ||
+          data.response ||
+          data.reply ||
+          data.text ||
           data.message ||
-            data.error ||
-            "ANTIMATE returned an error."
-        );
+          data.kinyarwanda ||
+          "";
+
+        if (answer) {
+          addAssistantMessage(
+            answer
+          );
+        }
+
+        // -----------------------------------------------
+        // AUDIO
+        // -----------------------------------------------
+
+        const returnedAudio =
+          data.audio_url ||
+          data.audio ||
+          data.audioUrl ||
+          data.voice_url;
+
+        if (returnedAudio) {
+          setResponseAudio(
+            returnedAudio
+          );
+        }
+
+        if (
+          !answer &&
+          !returnedAudio
+        ) {
+          addAssistantMessage(
+            "ANTIMATE yakiriye ubutumwa bwawe, ariko nta gisubizo yabashije gutanga."
+          );
+        }
+
+        return;
       }
 
-      const answer =
-        data.answer_rw ||
-        data.answer_kinyarwanda ||
-        data.answer ||
-        data.response ||
-        data.reply ||
-        data.text ||
-        data.message ||
-        data.kinyarwanda ||
-        "";
+      // ===================================================
+      // DIRECT AUDIO
+      // ===================================================
 
-      if (answer) {
+      if (
+        contentType.startsWith(
+          "audio/"
+        )
+      ) {
+        const blob =
+          await response.blob();
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+        replaceAudioUrl(url);
+
         addAssistantMessage(
-          answer
+          "Ndagusubije mu ijwi 🔊"
         );
+
+        return;
       }
 
-      const returnedAudio =
-        data.audio_url ||
-        data.audio ||
-        data.audioUrl ||
-        data.voice_url;
+      // ===================================================
+      // TEXT
+      // ===================================================
 
-      if (returnedAudio) {
-        setResponseAudio(
-          returnedAudio
-        );
-      }
+      const text =
+        await response.text();
 
-      if (!answer && !returnedAudio) {
+      if (text.trim()) {
         addAssistantMessage(
-          "ANTIMATE yakiriye ubutumwa bwawe, ariko nta gisubizo yabashije gutanga."
+          text.trim()
+        );
+      } else {
+        addAssistantMessage(
+          "ANTIMATE ntiyagaruye igisubizo."
         );
       }
-
-      return;
-    }
-
-    // ===================================================
-    // DIRECT AUDIO
-    // ===================================================
-
-    if (
-      contentType.startsWith(
-        "audio/"
-      )
-    ) {
-      const blob =
-        await response.blob();
-
-      const url =
-        URL.createObjectURL(
-          blob
-        );
-
-      replaceAudioUrl(url);
-
-      addAssistantMessage(
-        "Ndagusubije mu ijwi 🔊"
-      );
-
-      return;
-    }
-
-    // ===================================================
-    // TEXT
-    // ===================================================
-
-    const text =
-      await response.text();
-
-    if (text.trim()) {
-      addAssistantMessage(
-        text.trim()
-      );
-    } else {
-      addAssistantMessage(
-        "ANTIMATE ntiyagaruye igisubizo."
-      );
-    }
-  };
+    };
 
   // =====================================================
   // ADD ASSISTANT MESSAGE
@@ -994,8 +1079,7 @@ function AntimateAI() {
       {
         id:
           Date.now() +
-          "-error-" +
-          Math.random(),
+          "-error",
         role: "assistant",
         type: "error",
         text:
@@ -1026,15 +1110,15 @@ function AntimateAI() {
   const setResponseAudio = (
     returnedUrl
   ) => {
+    let finalUrl =
+      returnedUrl;
+
     if (
       typeof returnedUrl !==
       "string"
     ) {
       return;
     }
-
-    let finalUrl =
-      returnedUrl;
 
     if (
       !returnedUrl.startsWith(
@@ -1086,12 +1170,6 @@ function AntimateAI() {
   const clearConversation = () => {
     if (loading) return;
 
-    if (recording) {
-      stopRecording();
-    }
-
-    stopMicrophoneTracks();
-
     if (audioUrlRef.current) {
       URL.revokeObjectURL(
         audioUrlRef.current
@@ -1131,7 +1209,6 @@ function AntimateAI() {
       <div style={styles.glowTwo} />
 
       <div style={styles.chatShell}>
-
         {/* =================================================
             HEADER
         ================================================= */}
@@ -1147,7 +1224,11 @@ function AntimateAI() {
                 ANTIMATE AI
               </h1>
 
-              <div style={styles.statusRow}>
+              <div
+                style={
+                  styles.statusRow
+                }
+              >
                 <span
                   style={
                     styles.onlineDot
@@ -1171,9 +1252,7 @@ function AntimateAI() {
               styles.newChatButton
             }
           >
-            <span>
-              ＋
-            </span>
+            <span>＋</span>
 
             <span>
               Ikiganiro ginshya
@@ -1186,7 +1265,8 @@ function AntimateAI() {
         ================================================= */}
 
         <main style={styles.chatArea}>
-          {messages.length === 1 && (
+          {messages.length ===
+            1 && (
             <div
               style={
                 styles.welcomePanel
@@ -1306,11 +1386,13 @@ function AntimateAI() {
                       styles.typingDot
                     }
                   />
+
                   <span
                     style={
                       styles.typingDot
                     }
                   />
+
                   <span
                     style={
                       styles.typingDot
@@ -1411,57 +1493,58 @@ function AntimateAI() {
             VOICE READY
         ================================================= */}
 
-        {audioFile && !recording && (
-          <div
-            style={
-              styles.voiceReady
-            }
-          >
-            <div>
-              <span>
-                🎧
-              </span>
-
-              <span>
-                Audio yiteguye
-              </span>
-            </div>
-
+        {audioFile &&
+          !recording && (
             <div
               style={
-                styles.voiceReadyActions
+                styles.voiceReady
               }
             >
-              <button
-                type="button"
-                onClick={() =>
-                  setAudioFile(null)
-                }
-                disabled={loading}
-                style={
-                  styles.cancelVoice
-                }
-              >
-                Kuraho
-              </button>
+              <div>
+                <span>🎧</span>
 
-              <button
-                type="button"
-                onClick={
-                  sendVoiceMessage
-                }
-                disabled={loading}
+                <span>
+                  Audio yiteguye
+                </span>
+              </div>
+
+              <div
                 style={
-                  styles.sendVoiceButton
+                  styles.voiceReadyActions
                 }
               >
-                {loading
-                  ? "Irategereza..."
-                  : "Ohereza 🎤"}
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAudioFile(
+                      null
+                    )
+                  }
+                  disabled={loading}
+                  style={
+                    styles.cancelVoice
+                  }
+                >
+                  Kuraho
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    sendVoiceMessage
+                  }
+                  disabled={loading}
+                  style={
+                    styles.sendVoiceButton
+                  }
+                >
+                  {loading
+                    ? "Irategereza..."
+                    : "Ohereza 🎤"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* =================================================
             INPUT
@@ -1477,7 +1560,6 @@ function AntimateAI() {
               styles.inputWrapper
             }
           >
-
             {/* FILE */}
 
             <label
@@ -1533,18 +1615,17 @@ function AntimateAI() {
               disabled={loading}
               title={
                 recording
-                  ? "Hagarika gufata amajwi"
+                  ? "Hagarika"
                   : "Vuga"
-              }
-              aria-label={
-                recording
-                  ? "Hagarika gufata amajwi"
-                  : "Tangira gufata amajwi"
               }
               style={{
                 ...styles.micButton,
                 ...(recording
                   ? styles.micButtonActive
+                  : {}),
+                ...(micPermission ===
+                "denied"
+                  ? styles.micButtonDenied
                   : {}),
               }}
             >
@@ -1593,7 +1674,6 @@ function AntimateAI() {
             </span>
           </div>
         </footer>
-
       </div>
     </div>
   );
@@ -1839,13 +1919,15 @@ const styles = {
   chatArea: {
     flex: 1,
     overflowY: "auto",
-    padding: "30px 25px 20px",
+    padding:
+      "30px 25px 20px",
     scrollBehavior: "smooth",
   },
 
   welcomePanel: {
     maxWidth: "600px",
-    margin: "15px auto 35px",
+    margin:
+      "15px auto 35px",
     textAlign: "center",
   },
 
@@ -1871,7 +1953,8 @@ const styles = {
   },
 
   welcomeText: {
-    margin: "10px auto 20px",
+    margin:
+      "10px auto 20px",
     maxWidth: "500px",
     color: "#8296ad",
     fontSize: "13px",
@@ -1915,8 +1998,7 @@ const styles = {
   },
 
   userRow: {
-    justifyContent:
-      "flex-end",
+    justifyContent: "flex-end",
   },
 
   assistantAvatar: {
@@ -2233,6 +2315,12 @@ const styles = {
       "0 0 0 4px rgba(239,68,68,0.05)",
   },
 
+  micButtonDenied: {
+    background:
+      "rgba(239,68,68,0.08)",
+    color: "#f87171",
+  },
+
   sendButton: {
     flexShrink: 0,
     width: "39px",
@@ -2266,9 +2354,5 @@ const styles = {
     fontSize: "9px",
   },
 };
-
-// =======================================================
-// EXPORT
-// =======================================================
 
 export default AntimateAI;

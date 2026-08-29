@@ -40,6 +40,10 @@ export default function AntimateAI() {
   const audioUrlRef = useRef(null);
   const recordedAudioUrlRef = useRef(null);
 
+  // =====================================================
+  // INITIAL MESSAGE
+  // =====================================================
+
   useEffect(() => {
     setMessages([
       {
@@ -51,6 +55,10 @@ export default function AntimateAI() {
     ]);
   }, []);
 
+  // =====================================================
+  // MICROPHONE PERMISSION
+  // =====================================================
+
   useEffect(() => {
     checkMicrophonePermission();
   }, []);
@@ -61,8 +69,13 @@ export default function AntimateAI() {
         setMicPermission("unknown");
         return;
       }
-      const permission = await navigator.permissions.query({ name: "microphone" });
+
+      const permission = await navigator.permissions.query({
+        name: "microphone",
+      });
+
       setMicPermission(permission.state);
+
       permission.onchange = () => {
         setMicPermission(permission.state);
       };
@@ -71,28 +84,54 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // AUTO SCROLL
+  // =====================================================
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [messages, loading]);
+
+  // =====================================================
+  // CLEANUP
+  // =====================================================
 
   useEffect(() => {
     return () => {
       stopRecordingTimer();
       stopMicrophone();
-      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-      if (recordedAudioUrlRef.current) URL.revokeObjectURL(recordedAudioUrlRef.current);
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+
+      if (recordedAudioUrlRef.current) {
+        URL.revokeObjectURL(recordedAudioUrlRef.current);
+      }
     };
   }, []);
 
+  // =====================================================
+  // HELPERS
+  // =====================================================
+
   function getTime() {
-    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   const stopMicrophone = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
-        try { track.stop(); } catch {}
+        try {
+          track.stop();
+        } catch {}
       });
+
       streamRef.current = null;
     }
   };
@@ -117,11 +156,14 @@ export default function AntimateAI() {
         recordedAudioElementRef.current.currentTime = 0;
       } catch {}
     }
+
     setIsAudioPlaying(false);
+
     if (recordedAudioUrlRef.current) {
       URL.revokeObjectURL(recordedAudioUrlRef.current);
       recordedAudioUrlRef.current = null;
     }
+
     setRecordedAudioUrl(null);
   };
 
@@ -132,13 +174,20 @@ export default function AntimateAI() {
     setRecordedAudioUrl(url);
   };
 
+  // =====================================================
+  // RECORDING TIMER
+  // =====================================================
+
   const startRecordingTimer = () => {
     stopRecordingTimer();
     recordingStartTimeRef.current = Date.now();
     setRecordingSeconds(MAX_RECORDING_SECONDS);
 
     recordingTimerRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+      const elapsed = Math.floor(
+        (Date.now() - recordingStartTimeRef.current) / 1000
+      );
+
       const remaining = Math.max(0, MAX_RECORDING_SECONDS - elapsed);
       setRecordingSeconds(remaining);
 
@@ -152,13 +201,19 @@ export default function AntimateAI() {
     }, 250);
   };
 
+  // =====================================================
+  // MICROPHONE SUPPORT
+  // =====================================================
+
   const ensureMicrophoneSupport = () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Browser yawe ntabwo ishyigikira microphone.");
     }
+
     if (window.isSecureContext === false) {
       throw new Error("Microphone isaba HTTPS.");
     }
+
     if (typeof MediaRecorder === "undefined") {
       throw new Error("Browser yawe ntabwo ishyigikira audio recording.");
     }
@@ -166,46 +221,78 @@ export default function AntimateAI() {
 
   const getMicrophone = async () => {
     ensureMicrophoneSupport();
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+
       const tracks = stream.getAudioTracks();
+
       if (!tracks.length) {
         stream.getTracks().forEach((track) => track.stop());
         throw new Error("Browser ntiyabonye audio input.");
       }
+
       tracks[0].enabled = true;
       streamRef.current = stream;
       setMicPermission("granted");
+
       return stream;
     } catch (err) {
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      if (
+        err.name === "NotAllowedError" ||
+        err.name === "PermissionDeniedError"
+      ) {
         setMicPermission("denied");
-        throw new Error("Microphone ntiyemerewe. Emera microphone kuri browser hanyuma wongere ugerageze.");
+        throw new Error(
+          "Microphone ntiyemerewe. Emera microphone kuri browser hanyuma wongere ugerageze."
+        );
       }
+
       if (err.name === "NotFoundError") {
-        throw new Error("Browser ntiyabonye microphone. Reba Audio Input settings za device yawe.");
+        throw new Error(
+          "Browser ntiyabonye microphone. Reba Audio Input settings za device yawe."
+        );
       }
+
       if (err.name === "NotReadableError") {
-        throw new Error("Microphone iri gukoreshwa n'indi application cyangwa ntiyashoboye gusomwa.");
+        throw new Error(
+          "Microphone iri gukoreshwa n'indi application cyangwa ntiyashoboye gusomwa."
+        );
       }
+
       throw new Error(err.message || "Microphone ntiyashoboye gufunguka.");
     }
   };
 
+  // =====================================================
+  // START RECORDING
+  // =====================================================
+
   const startRecording = async () => {
     if (loading || recording || micChecking) return;
+
     setError("");
     setMicChecking(true);
 
     try {
       clearRecordedAudio();
       setAudioFile(null);
+
       stopMicrophone();
       resetRecordingTimer();
 
       const stream = await getMicrophone();
       let mimeType = "";
-      const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+
+      const types = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ];
 
       for (const type of types) {
         try {
@@ -216,12 +303,17 @@ export default function AntimateAI() {
         } catch {}
       }
 
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
-        if (event.data?.size > 0) audioChunksRef.current.push(event.data);
+        if (event.data?.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       recorder.onerror = () => {
@@ -234,9 +326,11 @@ export default function AntimateAI() {
       recorder.onstop = () => {
         stopRecordingTimer();
         const actualType = recorder.mimeType || mimeType || "audio/webm";
+
         const blob = new Blob(audioChunksRef.current, { type: actualType });
         setRecording(false);
         stopMicrophone();
+
         mediaRecorderRef.current = null;
 
         if (!blob.size) {
@@ -250,7 +344,12 @@ export default function AntimateAI() {
         if (actualType.includes("ogg")) extension = "ogg";
         if (actualType.includes("mp4")) extension = "mp4";
 
-        const file = new File([blob], `antimate-voice-${Date.now()}.${extension}`, { type: actualType });
+        const file = new File(
+          [blob],
+          `antimate-voice-${Date.now()}.${extension}`,
+          { type: actualType }
+        );
+
         setAudioFile(file);
         setRecordedPreview(file);
         audioChunksRef.current = [];
@@ -263,6 +362,7 @@ export default function AntimateAI() {
       stopRecordingTimer();
       stopMicrophone();
       setRecording(false);
+
       await checkMicrophonePermission();
       setError(err?.message || "Habaye ikibazo kuri microphone.");
     } finally {
@@ -270,9 +370,14 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // STOP RECORDING
+  // =====================================================
+
   const stopRecording = () => {
     stopRecordingTimer();
     const recorder = mediaRecorderRef.current;
+
     if (recorder && recorder.state !== "inactive") {
       recorder.stop();
     } else {
@@ -281,9 +386,14 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // AUDIO PREVIEW
+  // =====================================================
+
   const toggleRecordedAudio = async () => {
     const audio = recordedAudioElementRef.current;
     if (!audio) return;
+
     try {
       if (audio.paused) {
         await audio.play();
@@ -297,10 +407,16 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // CANCEL VOICE
+  // =====================================================
+
   const cancelVoiceRecording = () => {
     if (loading) return;
+
     stopRecordingTimer();
     const recorder = mediaRecorderRef.current;
+
     if (recorder && recorder.state !== "inactive") {
       try {
         recorder.ondataavailable = null;
@@ -309,41 +425,63 @@ export default function AntimateAI() {
         recorder.stop();
       } catch {}
     }
+
     mediaRecorderRef.current = null;
     audioChunksRef.current = [];
+
     stopMicrophone();
     clearRecordedAudio();
+
     setAudioFile(null);
     setRecording(false);
     setError("");
+
     resetRecordingTimer();
   };
+
+  // =====================================================
+  // FILE SELECT
+  // =====================================================
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     if (!file.type.startsWith("audio/")) {
       setError("Hitamo file y'amajwi gusa.");
       return;
     }
+
     setError("");
     clearRecordedAudio();
+
     setAudioFile(file);
     setRecordedPreview(file);
     event.target.value = "";
   };
 
+  // =====================================================
+  // TEXT MESSAGE
+  // =====================================================
+
   const sendTextMessage = async () => {
     const text = textInput.trim();
     if (!text || loading || recording) return;
+
     setTextInput("");
     setError("");
+
     addMessage({ role: "user", text });
     await sendTextToAntimate(text);
   };
 
+  // =====================================================
+  // VOICE MESSAGE
+  // =====================================================
+
   const sendVoiceMessage = async () => {
     if (!audioFile || loading) return;
+
     const file = audioFile;
     setError("");
 
@@ -353,25 +491,42 @@ export default function AntimateAI() {
         recordedAudioElementRef.current.currentTime = 0;
       } catch {}
     }
+
     setIsAudioPlaying(false);
-    addMessage({ role: "user", type: "voice", text: "🎤 Ubutumwa bw'amajwi" });
+
+    addMessage({
+      role: "user",
+      type: "voice",
+      text: "🎤 Ubutumwa bw'amajwi",
+    });
+
     clearRecordedAudio();
     setAudioFile(null);
+
     await sendAudioToAntimate(file);
   };
 
+  // =====================================================
+  // TEXT API
+  // =====================================================
+
   const sendTextToAntimate = async (text) => {
     setLoading(true);
+
     try {
       const token = localStorage.getItem("token");
       const headers = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
       const response = await fetch(`${API_BASE}/api/antimate/chat`, {
         method: "POST",
         headers,
         body: JSON.stringify({ message: text, language: "rw" }),
       });
+
       await processApiResponse(response);
     } catch (err) {
       addErrorMessage(err.message || "ANTIMATE ntiyabashije gusubiza.");
@@ -380,8 +535,13 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // AUDIO API
+  // =====================================================
+
   const sendAudioToAntimate = async (file) => {
     setLoading(true);
+
     try {
       const formData = new FormData();
       formData.append("audio", file);
@@ -389,13 +549,17 @@ export default function AntimateAI() {
 
       const token = localStorage.getItem("token");
       const headers = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
       const response = await fetch(`${API_BASE}/api/antimate/voice`, {
         method: "POST",
         headers,
         body: formData,
       });
+
       await processApiResponse(response);
     } catch (err) {
       addErrorMessage(err.message || "ANTIMATE ntiyabashije kwakira amajwi.");
@@ -404,10 +568,16 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // API RESPONSE
+  // =====================================================
+
   const processApiResponse = async (response) => {
     const contentType = response.headers.get("content-type") || "";
+
     if (!response.ok) {
       let message = `ANTIMATE API error (${response.status})`;
+
       try {
         if (contentType.includes("application/json")) {
           const data = await response.json();
@@ -417,14 +587,19 @@ export default function AntimateAI() {
           if (text) message = text;
         }
       } catch {}
+
       throw new Error(message);
     }
 
     if (contentType.includes("application/json")) {
       const data = await response.json();
+
       if (data.success === false) {
-        throw new Error(data.message || data.error || "ANTIMATE returned an error.");
+        throw new Error(
+          data.message || data.error || "ANTIMATE returned an error."
+        );
       }
+
       const answer =
         data.answer_rw ||
         data.answer_kinyarwanda ||
@@ -435,16 +610,25 @@ export default function AntimateAI() {
         data.message ||
         data.kinyarwanda ||
         "";
-      const returnedAudio = data.audio_url || data.audio || data.audioUrl || data.voice_url;
 
-      if (answer) addMessage({ role: "assistant", text: answer });
-      if (returnedAudio) setResponseAudio(returnedAudio);
+      const returnedAudio =
+        data.audio_url || data.audio || data.audioUrl || data.voice_url;
+
+      if (answer) {
+        addMessage({ role: "assistant", text: answer });
+      }
+
+      if (returnedAudio) {
+        setResponseAudio(returnedAudio);
+      }
+
       if (!answer && !returnedAudio) {
         addMessage({
           role: "assistant",
           text: "ANTIMATE yakiriye ubutumwa bwawe, ariko nta gisubizo yabashije gutanga.",
         });
       }
+
       return;
     }
 
@@ -452,13 +636,25 @@ export default function AntimateAI() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       replaceAudioUrl(url);
-      addMessage({ role: "assistant", text: "Ndagusubije mu ijwi 🔊" });
+
+      addMessage({
+        role: "assistant",
+        text: "Ndagusubije mu ijwi 🔊",
+      });
+
       return;
     }
 
     const text = await response.text();
-    addMessage({ role: "assistant", text: text.trim() || "ANTIMATE ntiyagaruye igisubizo." });
+    addMessage({
+      role: "assistant",
+      text: text.trim() || "ANTIMATE ntiyagaruye igisubizo.",
+    });
   };
+
+  // =====================================================
+  // MESSAGES
+  // =====================================================
 
   const addMessage = ({ role, text, type }) => {
     setMessages((previous) => [
@@ -482,20 +678,38 @@ export default function AntimateAI() {
     });
   };
 
+  // =====================================================
+  // RESPONSE AUDIO
+  // =====================================================
+
   const replaceAudioUrl = (url) => {
-    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+    }
+
     audioUrlRef.current = url;
     setAudioUrl(url);
   };
 
   const setResponseAudio = (url) => {
     if (typeof url !== "string") return;
+
     let finalUrl = url;
-    if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("blob:")) {
+
+    if (
+      !url.startsWith("http://") &&
+      !url.startsWith("https://") &&
+      !url.startsWith("blob:")
+    ) {
       finalUrl = `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
     }
+
     replaceAudioUrl(finalUrl);
   };
+
+  // =====================================================
+  // KEYBOARD
+  // =====================================================
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -504,10 +718,16 @@ export default function AntimateAI() {
     }
   };
 
+  // =====================================================
+  // NEW CHAT
+  // =====================================================
+
   const clearConversation = () => {
     if (loading || recording) return;
+
     stopRecordingTimer();
     stopMicrophone();
+
     clearRecordedAudio();
 
     if (audioUrlRef.current) {
@@ -533,6 +753,10 @@ export default function AntimateAI() {
     }, 100);
   };
 
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
     <div style={styles.page}>
       <div style={styles.chatShell}>
@@ -544,7 +768,7 @@ export default function AntimateAI() {
               <div style={styles.title}>ANTIMATE AI</div>
               <div style={styles.status}>
                 <span style={styles.onlineDot} />
-                <span style={{ color: "#10b981", fontWeight: 600 }}>Active Node</span>
+                System Active
               </div>
             </div>
           </div>
@@ -555,11 +779,11 @@ export default function AntimateAI() {
             disabled={loading || recording}
             style={styles.newChat}
           >
-            + New Chat
+            + Reset Chat
           </button>
         </header>
 
-        {/* CHAT AREA */}
+        {/* CHAT */}
         <main style={styles.chatArea}>
           <div style={styles.messages}>
             {messages.map((message) => (
@@ -569,9 +793,10 @@ export default function AntimateAI() {
             {loading && (
               <div style={styles.assistantRow}>
                 <div style={styles.avatar}>AI</div>
-                <div style={styles.typingContainer}>
-                  <div style={styles.pulseDot} />
-                  <span style={styles.typingText}>ANTIMATE iri gutekereza...</span>
+                <div style={styles.typing}>
+                  <span style={styles.dot} />
+                  <span style={styles.dot} />
+                  <span style={styles.dot} />
                 </div>
               </div>
             )}
@@ -580,15 +805,20 @@ export default function AntimateAI() {
           </div>
         </main>
 
-        {/* RESPONSE AUDIO PLAYER */}
+        {/* RESPONSE AUDIO */}
         {audioUrl && (
           <div style={styles.responseAudio}>
-            <span style={styles.audioLabel}>🔊 ANTIMATE Voice Response</span>
-            <audio controls autoPlay src={audioUrl} style={styles.audioPlayer} />
+            <span style={styles.audioLabel}>🔊 ANTIMATE VOICE</span>
+            <audio
+              controls
+              autoPlay
+              src={audioUrl}
+              style={styles.audioPlayer}
+            />
           </div>
         )}
 
-        {/* ERROR DISPLAY */}
+        {/* ERROR */}
         {error && (
           <div style={styles.error}>
             <span>⚠️ {error}</span>
@@ -598,13 +828,14 @@ export default function AntimateAI() {
           </div>
         )}
 
-        {/* RECORDING STATE */}
+        {/* RECORDING */}
         {recording && (
           <div style={styles.recordingBar}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={styles.redPulseDot} />
-              <strong>Recording...</strong>
-              <span style={{ color: "#94a3b8" }}>Vuga ubutumwa bwabo</span>
+            <div>
+              <strong style={styles.recPulse}>● RECORDING</strong>
+              <span style={{ marginLeft: "10px", color: "#94a3b8" }}>
+                Vuga ubu...
+              </span>
             </div>
             <div style={styles.timer}>{recordingSeconds}s</div>
           </div>
@@ -616,7 +847,7 @@ export default function AntimateAI() {
             <div style={styles.voiceInfo}>
               <span style={styles.voiceIcon}>🎙️</span>
               <div>
-                <strong style={{ color: "#f8fafc" }}>Audio Recording Ready</strong>
+                <strong style={{ color: "#f8fafc" }}>Audio Output Ready</strong>
                 <br />
                 <small style={{ color: "#64748b" }}>{audioFile.name}</small>
               </div>
@@ -643,7 +874,7 @@ export default function AntimateAI() {
                 disabled={loading}
                 style={styles.secondaryButton}
               >
-                Discard
+                Cancel
               </button>
 
               <button
@@ -657,15 +888,16 @@ export default function AntimateAI() {
           </div>
         )}
 
-        {/* INPUT CONTAINER */}
+        {/* INPUT */}
         <footer style={styles.footer}>
           <div style={styles.inputBox}>
+            {/* ATTACH */}
             <label
               style={{
                 ...styles.iconButton,
                 ...(recording || loading ? styles.disabled : {}),
               }}
-              title="Attach Audio File"
+              title="Attach audio"
             >
               📎
               <input
@@ -677,6 +909,7 @@ export default function AntimateAI() {
               />
             </label>
 
+            {/* TEXT */}
             <textarea
               ref={textInputRef}
               value={textInput}
@@ -684,10 +917,13 @@ export default function AntimateAI() {
               onKeyDown={handleKeyDown}
               disabled={loading || recording}
               rows={1}
-              placeholder={recording ? "Listening..." : "Baza ANTIMATE ikintu cyose..."}
+              placeholder={
+                recording ? "Recording audio..." : "Andika ubutumwa hano..."
+              }
               style={styles.textarea}
             />
 
+            {/* MIC */}
             <button
               type="button"
               onClick={recording ? stopRecording : startRecording}
@@ -696,18 +932,21 @@ export default function AntimateAI() {
                 ...styles.iconButton,
                 ...(recording ? styles.recordingButton : {}),
               }}
-              title={recording ? "Stop Recording" : "Record Voice"}
+              title={recording ? "Stop recording" : "Voice message"}
             >
-              {micChecking ? "..." : recording ? "⏹" : "🎙️"}
+              {micChecking ? "..." : recording ? "■" : "🎙️"}
             </button>
 
+            {/* SEND */}
             <button
               type="button"
               onClick={sendTextMessage}
               disabled={loading || recording || !textInput.trim()}
               style={{
                 ...styles.sendButton,
-                ...(!textInput.trim() || loading || recording ? styles.sendDisabled : {}),
+                ...(!textInput.trim() || loading || recording
+                  ? styles.sendDisabled
+                  : {}),
               }}
             >
               ➔
@@ -715,14 +954,20 @@ export default function AntimateAI() {
           </div>
 
           <div style={styles.footerHint}>
-            <span>⚡ ANTIMATE Engine v1.0 • Kinyarwanda AI</span>
-            <span>{micPermission === "granted" ? "Microphone Active" : "Press Enter to send"}</span>
+            <span>Kinyarwanda NLP Engine • Antimate Edge</span>
+            <span>
+              {micPermission === "granted" ? "Mic Active" : "Press Enter"}
+            </span>
           </div>
         </footer>
       </div>
     </div>
   );
 }
+
+// =======================================================
+// CHAT MESSAGE
+// =======================================================
 
 function ChatMessage({ message }) {
   const isUser = message.role === "user";
@@ -737,7 +982,12 @@ function ChatMessage({ message }) {
     >
       {!isUser && <div style={styles.avatar}>AI</div>}
 
-      <div style={{ ...styles.messageContent, ...(isUser ? styles.userContent : {}) }}>
+      <div
+        style={{
+          ...styles.messageContent,
+          ...(isUser ? styles.userContent : {}),
+        }}
+      >
         <div
           style={{
             ...styles.bubble,
@@ -745,9 +995,12 @@ function ChatMessage({ message }) {
             ...(isError ? styles.errorBubble : {}),
           }}
         >
-          {message.type === "voice" && <span style={styles.voiceMessage}>🎤 </span>}
+          {message.type === "voice" && (
+            <span style={styles.voiceMessage}>🎙️ </span>
+          )}
           {message.text}
         </div>
+
         <span style={styles.messageTime}>{message.time}</span>
       </div>
 
@@ -755,14 +1008,18 @@ function ChatMessage({ message }) {
     </div>
   );
 }
-backg
-// MODERN DARK THEME STYLES (PURE INLINE OBJECT)
+
+// =======================================================
+// GLOBAL DARK GLASSMORPHISM STYLES (PURE JS INLINE)
+// =======================================================
+
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "#648be6",
+    background: "radial-gradient(circle at top left, #0f172a, #020617)",
     color: "#f8fafc",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
+    fontFamily:
+      "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -772,16 +1029,17 @@ const styles = {
 
   chatShell: {
     width: "100%",
-    maxWidth: "920px",
+    maxWidth: "1000px",
     height: "calc(100vh - 32px)",
-    minHeight: "600px",
-    background: "#111827",
-    border: "1px solid #1f2937",
+    minHeight: "620px",
+    background: "rgba(15, 23, 42, 0.75)",
+    backdropFilter: "blur(16px)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     borderRadius: "24px",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
-    boxShadow: "0 20px 50px rgba(0, 0, 0, 0.4)",
+    boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5)",
   },
 
   header: {
@@ -790,8 +1048,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottom: "1px solid #1f2937",
-    background: "#111827",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    background: "rgba(30, 41, 59, 0.4)",
   },
 
   brand: {
@@ -804,13 +1062,13 @@ const styles = {
     width: "40px",
     height: "40px",
     borderRadius: "12px",
-    background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+    background: "linear-gradient(135deg, #10b981, #059669)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "18px",
-    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
+    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
   },
 
   title: {
@@ -825,33 +1083,36 @@ const styles = {
     alignItems: "center",
     gap: "6px",
     marginTop: "2px",
+    color: "#10b981",
     fontSize: "11px",
+    fontWeight: 500,
   },
 
   onlineDot: {
-    width: "8px",
-    height: "8px",
+    width: "7px",
+    height: "7px",
     borderRadius: "50%",
     background: "#10b981",
     boxShadow: "0 0 8px #10b981",
   },
 
   newChat: {
-    border: "1px solid #374151",
-    background: "#1f2937",
-    color: "#e5e7eb",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    background: "rgba(255, 255, 255, 0.05)",
+    color: "#cbd5e1",
     borderRadius: "10px",
     padding: "8px 14px",
     fontSize: "12px",
     fontWeight: 600,
     cursor: "pointer",
+    transition: "all 0.2s",
   },
 
   chatArea: {
     flex: 1,
     overflowY: "auto",
-    padding: "24px",
-    background: "#0b0f19",
+    padding: "32px 24px",
+    background: "transparent",
   },
 
   messages: {
@@ -878,9 +1139,9 @@ const styles = {
     width: "34px",
     height: "34px",
     borderRadius: "10px",
-    background: "#1e293b",
-    color: "#38bdf8",
-    border: "1px solid #334155",
+    background: "rgba(30, 41, 59, 0.8)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    color: "#10b981",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -893,7 +1154,7 @@ const styles = {
     width: "34px",
     height: "34px",
     borderRadius: "10px",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
@@ -901,12 +1162,13 @@ const styles = {
     fontSize: "10px",
     fontWeight: 800,
     flexShrink: 0,
+    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
   },
 
   messageContent: {
     display: "flex",
     flexDirection: "column",
-    maxWidth: "75%",
+    maxWidth: "72%",
   },
 
   userContent: {
@@ -922,56 +1184,50 @@ const styles = {
   },
 
   assistantBubble: {
-    background: "#1e293b",
+    background: "rgba(30, 41, 59, 0.7)",
     color: "#f1f5f9",
-    border: "1px solid #334155",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     borderBottomLeftRadius: "4px",
   },
 
   userBubble: {
-    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
     color: "#ffffff",
     borderBottomRightRadius: "4px",
-    boxShadow: "0 4px 14px rgba(37, 99, 235, 0.2)",
   },
 
   errorBubble: {
-    background: "#450a0a",
+    background: "rgba(153, 27, 27, 0.3)",
     color: "#fca5a5",
-    border: "1px solid #7f1d1d",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
   },
 
   messageTime: {
     fontSize: "10px",
     color: "#64748b",
     marginTop: "6px",
-    padding: "0 4px",
+    padding: "0 2px",
   },
 
   voiceMessage: {
     marginRight: "6px",
   },
 
-  typingContainer: {
+  typing: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    background: "#1e293b",
-    padding: "12px 18px",
+    gap: "6px",
+    background: "rgba(30, 41, 59, 0.7)",
+    padding: "14px 18px",
     borderRadius: "16px",
-    border: "1px solid #334155",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
   },
 
-  pulseDot: {
-    width: "8px",
-    height: "8px",
+  dot: {
+    width: "6px",
+    height: "6px",
     borderRadius: "50%",
-    background: "#38bdf8",
-  },
-
-  typingText: {
-    fontSize: "13px",
-    color: "#94a3b8",
+    background: "#10b981",
   },
 
   responseAudio: {
@@ -979,14 +1235,15 @@ const styles = {
     alignItems: "center",
     gap: "14px",
     padding: "12px 24px",
-    background: "#161e2e",
-    borderTop: "1px solid #1f2937",
+    background: "rgba(15, 23, 42, 0.9)",
+    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
   },
 
   audioLabel: {
     fontSize: "12px",
     fontWeight: 600,
-    color: "#38bdf8",
+    color: "#10b981",
+    letterSpacing: "0.3px",
   },
 
   audioPlayer: {
@@ -999,17 +1256,17 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 24px",
-    background: "#450a0a",
-    color: "#f87171",
+    background: "rgba(220, 38, 38, 0.2)",
+    color: "#fca5a5",
     fontSize: "13px",
-    borderTop: "1px solid #7f1d1d",
+    borderTop: "1px solid rgba(239, 68, 68, 0.3)",
   },
 
   closeError: {
     background: "transparent",
     border: "none",
-    color: "#f87171",
-    fontSize: "16px",
+    color: "#fca5a5",
+    fontSize: "14px",
     cursor: "pointer",
   },
 
@@ -1018,23 +1275,21 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 24px",
-    background: "#2a0808",
+    background: "rgba(239, 68, 68, 0.15)",
     color: "#ef4444",
     fontSize: "13px",
-    borderTop: "1px solid #7f1d1d",
+    borderTop: "1px solid rgba(239, 68, 68, 0.3)",
   },
 
-  redPulseDot: {
-    width: "10px",
-    height: "10px",
-    borderRadius: "50%",
-    background: "#ef4444",
+  recPulse: {
+    color: "#ef4444",
+    letterSpacing: "0.5px",
   },
 
   timer: {
     fontWeight: 700,
     fontVariantNumeric: "tabular-nums",
-    background: "#450a0a",
+    background: "rgba(239, 68, 68, 0.2)",
     padding: "2px 8px",
     borderRadius: "6px",
   },
@@ -1044,8 +1299,8 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "14px 24px",
-    background: "#161e2e",
-    borderTop: "1px solid #1f2937",
+    background: "rgba(30, 41, 59, 0.6)",
+    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
   },
 
   voiceInfo: {
@@ -1065,7 +1320,7 @@ const styles = {
   },
 
   primaryButton: {
-    background: "#2563eb",
+    background: "#10b981",
     color: "#ffffff",
     border: "none",
     borderRadius: "8px",
@@ -1073,12 +1328,13 @@ const styles = {
     fontSize: "12px",
     fontWeight: 600,
     cursor: "pointer",
+    boxShadow: "0 2px 10px rgba(16, 185, 129, 0.25)",
   },
 
   secondaryButton: {
-    background: "#1f2937",
+    background: "rgba(255, 255, 255, 0.05)",
     color: "#cbd5e1",
-    border: "1px solid #374151",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
     borderRadius: "8px",
     padding: "8px 14px",
     fontSize: "12px",
@@ -1087,19 +1343,19 @@ const styles = {
   },
 
   footer: {
-    padding: "20px 24px",
-    background: "#111827",
-    borderTop: "1px solid #1f2937",
+    padding: "18px 24px",
+    background: "rgba(15, 23, 42, 0.6)",
+    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
   },
 
   inputBox: {
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    background: "#1f2937",
-    border: "1px solid #374151",
-    borderRadius: "16px",
-    padding: "8px 14px",
+    background: "rgba(30, 41, 59, 0.7)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    borderRadius: "14px",
+    padding: "8px 12px",
   },
 
   textarea: {
@@ -1127,11 +1383,13 @@ const styles = {
     justifyContent: "center",
     cursor: "pointer",
     fontSize: "16px",
+    transition: "all 0.2s",
   },
 
   recordingButton: {
     background: "#ef4444",
     color: "#ffffff",
+    boxShadow: "0 0 12px rgba(239, 68, 68, 0.5)",
   },
 
   sendButton: {
@@ -1139,24 +1397,26 @@ const styles = {
     height: "36px",
     borderRadius: "10px",
     border: "none",
-    background: "#2563eb",
+    background: "linear-gradient(135deg, #10b981, #059669)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    fontSize: "14px",
+    fontSize: "15px",
     fontWeight: 700,
+    boxShadow: "0 2px 10px rgba(16, 185, 129, 0.3)",
   },
 
   sendDisabled: {
-    background: "#374151",
-    color: "#64748b",
+    background: "rgba(255, 255, 255, 0.05)",
+    color: "#475569",
     cursor: "not-allowed",
+    boxShadow: "none",
   },
 
   disabled: {
-    opacity: 0.5,
+    opacity: 0.4,
     cursor: "not-allowed",
   },
 

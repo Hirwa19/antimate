@@ -31,6 +31,10 @@ FEATURES
 - Theme controlled by AppSettingsContext
 - Language controlled by AppSettingsContext
 - Native CSS only
+- UI sound feedback:
+    • Send
+    • Recording start
+    • Recording stop
 ============================================================
 */
 
@@ -118,9 +122,11 @@ export default function AntimateAI() {
   ============================================================
   */
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] =
+    useState([]);
 
-  const [inputText, setInputText] = useState("");
+  const [inputText, setInputText] =
+    useState("");
 
   const [isSending, setIsSending] =
     useState(false);
@@ -163,6 +169,208 @@ export default function AntimateAI() {
 
   const inputRef =
     useRef(null);
+
+  /*
+  ============================================================
+  UI SOUND REF
+  ============================================================
+  */
+
+  const audioContextRef =
+    useRef(null);
+
+  /*
+  ============================================================
+  UI SOUND FEEDBACK
+  ============================================================
+
+  Uses Web Audio API.
+
+  No external .mp3 / .wav files are required.
+
+  Types:
+    • send
+    • record-start
+    • record-stop
+  ============================================================
+  */
+
+  const playUISound = (
+    type = "send"
+  ) => {
+    try {
+      const AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!AudioContext) {
+        return;
+      }
+
+      if (!audioContextRef.current) {
+        audioContextRef.current =
+          new AudioContext();
+      }
+
+      const ctx =
+        audioContextRef.current;
+
+      /*
+      ----------------------------------------------------------
+      Browser may initially suspend AudioContext.
+      ----------------------------------------------------------
+      */
+
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+
+      const now =
+        ctx.currentTime;
+
+      const oscillator =
+        ctx.createOscillator();
+
+      const gain =
+        ctx.createGain();
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+
+      /*
+      ==========================================================
+      SEND SOUND
+      ==========================================================
+      */
+
+      if (type === "send") {
+        oscillator.type = "sine";
+
+        oscillator.frequency.setValueAtTime(
+          620,
+          now
+        );
+
+        oscillator.frequency.exponentialRampToValueAtTime(
+          920,
+          now + 0.09
+        );
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          now
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.12,
+          now + 0.012
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + 0.12
+        );
+
+        oscillator.start(now);
+
+        oscillator.stop(
+          now + 0.13
+        );
+      }
+
+      /*
+      ==========================================================
+      RECORD START SOUND
+      ==========================================================
+      */
+
+      else if (
+        type === "record-start"
+      ) {
+        oscillator.type = "sine";
+
+        oscillator.frequency.setValueAtTime(
+          520,
+          now
+        );
+
+        oscillator.frequency.exponentialRampToValueAtTime(
+          760,
+          now + 0.10
+        );
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          now
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.14,
+          now + 0.015
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + 0.16
+        );
+
+        oscillator.start(now);
+
+        oscillator.stop(
+          now + 0.17
+        );
+      }
+
+      /*
+      ==========================================================
+      RECORD STOP SOUND
+      ==========================================================
+      */
+
+      else if (
+        type === "record-stop"
+      ) {
+        oscillator.type = "sine";
+
+        oscillator.frequency.setValueAtTime(
+          760,
+          now
+        );
+
+        oscillator.frequency.exponentialRampToValueAtTime(
+          430,
+          now + 0.11
+        );
+
+        gain.gain.setValueAtTime(
+          0.0001,
+          now
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.13,
+          now + 0.015
+        );
+
+        gain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + 0.15
+        );
+
+        oscillator.start(now);
+
+        oscillator.stop(
+          now + 0.16
+        );
+      }
+
+    } catch (error) {
+      console.warn(
+        "UI sound could not play:",
+        error
+      );
+    }
+  };
 
   /*
   ============================================================
@@ -212,6 +420,20 @@ export default function AntimateAI() {
           audio.src = "";
         } catch (_) {}
       });
+
+      /*
+      ----------------------------------------------------------
+      Close UI sound AudioContext
+      ----------------------------------------------------------
+      */
+
+      if (
+        audioContextRef.current
+      ) {
+        try {
+          audioContextRef.current.close();
+        } catch (_) {}
+      }
     };
   }, []);
 
@@ -252,12 +474,15 @@ export default function AntimateAI() {
   */
 
   const stopRecordingTimer = () => {
-    if (recordingTimerRef.current) {
+    if (
+      recordingTimerRef.current
+    ) {
       clearInterval(
         recordingTimerRef.current
       );
 
-      recordingTimerRef.current = null;
+      recordingTimerRef.current =
+        null;
     }
   };
 
@@ -382,6 +607,20 @@ export default function AntimateAI() {
       ) {
         return;
       }
+
+      /*
+      ==========================================================
+      SOUND FIRST
+      ==========================================================
+
+      This happens immediately when the user presses
+      the microphone button.
+      ==========================================================
+      */
+
+      playUISound(
+        "record-start"
+      );
 
       setRecordingError("");
 
@@ -517,6 +756,7 @@ export default function AntimateAI() {
         setIsRecording(true);
 
         startRecordingTimer();
+
       } catch (error) {
         console.error(
           "Microphone error:",
@@ -558,6 +798,17 @@ export default function AntimateAI() {
 
   const stopVoiceRecording =
     () => {
+
+      /*
+      ==========================================================
+      STOP SOUND
+      ==========================================================
+      */
+
+      playUISound(
+        "record-stop"
+      );
+
       stopRecordingTimer();
 
       const recorder =
@@ -741,6 +992,17 @@ export default function AntimateAI() {
       return;
     }
 
+    /*
+    ==========================================================
+    SEND SOUND
+    ==========================================================
+    
+    Plays immediately when Send is clicked.
+    ==========================================================
+    */
+
+    playUISound("send");
+
     setInputText("");
 
     if (inputRef.current) {
@@ -806,6 +1068,7 @@ export default function AntimateAI() {
           null,
         autoPlay: false,
       });
+
     } catch (error) {
       console.error(
         "Text request error:",
@@ -818,6 +1081,7 @@ export default function AntimateAI() {
             ? "Mbabarira, habaye ikibazo mu kubona igisubizo. Ongera ugerageze."
             : "Sorry, there was a problem getting a response. Please try again.",
       });
+
     } finally {
       stopThinking();
 
@@ -933,6 +1197,7 @@ export default function AntimateAI() {
           autoPlay:
             Boolean(audioUrl),
         });
+
       } catch (error) {
         console.error(
           "Voice request error:",
@@ -945,6 +1210,7 @@ export default function AntimateAI() {
               ? "Mbabarira, sinabashije kumva neza cyangwa kubona igisubizo. Ongera uvuge."
               : "Sorry, I could not understand you or get a response. Please try again.",
         });
+
       } finally {
         stopThinking();
         setIsSending(false);
@@ -1019,6 +1285,7 @@ export default function AntimateAI() {
       audio.currentTime = 0;
 
       await audio.play();
+
     } catch (error) {
       console.error(
         "Audio playback error:",
@@ -1263,13 +1530,6 @@ export default function AntimateAI() {
 
         /* ====================================================
            O-SHAPED LOGO
-           
-           IMPORTANT:
-           The animated gradient is now on ::before.
-           The actual ring/core stay static.
-           
-           Therefore:
-           AI DOES NOT ROTATE.
         ==================================================== */
 
         .antimate-logo-o {
@@ -1285,12 +1545,6 @@ export default function AntimateAI() {
 
           isolation: isolate;
         }
-
-        /*
-        --------------------------------------------------------
-        Animated glow
-        --------------------------------------------------------
-        */
 
         .antimate-logo-o::before {
           content: "";
@@ -1326,16 +1580,6 @@ export default function AntimateAI() {
             -2;
         }
 
-        /*
-        --------------------------------------------------------
-        Ring itself
-        --------------------------------------------------------
-        
-        The ring contains a pseudo element that rotates.
-        The core containing AI is NOT part of the animation.
-        --------------------------------------------------------
-        */
-
         .antimate-logo-ring {
           width: 100%;
           height: 100%;
@@ -1357,12 +1601,6 @@ export default function AntimateAI() {
 
           overflow: hidden;
         }
-
-        /*
-        --------------------------------------------------------
-        ONLY THIS GRADIENT ROTATES
-        --------------------------------------------------------
-        */
 
         .antimate-logo-ring::before {
           content: "";
@@ -1392,16 +1630,6 @@ export default function AntimateAI() {
             -1;
         }
 
-        /*
-        --------------------------------------------------------
-        CORE
-        --------------------------------------------------------
-        
-        NO animation here.
-        AI stays perfectly centered and static.
-        --------------------------------------------------------
-        */
-
         .antimate-logo-core {
           width: calc(100% - 6px);
           height: calc(100% - 6px);
@@ -1425,11 +1653,6 @@ export default function AntimateAI() {
             background 0.25s ease,
             color 0.25s ease;
 
-          /*
-          IMPORTANT:
-          NO transform animation.
-          NO rotation.
-          */
           transform:
             none !important;
         }
@@ -1468,10 +1691,6 @@ export default function AntimateAI() {
           letter-spacing:
             -0.5px;
 
-          /*
-          IMPORTANT:
-          AI stays static.
-          */
           transform:
             none !important;
 
@@ -1491,11 +1710,9 @@ export default function AntimateAI() {
           }
         }
 
-        /*
-        ========================================================
-        TITLE
-        ========================================================
-        */
+        /* ====================================================
+           TITLE
+        ==================================================== */
 
         .antimate-title {
           font-size: 17px;
@@ -1518,11 +1735,9 @@ export default function AntimateAI() {
             var(--ai-muted);
         }
 
-        /*
-        ========================================================
-        STATUS
-        ========================================================
-        */
+        /* ====================================================
+           STATUS
+        ==================================================== */
 
         .antimate-status {
           display: flex;
@@ -1551,11 +1766,9 @@ export default function AntimateAI() {
               : "rgba(53,199,122,0.12)"};
         }
 
-        /*
-        ========================================================
-        CHAT
-        ========================================================
-        */
+        /* ====================================================
+           CHAT
+        ==================================================== */
 
         .antimate-chat {
           flex: 1;
@@ -1569,10 +1782,6 @@ export default function AntimateAI() {
 
           overflow-y: auto;
 
-          /*
-          IMPORTANT:
-          Space for fixed header + bottom composer.
-          */
           padding:
             108px 24px 160px;
 
@@ -1592,14 +1801,9 @@ export default function AntimateAI() {
             20px;
         }
 
-        /*
-        ========================================================
-        WELCOME
-        ========================================================
-        
-        LOGO REMOVED FROM CENTER.
-        ========================================================
-        */
+        /* ====================================================
+           WELCOME
+        ==================================================== */
 
         .antimate-welcome {
           min-height:
@@ -1622,12 +1826,6 @@ export default function AntimateAI() {
           padding:
             35px 20px;
         }
-
-        /*
-        --------------------------------------------------------
-        No welcome logo anymore.
-        --------------------------------------------------------
-        */
 
         .antimate-welcome h1 {
           margin:
@@ -1663,11 +1861,9 @@ export default function AntimateAI() {
             14px;
         }
 
-        /*
-        ========================================================
-        MESSAGE
-        ========================================================
-        */
+        /* ====================================================
+           MESSAGE
+        ==================================================== */
 
         .antimate-message {
           width: 100%;
@@ -1690,11 +1886,9 @@ export default function AntimateAI() {
             flex-start;
         }
 
-        /*
-        ========================================================
-        AVATARS
-        ========================================================
-        */
+        /* ====================================================
+           AVATARS
+        ==================================================== */
 
         .antimate-avatar {
           width:
@@ -1759,11 +1953,9 @@ export default function AntimateAI() {
             34px !important;
         }
 
-        /*
-        ========================================================
-        MESSAGE CONTENT
-        ========================================================
-        */
+        /* ====================================================
+           MESSAGE CONTENT
+        ==================================================== */
 
         .antimate-message-content {
           max-width:
@@ -1802,11 +1994,9 @@ export default function AntimateAI() {
             0 8px 7px;
         }
 
-        /*
-        ========================================================
-        BUBBLE
-        ========================================================
-        */
+        /* ====================================================
+           BUBBLE
+        ==================================================== */
 
         .antimate-bubble {
           padding:
@@ -1868,11 +2058,9 @@ export default function AntimateAI() {
               : "rgba(15,23,42,0.04)"};
         }
 
-        /*
-        ========================================================
-        VOICE MARK
-        ========================================================
-        */
+        /* ====================================================
+           VOICE MARK
+        ==================================================== */
 
         .antimate-voice-mark {
           display:
@@ -1949,11 +2137,9 @@ export default function AntimateAI() {
             6px;
         }
 
-        /*
-        ========================================================
-        AI VOICE CONTROLS
-        ========================================================
-        */
+        /* ====================================================
+           AI VOICE CONTROLS
+        ==================================================== */
 
         .antimate-voice-controls {
           display:
@@ -2052,11 +2238,9 @@ export default function AntimateAI() {
             42px;
         }
 
-        /*
-        ========================================================
-        THINKING
-        ========================================================
-        */
+        /* ====================================================
+           THINKING
+        ==================================================== */
 
         .antimate-thinking {
           display:
@@ -2136,11 +2320,9 @@ export default function AntimateAI() {
           }
         }
 
-        /*
-        ========================================================
-        COMPOSER WRAPPER
-        ========================================================
-        */
+        /* ====================================================
+           COMPOSER WRAPPER
+        ==================================================== */
 
         .antimate-composer-wrapper {
           position:
@@ -2172,11 +2354,9 @@ export default function AntimateAI() {
             none;
         }
 
-        /*
-        ========================================================
-        COMPOSER
-        ========================================================
-        */
+        /* ====================================================
+           COMPOSER
+        ==================================================== */
 
         .antimate-composer {
           pointer-events:
@@ -2270,11 +2450,9 @@ export default function AntimateAI() {
             var(--ai-muted);
         }
 
-        /*
-        ========================================================
-        ACTION BUTTON
-        ========================================================
-        */
+        /* ====================================================
+           ACTION BUTTON
+        ==================================================== */
 
         .antimate-action-button {
           width:
@@ -2339,11 +2517,9 @@ export default function AntimateAI() {
             none;
         }
 
-        /*
-        ========================================================
-        RECORDING BUTTON
-        ========================================================
-        */
+        /* ====================================================
+           RECORDING BUTTON
+        ==================================================== */
 
         .antimate-action-button.recording {
           background:
@@ -2378,11 +2554,9 @@ export default function AntimateAI() {
           }
         }
 
-        /*
-        ========================================================
-        RECORDING STATUS
-        ========================================================
-        */
+        /* ====================================================
+           RECORDING STATUS
+        ==================================================== */
 
         .antimate-recording-area {
           position:
@@ -2482,11 +2656,9 @@ export default function AntimateAI() {
             var(--ai-muted);
         }
 
-        /*
-        ========================================================
-        ERROR
-        ========================================================
-        */
+        /* ====================================================
+           ERROR
+        ==================================================== */
 
         .antimate-error {
           position:
@@ -2544,11 +2716,9 @@ export default function AntimateAI() {
             10px;
         }
 
-        /*
-        ========================================================
-        MOBILE
-        ========================================================
-        */
+        /* ====================================================
+           MOBILE
+        ==================================================== */
 
         @media (max-width: 700px) {
 
@@ -2615,12 +2785,6 @@ export default function AntimateAI() {
             padding:
               11px 13px;
           }
-
-          /*
-          ------------------------------------------------------
-          Welcome
-          ------------------------------------------------------
-          */
 
           .antimate-welcome {
             min-height:
@@ -2698,11 +2862,9 @@ export default function AntimateAI() {
           }
         }
 
-        /*
-        ========================================================
-        SMALL MOBILE
-        ========================================================
-        */
+        /* ====================================================
+           SMALL MOBILE
+        ==================================================== */
 
         @media (max-width: 420px) {
 
@@ -2725,11 +2887,9 @@ export default function AntimateAI() {
           }
         }
 
-        /*
-        ========================================================
-        REDUCED MOTION
-        ========================================================
-        */
+        /* ====================================================
+           REDUCED MOTION
+        ==================================================== */
 
         @media (prefers-reduced-motion: reduce) {
 
@@ -2806,12 +2966,6 @@ export default function AntimateAI() {
           {messages.length === 0 &&
             !thinkingText && (
               <div className="antimate-welcome">
-
-                {/*
-                ==================================================
-                LOGO REMOVED FROM CENTER
-                ==================================================
-                */}
 
                 <h1>
                   {language === "rw"

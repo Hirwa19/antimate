@@ -15,11 +15,12 @@ FEATURES
 ------------------------------------------------------------
 - Text chat
 - Voice recording max 30 seconds
+- Professional start recording sound - 2 seconds
+- Professional stop recording sound - 2 seconds
 - Professional send sound
-- Professional recording sounds
-- Recording preparation sound = 2 seconds
-- Recording ready sound = 2 seconds
-- Microphone starts AFTER recording sounds finish
+- Recording starts AFTER start sound finishes
+- Recording stops BEFORE stop sound plays
+- 30s countdown
 - Voice transcript appears on USER side
 - AI voice answer appears on AI side
 - AI voice automatically plays once
@@ -27,11 +28,9 @@ FEATURES
 - Fixed bottom composer
 - Voice icon when text is empty
 - Send icon when user is typing
-- Dynamic thinking/status messages
-- Thinking message changes every 3 seconds
-- Auto scroll immediately after sending
-- Auto scroll when AI responds
-- Thinking area positioned around lower 1/3 of viewport
+- Thinking/status messages rotate every 3 seconds
+- Auto-scroll immediately after sending
+- Thinking indicator positioned around 1/3 from bottom
 - ANTIMATE O-SHAPED animated logo
 - AI text inside logo stays COMPLETELY STATIC
 - Logo does NOT appear in center welcome area
@@ -56,11 +55,11 @@ const MAX_RECORDING_SECONDS = 30;
 
 /*
 ============================================================
-RECORDING SOUND SETTINGS
+SOUND CONFIGURATION
 ============================================================
 */
 
-const RECORD_SOUND_DURATION = 2000;
+const SOUND_DURATION = 2000;
 
 /*
 ============================================================
@@ -115,7 +114,6 @@ MAIN COMPONENT
 */
 
 export default function AntimateAI() {
-
   /*
   ============================================================
   APP SETTINGS
@@ -134,11 +132,9 @@ export default function AntimateAI() {
   ============================================================
   */
 
-  const [messages, setMessages] =
-    useState([]);
+  const [messages, setMessages] = useState([]);
 
-  const [inputText, setInputText] =
-    useState("");
+  const [inputText, setInputText] = useState("");
 
   const [isSending, setIsSending] =
     useState(false);
@@ -146,7 +142,10 @@ export default function AntimateAI() {
   const [isRecording, setIsRecording] =
     useState(false);
 
-  const [isPreparingRecording, setIsPreparingRecording] =
+  const [isStartingRecording, setIsStartingRecording] =
+    useState(false);
+
+  const [isStoppingRecording, setIsStoppingRecording] =
     useState(false);
 
   const [recordingSeconds, setRecordingSeconds] =
@@ -179,16 +178,10 @@ export default function AntimateAI() {
   const thinkingTimerRef =
     useRef(null);
 
-  const autoScrollTimerRef =
-    useRef(null);
-
   const audioRefs =
     useRef({});
 
   const messagesEndRef =
-    useRef(null);
-
-  const thinkingRef =
     useRef(null);
 
   const inputRef =
@@ -197,8 +190,381 @@ export default function AntimateAI() {
   const audioContextRef =
     useRef(null);
 
-  const recordingSequenceRef =
-    useRef(null);
+  const recordingStopRequestedRef =
+    useRef(false);
+
+  /*
+  ============================================================
+  PROFESSIONAL AUDIO ENGINE
+  ============================================================
+  */
+
+  const getAudioContext = () => {
+    if (
+      typeof window === "undefined"
+    ) {
+      return null;
+    }
+
+    if (
+      !audioContextRef.current
+    ) {
+      const AudioContext =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!AudioContext) {
+        return null;
+      }
+
+      audioContextRef.current =
+        new AudioContext();
+    }
+
+    return audioContextRef.current;
+  };
+
+  /*
+  ============================================================
+  MASTER AUDIO UNLOCK
+  ============================================================
+  */
+
+  const unlockAudio = async () => {
+    try {
+      const context =
+        getAudioContext();
+
+      if (!context) {
+        return null;
+      }
+
+      if (
+        context.state ===
+        "suspended"
+      ) {
+        await context.resume();
+      }
+
+      return context;
+    } catch (error) {
+      console.warn(
+        "Audio context unlock failed:",
+        error
+      );
+
+      return null;
+    }
+  };
+
+  /*
+  ============================================================
+  PROFESSIONAL TONE GENERATOR
+  ============================================================
+  */
+
+  const playProfessionalSound =
+    async (type = "send") => {
+      const context =
+        await unlockAudio();
+
+      if (!context) {
+        return;
+      }
+
+      try {
+        const now =
+          context.currentTime;
+
+        /*
+        --------------------------------------------------------
+        SEND SOUND
+        --------------------------------------------------------
+        Short, clean UI confirmation.
+        --------------------------------------------------------
+        */
+
+        if (type === "send") {
+          const master =
+            context.createGain();
+
+          master.gain.setValueAtTime(
+            0.0001,
+            now
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.055,
+            now + 0.018
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.0001,
+            now + 0.18
+          );
+
+          master.connect(
+            context.destination
+          );
+
+          const oscillator =
+            context.createOscillator();
+
+          oscillator.type =
+            "sine";
+
+          oscillator.frequency.setValueAtTime(
+            720,
+            now
+          );
+
+          oscillator.frequency.exponentialRampToValueAtTime(
+            980,
+            now + 0.11
+          );
+
+          oscillator.connect(
+            master
+          );
+
+          oscillator.start(now);
+          oscillator.stop(
+            now + 0.2
+          );
+
+          return;
+        }
+
+        /*
+        --------------------------------------------------------
+        START RECORDING SOUND
+        --------------------------------------------------------
+        Exactly 2 seconds.
+        
+        Professional rising harmonic tone.
+        --------------------------------------------------------
+        */
+
+        if (type === "record-start") {
+          const master =
+            context.createGain();
+
+          master.gain.setValueAtTime(
+            0.0001,
+            now
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.045,
+            now + 0.12
+          );
+
+          master.gain.setValueAtTime(
+            0.045,
+            now + 0.8
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.0001,
+            now + 2.0
+          );
+
+          master.connect(
+            context.destination
+          );
+
+          const frequencies = [
+            392,
+            523.25,
+            659.25,
+          ];
+
+          frequencies.forEach(
+            (
+              frequency,
+              index
+            ) => {
+              const oscillator =
+                context.createOscillator();
+
+              const gain =
+                context.createGain();
+
+              const startTime =
+                now +
+                index * 0.18;
+
+              oscillator.type =
+                "sine";
+
+              oscillator.frequency.setValueAtTime(
+                frequency,
+                startTime
+              );
+
+              oscillator.frequency.exponentialRampToValueAtTime(
+                frequency * 1.04,
+                startTime + 1.4
+              );
+
+              gain.gain.setValueAtTime(
+                0.0001,
+                startTime
+              );
+
+              gain.gain.exponentialRampToValueAtTime(
+                0.35 / frequencies.length,
+                startTime + 0.18
+              );
+
+              gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                now + 2.0
+              );
+
+              oscillator.connect(
+                gain
+              );
+
+              gain.connect(
+                master
+              );
+
+              oscillator.start(
+                startTime
+              );
+
+              oscillator.stop(
+                now + 2.02
+              );
+            }
+          );
+
+          return;
+        }
+
+        /*
+        --------------------------------------------------------
+        STOP RECORDING SOUND
+        --------------------------------------------------------
+        Exactly 2 seconds.
+        
+        Smooth descending confirmation.
+        --------------------------------------------------------
+        */
+
+        if (type === "record-stop") {
+          const master =
+            context.createGain();
+
+          master.gain.setValueAtTime(
+            0.0001,
+            now
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.05,
+            now + 0.08
+          );
+
+          master.gain.exponentialRampToValueAtTime(
+            0.0001,
+            now + 2.0
+          );
+
+          master.connect(
+            context.destination
+          );
+
+          const frequencies = [
+            659.25,
+            523.25,
+            392,
+          ];
+
+          frequencies.forEach(
+            (
+              frequency,
+              index
+            ) => {
+              const oscillator =
+                context.createOscillator();
+
+              const gain =
+                context.createGain();
+
+              const startTime =
+                now +
+                index * 0.18;
+
+              oscillator.type =
+                "sine";
+
+              oscillator.frequency.setValueAtTime(
+                frequency,
+                startTime
+              );
+
+              oscillator.frequency.exponentialRampToValueAtTime(
+                frequency * 0.96,
+                startTime + 1.2
+              );
+
+              gain.gain.setValueAtTime(
+                0.0001,
+                startTime
+              );
+
+              gain.gain.exponentialRampToValueAtTime(
+                0.32 / frequencies.length,
+                startTime + 0.12
+              );
+
+              gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                now + 2.0
+              );
+
+              oscillator.connect(
+                gain
+              );
+
+              gain.connect(
+                master
+              );
+
+              oscillator.start(
+                startTime
+              );
+
+              oscillator.stop(
+                now + 2.02
+              );
+            }
+          );
+        }
+      } catch (error) {
+        console.warn(
+          "Professional sound failed:",
+          error
+        );
+      }
+    };
+
+  /*
+  ============================================================
+  WAIT
+  ============================================================
+  */
+
+  const wait = (ms) =>
+    new Promise(
+      (resolve) =>
+        setTimeout(
+          resolve,
+          ms
+        )
+    );
 
   /*
   ============================================================
@@ -209,20 +575,35 @@ export default function AntimateAI() {
   const scrollToBottom = (
     behavior = "smooth"
   ) => {
-    if (autoScrollTimerRef.current) {
-      clearTimeout(
-        autoScrollTimerRef.current
-      );
-    }
-
-    autoScrollTimerRef.current =
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({
-          behavior,
-          block: "end",
-        });
-      }, 30);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView(
+          {
+            behavior,
+            block: "end",
+          }
+        );
+      });
+    });
   };
+
+  /*
+  ============================================================
+  AUTO SCROLL WHEN MESSAGES / THINKING CHANGE
+  ============================================================
+  */
+
+  useEffect(() => {
+    if (
+      messages.length > 0 ||
+      thinkingText
+    ) {
+      scrollToBottom("smooth");
+    }
+  }, [
+    messages,
+    thinkingText,
+  ]);
 
   /*
   ============================================================
@@ -232,17 +613,17 @@ export default function AntimateAI() {
 
   useEffect(() => {
     return () => {
-
       stopRecordingTimer();
 
-      stopThinkingRotation();
-
       if (
-        autoScrollTimerRef.current
+        thinkingTimerRef.current
       ) {
-        clearTimeout(
-          autoScrollTimerRef.current
+        clearInterval(
+          thinkingTimerRef.current
         );
+
+        thinkingTimerRef.current =
+          null;
       }
 
       if (
@@ -263,20 +644,11 @@ export default function AntimateAI() {
       ) {
         mediaStreamRef.current
           .getTracks()
-          .forEach((track) => {
-            track.stop();
-          });
-      }
-
-      if (
-        recordingSequenceRef.current
-      ) {
-        clearTimeout(
-          recordingSequenceRef.current
-        );
-
-        recordingSequenceRef.current =
-          null;
+          .forEach(
+            (track) => {
+              track.stop();
+            }
+          );
       }
 
       Object.values(
@@ -305,45 +677,50 @@ export default function AntimateAI() {
   */
 
   const getThinkingMessages = (
-    type = "text"
+    type
   ) => {
+    if (language === "rw") {
+      if (type === "voice") {
+        return [
+          "🎤 Ndimo gutunganya ibyo uvuze...",
+          "🔎 Ndimo gusesengura ijwi ryawe...",
+          "🧠 Ndimo kumva neza icyo ushaka...",
+          "⚙️ Ndimo gutegura igisubizo...",
+          "💡 Hasigaye akanya gato...",
+        ];
+      }
 
-    if (type === "voice") {
-      return language === "rw"
-        ? [
-            "🎤 Ndumva ibyo uvuze...",
-            "🧠 Ndimo gusobanukirwa ibyo wavuze...",
-            "🔎 Reka ndebe igisubizo gikwiye...",
-            "⚙️ Ndimo gutegura igisubizo...",
-            "💡 Hafi kubona igisubizo...",
-          ]
-        : [
-            "🎤 Listening to you...",
-            "🧠 Understanding what you said...",
-            "🔎 Finding the right answer...",
-            "⚙️ Preparing the response...",
-            "💡 Almost there...",
-          ];
+      return [
+        "🧠 Ndatekereza...",
+        "🔎 Ndimo gusesengura ikibazo...",
+        "⚙️ Ndimo gutegura igisubizo...",
+        "💡 Ndimo gushaka igisubizo cyiza...",
+        "✨ Hasigaye akanya gato...",
+      ];
     }
 
-    return language === "rw"
-      ? [
-          "🧠 Ndigutekereza...",
-          "🔎 Ndimo gusesengura ikibazo...",
-          "⚙️ Ndimo gutegura igisubizo...",
-          "💡 Ndimo gushaka igisubizo cyiza...",
-          "✨ Hafi kubona igisubizo...",
-        ]
-      : [
-          "🧠 Thinking...",
-          "🔎 Analyzing your question...",
-          "⚙️ Preparing a response...",
-          "💡 Finding the best answer...",
-          "✨ Almost there...",
-        ];
+    if (type === "voice") {
+      return [
+        "🎤 Processing your voice...",
+        "🔎 Analyzing what you said...",
+        "🧠 Understanding your request...",
+        "⚙️ Preparing a response...",
+        "💡 Almost ready...",
+      ];
+    }
+
+    return [
+      "🧠 Thinking...",
+      "🔎 Analyzing your request...",
+      "⚙️ Preparing a response...",
+      "💡 Finding the best answer...",
+      "✨ Almost ready...",
+    ];
   };
 
-  const stopThinkingRotation = () => {
+  const startThinking = (
+    type = "text"
+  ) => {
     if (
       thinkingTimerRef.current
     ) {
@@ -354,61 +731,47 @@ export default function AntimateAI() {
       thinkingTimerRef.current =
         null;
     }
-  };
 
-  const startThinking = (
-    type = "text"
-  ) => {
-
-    stopThinkingRotation();
-
-    const thinkingMessages =
-      getThinkingMessages(type);
+    const phrases =
+      getThinkingMessages(
+        type
+      );
 
     let index = 0;
 
     setThinkingText(
-      thinkingMessages[index]
+      phrases[index]
     );
+
+    scrollToBottom("smooth");
 
     thinkingTimerRef.current =
       setInterval(() => {
-
         index =
           (index + 1) %
-          thinkingMessages.length;
+          phrases.length;
 
         setThinkingText(
-          thinkingMessages[index]
+          phrases[index]
         );
 
-        /*
-        --------------------------------------------------------
-        Keep thinking area visible as message changes
-        --------------------------------------------------------
-        */
-
-        scrollToBottom("smooth");
-
+        scrollToBottom(
+          "smooth"
+        );
       }, 3000);
-
-    /*
-    ------------------------------------------------------------
-    Immediately make thinking area visible
-    ------------------------------------------------------------
-    */
-
-    setTimeout(() => {
-      thinkingRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 50);
   };
 
   const stopThinking = () => {
+    if (
+      thinkingTimerRef.current
+    ) {
+      clearInterval(
+        thinkingTimerRef.current
+      );
 
-    stopThinkingRotation();
+      thinkingTimerRef.current =
+        null;
+    }
 
     setThinkingText("");
   };
@@ -420,7 +783,6 @@ export default function AntimateAI() {
   */
 
   const stopRecordingTimer = () => {
-
     if (
       recordingTimerRef.current
     ) {
@@ -434,17 +796,14 @@ export default function AntimateAI() {
   };
 
   const startRecordingTimer = () => {
-
     stopRecordingTimer();
 
     setRecordingSeconds(0);
 
     recordingTimerRef.current =
       setInterval(() => {
-
         setRecordingSeconds(
           (previous) => {
-
             const next =
               previous + 1;
 
@@ -452,7 +811,6 @@ export default function AntimateAI() {
               next >=
               MAX_RECORDING_SECONDS
             ) {
-
               clearInterval(
                 recordingTimerRef.current
               );
@@ -470,7 +828,6 @@ export default function AntimateAI() {
             return next;
           }
         );
-
       }, 1000);
   };
 
@@ -483,7 +840,6 @@ export default function AntimateAI() {
   const formatRecordingTime = (
     seconds
   ) => {
-
     const remaining =
       Math.max(
         0,
@@ -510,562 +866,12 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  AUDIO CONTEXT
-  ============================================================
-  */
-
-  const getAudioContext = () => {
-
-    if (
-      typeof window ===
-      "undefined"
-    ) {
-      return null;
-    }
-
-    const AudioContextClass =
-      window.AudioContext ||
-      window.webkitAudioContext;
-
-    if (!AudioContextClass) {
-      return null;
-    }
-
-    if (
-      !audioContextRef.current
-    ) {
-      audioContextRef.current =
-        new AudioContextClass();
-    }
-
-    return audioContextRef.current;
-  };
-
-  /*
-  ============================================================
-  PROFESSIONAL SEND SOUND
-  ============================================================
-  
-  Short, clean UI notification.
-  DIFFERENT from recording sounds.
-  ============================================================
-  */
-
-  const playSendSound = async () => {
-
-    try {
-
-      const context =
-        getAudioContext();
-
-      if (!context) return;
-
-      if (
-        context.state ===
-        "suspended"
-      ) {
-        await context.resume();
-      }
-
-      const now =
-        context.currentTime;
-
-      /*
-      --------------------------------------------------------
-      First tone
-      --------------------------------------------------------
-      */
-
-      const oscillator1 =
-        context.createOscillator();
-
-      const gain1 =
-        context.createGain();
-
-      oscillator1.type =
-        "sine";
-
-      oscillator1.frequency.setValueAtTime(
-        620,
-        now
-      );
-
-      oscillator1.frequency.exponentialRampToValueAtTime(
-        880,
-        now + 0.10
-      );
-
-      gain1.gain.setValueAtTime(
-        0.0001,
-        now
-      );
-
-      gain1.gain.exponentialRampToValueAtTime(
-        0.16,
-        now + 0.015
-      );
-
-      gain1.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 0.20
-      );
-
-      oscillator1.connect(
-        gain1
-      );
-
-      gain1.connect(
-        context.destination
-      );
-
-      oscillator1.start(now);
-
-      oscillator1.stop(
-        now + 0.21
-      );
-
-      /*
-      --------------------------------------------------------
-      Second confirmation tone
-      --------------------------------------------------------
-      */
-
-      const oscillator2 =
-        context.createOscillator();
-
-      const gain2 =
-        context.createGain();
-
-      oscillator2.type =
-        "sine";
-
-      oscillator2.frequency.setValueAtTime(
-        880,
-        now + 0.08
-      );
-
-      oscillator2.frequency.exponentialRampToValueAtTime(
-        1046,
-        now + 0.20
-      );
-
-      gain2.gain.setValueAtTime(
-        0.0001,
-        now + 0.08
-      );
-
-      gain2.gain.exponentialRampToValueAtTime(
-        0.12,
-        now + 0.10
-      );
-
-      gain2.gain.exponentialRampToValueAtTime(
-        0.0001,
-        now + 0.31
-      );
-
-      oscillator2.connect(
-        gain2
-      );
-
-      gain2.connect(
-        context.destination
-      );
-
-      oscillator2.start(
-        now + 0.08
-      );
-
-      oscillator2.stop(
-        now + 0.32
-      );
-
-    } catch (error) {
-      console.warn(
-        "Send sound error:",
-        error
-      );
-    }
-  };
-
-  /*
-  ============================================================
-  RECORDING SOUND #1
-  ============================================================
-  
-  Professional "preparing" sound.
-  EXACTLY 2 seconds.
-  ============================================================
-  */
-
-  const playRecordingPreparationSound =
-    async () => {
-
-      try {
-
-        const context =
-          getAudioContext();
-
-        if (!context) {
-          return;
-        }
-
-        if (
-          context.state ===
-          "suspended"
-        ) {
-          await context.resume();
-        }
-
-        const now =
-          context.currentTime;
-
-        /*
-        --------------------------------------------------------
-        Soft low pad
-        --------------------------------------------------------
-        */
-
-        const oscillator =
-          context.createOscillator();
-
-        const gain =
-          context.createGain();
-
-        oscillator.type =
-          "sine";
-
-        oscillator.frequency.setValueAtTime(
-          220,
-          now
-        );
-
-        oscillator.frequency.exponentialRampToValueAtTime(
-          330,
-          now + 1.2
-        );
-
-        oscillator.frequency.exponentialRampToValueAtTime(
-          260,
-          now + 2.0
-        );
-
-        gain.gain.setValueAtTime(
-          0.0001,
-          now
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-          0.10,
-          now + 0.25
-        );
-
-        gain.gain.setValueAtTime(
-          0.10,
-          now + 1.2
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + 2.0
-        );
-
-        oscillator.connect(
-          gain
-        );
-
-        gain.connect(
-          context.destination
-        );
-
-        oscillator.start(now);
-
-        oscillator.stop(
-          now + 2.0
-        );
-
-        /*
-        --------------------------------------------------------
-        Subtle harmonic
-        --------------------------------------------------------
-        */
-
-        const harmonic =
-          context.createOscillator();
-
-        const harmonicGain =
-          context.createGain();
-
-        harmonic.type =
-          "sine";
-
-        harmonic.frequency.setValueAtTime(
-          440,
-          now + 0.1
-        );
-
-        harmonicGain.gain.setValueAtTime(
-          0.0001,
-          now
-        );
-
-        harmonicGain.gain.exponentialRampToValueAtTime(
-          0.035,
-          now + 0.4
-        );
-
-        harmonicGain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + 2.0
-        );
-
-        harmonic.connect(
-          harmonicGain
-        );
-
-        harmonicGain.connect(
-          context.destination
-        );
-
-        harmonic.start(
-          now + 0.1
-        );
-
-        harmonic.stop(
-          now + 2.0
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "Recording preparation sound error:",
-          error
-        );
-      }
-    };
-
-  /*
-  ============================================================
-  RECORDING SOUND #2
-  ============================================================
-  
-  Professional "ready" sound.
-  EXACTLY 2 seconds.
-  ============================================================
-  */
-
-  const playRecordingReadySound =
-    async () => {
-
-      try {
-
-        const context =
-          getAudioContext();
-
-        if (!context) {
-          return;
-        }
-
-        if (
-          context.state ===
-          "suspended"
-        ) {
-          await context.resume();
-        }
-
-        const now =
-          context.currentTime;
-
-        /*
-        --------------------------------------------------------
-        Rising confirmation tone
-        --------------------------------------------------------
-        */
-
-        const oscillator =
-          context.createOscillator();
-
-        const gain =
-          context.createGain();
-
-        oscillator.type =
-          "sine";
-
-        oscillator.frequency.setValueAtTime(
-          392,
-          now
-        );
-
-        oscillator.frequency.exponentialRampToValueAtTime(
-          523,
-          now + 0.55
-        );
-
-        oscillator.frequency.exponentialRampToValueAtTime(
-          784,
-          now + 1.15
-        );
-
-        oscillator.frequency.exponentialRampToValueAtTime(
-          1046,
-          now + 1.55
-        );
-
-        gain.gain.setValueAtTime(
-          0.0001,
-          now
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-          0.12,
-          now + 0.12
-        );
-
-        gain.gain.setValueAtTime(
-          0.12,
-          now + 1.2
-        );
-
-        gain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + 2.0
-        );
-
-        oscillator.connect(
-          gain
-        );
-
-        gain.connect(
-          context.destination
-        );
-
-        oscillator.start(now);
-
-        oscillator.stop(
-          now + 2.0
-        );
-
-        /*
-        --------------------------------------------------------
-        Final soft harmonic
-        --------------------------------------------------------
-        */
-
-        const second =
-          context.createOscillator();
-
-        const secondGain =
-          context.createGain();
-
-        second.type =
-          "sine";
-
-        second.frequency.setValueAtTime(
-          784,
-          now + 0.65
-        );
-
-        second.frequency.exponentialRampToValueAtTime(
-          1174,
-          now + 1.5
-        );
-
-        secondGain.gain.setValueAtTime(
-          0.0001,
-          now
-        );
-
-        secondGain.gain.exponentialRampToValueAtTime(
-          0.045,
-          now + 0.75
-        );
-
-        secondGain.gain.exponentialRampToValueAtTime(
-          0.0001,
-          now + 2.0
-        );
-
-        second.connect(
-          secondGain
-        );
-
-        secondGain.connect(
-          context.destination
-        );
-
-        second.start(
-          now + 0.65
-        );
-
-        second.stop(
-          now + 2.0
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "Recording ready sound error:",
-          error
-        );
-      }
-    };
-
-  /*
-  ============================================================
-  PLAY BOTH RECORDING SOUNDS
-  ============================================================
-  
-  2 seconds preparation
-  +
-  2 seconds ready
-  =
-  microphone starts after 4 seconds.
-  ============================================================
-  */
-
-  const playRecordingStartupSounds =
-    async () => {
-
-      await playRecordingPreparationSound();
-
-      await new Promise(
-        (resolve) => {
-          recordingSequenceRef.current =
-            setTimeout(
-              resolve,
-              RECORD_SOUND_DURATION
-            );
-        }
-      );
-
-      recordingSequenceRef.current =
-        null;
-
-      await playRecordingReadySound();
-
-      await new Promise(
-        (resolve) => {
-          recordingSequenceRef.current =
-            setTimeout(
-              resolve,
-              RECORD_SOUND_DURATION
-            );
-        }
-      );
-
-      recordingSequenceRef.current =
-        null;
-    };
-
-  /*
-  ============================================================
   MIME TYPE
   ============================================================
   */
 
   const getSupportedMimeType =
     () => {
-
       if (
         typeof MediaRecorder ===
           "undefined" ||
@@ -1084,7 +890,6 @@ export default function AntimateAI() {
       for (
         const type of types
       ) {
-
         if (
           MediaRecorder.isTypeSupported(
             type
@@ -1099,187 +904,69 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  START ACTUAL MICROPHONE
+  START ACTUAL RECORDER
   ============================================================
   */
 
-  const startActualVoiceRecording =
-    async () => {
-
+  const beginRecording = async () => {
+    try {
       if (
-        isSending ||
-        isRecording
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices
+          .getUserMedia
       ) {
-        return;
+        throw new Error(
+          language === "rw"
+            ? "Browser ntabwo ishyigikira microphone."
+            : "This browser does not support microphone access."
+        );
       }
 
-      setRecordingError("");
-
-      try {
-
-        if (
-          !navigator.mediaDevices ||
-          !navigator.mediaDevices
-            .getUserMedia
-        ) {
-          throw new Error(
-            language === "rw"
-              ? "Browser ntabwo ishyigikira microphone."
-              : "This browser does not support microphone access."
-          );
-        }
-
-        const stream =
-          await navigator.mediaDevices.getUserMedia(
-            {
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-              },
-            }
-          );
-
-        mediaStreamRef.current =
-          stream;
-
-        const mimeType =
-          getSupportedMimeType();
-
-        const recorder =
-          mimeType
-            ? new MediaRecorder(
-                stream,
-                {
-                  mimeType,
-                }
-              )
-            : new MediaRecorder(
-                stream
-              );
-
-        const chunks = [];
-
-        recorder.ondataavailable =
-          (event) => {
-
-            if (
-              event.data &&
-              event.data.size > 0
-            ) {
-              chunks.push(
-                event.data
-              );
-            }
-          };
-
-        recorder.onstop =
-          async () => {
-
-            stopRecordingTimer();
-
-            stream
-              .getTracks()
-              .forEach(
-                (track) => {
-                  track.stop();
-                }
-              );
-
-            mediaStreamRef.current =
-              null;
-
-            mediaRecorderRef.current =
-              null;
-
-            setIsRecording(false);
-            setRecordingSeconds(0);
-
-            if (
-              !chunks.length
-            ) {
-
-              setRecordingError(
-                language === "rw"
-                  ? "Nta audio yafashwe. Ongera ugerageze."
-                  : "No audio was recorded. Please try again."
-              );
-
-              return;
-            }
-
-            const finalType =
-              recorder.mimeType ||
-              "audio/webm";
-
-            const blob =
-              new Blob(
-                chunks,
-                {
-                  type:
-                    finalType,
-                }
-              );
-
-            await sendVoice(blob);
-          };
-
-        recorder.onerror =
-          () => {
-
-            stopRecordingTimer();
-
-            stream
-              .getTracks()
-              .forEach(
-                (track) => {
-                  track.stop();
-                }
-              );
-
-            mediaStreamRef.current =
-              null;
-
-            mediaRecorderRef.current =
-              null;
-
-            setIsRecording(false);
-            setRecordingSeconds(0);
-
-            setRecordingError(
-              language === "rw"
-                ? "Habaye ikibazo mu gufata amajwi."
-                : "There was a problem recording audio."
-            );
-          };
-
-        mediaRecorderRef.current =
-          recorder;
-
-        recorder.start();
-
-        setIsRecording(true);
-
-        setIsPreparingRecording(false);
-
-        startRecordingTimer();
-
-      } catch (error) {
-
-        console.error(
-          "Microphone error:",
-          error
+      const stream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          }
         );
 
-        setIsRecording(false);
-        setIsPreparingRecording(false);
-        setRecordingSeconds(0);
+      mediaStreamRef.current =
+        stream;
 
-        if (
-          mediaStreamRef.current
-        ) {
+      const mimeType =
+        getSupportedMimeType();
 
-          mediaStreamRef.current
+      const recorder = mimeType
+        ? new MediaRecorder(
+            stream,
+            { mimeType }
+          )
+        : new MediaRecorder(
+            stream
+          );
+
+      const chunks = [];
+
+      recorder.ondataavailable =
+        (event) => {
+          if (
+            event.data &&
+            event.data.size > 0
+          ) {
+            chunks.push(
+              event.data
+            );
+          }
+        };
+
+      recorder.onstop =
+        async () => {
+          stopRecordingTimer();
+
+          stream
             .getTracks()
             .forEach(
               (track) => {
@@ -1289,122 +976,209 @@ export default function AntimateAI() {
 
           mediaStreamRef.current =
             null;
-        }
 
-        setRecordingError(
-          error?.message ||
-            (language === "rw"
-              ? "Microphone ntiyabashije gufunguka."
-              : "Microphone could not be opened.")
-        );
+          mediaRecorderRef.current =
+            null;
+
+          setIsRecording(false);
+          setIsStoppingRecording(
+            false
+          );
+          setRecordingSeconds(0);
+
+          if (!chunks.length) {
+            setRecordingError(
+              language === "rw"
+                ? "Nta audio yafashwe. Ongera ugerageze."
+                : "No audio was recorded. Please try again."
+            );
+
+            return;
+          }
+
+          const finalType =
+            recorder.mimeType ||
+            "audio/webm";
+
+          const blob =
+            new Blob(chunks, {
+              type: finalType,
+            });
+
+          /*
+          --------------------------------------------------------
+          PLAY STOP SOUND FIRST
+          --------------------------------------------------------
+          */
+
+          await playProfessionalSound(
+            "record-stop"
+          );
+
+          /*
+          --------------------------------------------------------
+          THEN SEND VOICE
+          --------------------------------------------------------
+          */
+
+          await sendVoice(blob);
+        };
+
+      recorder.onerror =
+        () => {
+          stopRecordingTimer();
+
+          stream
+            .getTracks()
+            .forEach(
+              (track) => {
+                track.stop();
+              }
+            );
+
+          mediaStreamRef.current =
+            null;
+
+          mediaRecorderRef.current =
+            null;
+
+          setIsRecording(false);
+          setIsStoppingRecording(
+            false
+          );
+          setRecordingSeconds(0);
+
+          setRecordingError(
+            language === "rw"
+              ? "Habaye ikibazo mu gufata amajwi."
+              : "There was a problem recording audio."
+          );
+        };
+
+      mediaRecorderRef.current =
+        recorder;
+
+      recorder.start();
+
+      setIsRecording(true);
+      setIsStartingRecording(
+        false
+      );
+
+      startRecordingTimer();
+
+      scrollToBottom("smooth");
+    } catch (error) {
+      console.error(
+        "Microphone error:",
+        error
+      );
+
+      setIsStartingRecording(
+        false
+      );
+
+      setIsRecording(false);
+      setRecordingSeconds(0);
+
+      if (
+        mediaStreamRef.current
+      ) {
+        mediaStreamRef.current
+          .getTracks()
+          .forEach(
+            (track) => {
+              track.stop();
+            }
+          );
+
+        mediaStreamRef.current =
+          null;
       }
-    };
+
+      setRecordingError(
+        error?.message ||
+          (language === "rw"
+            ? "Microphone ntiyabashije gufunguka."
+            : "Microphone could not be opened.")
+      );
+    }
+  };
 
   /*
   ============================================================
   START VOICE RECORDING
   ============================================================
-  
-  IMPORTANT:
-  User clicks microphone
-      ↓
-  Sound #1 = 2s
-      ↓
-  Sound #2 = 2s
-      ↓
-  Microphone starts
-  ============================================================
   */
 
   const startVoiceRecording =
     async () => {
-
       if (
         isSending ||
         isRecording ||
-        isPreparingRecording
+        isStartingRecording ||
+        isStoppingRecording
       ) {
         return;
       }
 
       setRecordingError("");
+      setIsStartingRecording(
+        true
+      );
 
       /*
-      --------------------------------------------------------
-      Immediately unlock AudioContext from user gesture
-      --------------------------------------------------------
+      ----------------------------------------------------------
+      Unlock audio immediately from click gesture.
+      ----------------------------------------------------------
       */
 
-      try {
-
-        const context =
-          getAudioContext();
-
-        if (
-          context &&
-          context.state ===
-            "suspended"
-        ) {
-          await context.resume();
-        }
-
-      } catch (_) {}
-
-      setIsPreparingRecording(true);
+      await unlockAudio();
 
       /*
-      --------------------------------------------------------
-      Play professional recording sequence
-      --------------------------------------------------------
+      ----------------------------------------------------------
+      PLAY 2 SECOND START SOUND
+      ----------------------------------------------------------
       */
 
-      try {
+      await playProfessionalSound(
+        "record-start"
+      );
 
-        await playRecordingStartupSounds();
-
-      } catch (error) {
-
-        console.warn(
-          "Recording startup sounds failed:",
-          error
-        );
-
-        /*
-        Even if sound fails,
-        continue to microphone.
-        */
-      }
+      /*
+      ----------------------------------------------------------
+      ONLY AFTER SOUND FINISHES:
+      START MICROPHONE
+      ----------------------------------------------------------
+      */
 
       if (
-        recordingSequenceRef.current
+        !isStartingRecording
       ) {
-        clearTimeout(
-          recordingSequenceRef.current
-        );
-
-        recordingSequenceRef.current =
-          null;
+        return;
       }
 
-      setIsPreparingRecording(false);
-
-      /*
-      --------------------------------------------------------
-      Start microphone
-      --------------------------------------------------------
-      */
-
-      await startActualVoiceRecording();
+      await beginRecording();
     };
 
   /*
   ============================================================
-  STOP RECORDING
+  STOP VOICE RECORDING
   ============================================================
   */
 
   const stopVoiceRecording =
-    () => {
+    async () => {
+      if (
+        !isRecording ||
+        isStoppingRecording
+      ) {
+        return;
+      }
+
+      setIsStoppingRecording(
+        true
+      );
 
       stopRecordingTimer();
 
@@ -1412,52 +1186,40 @@ export default function AntimateAI() {
         mediaRecorderRef.current;
 
       if (!recorder) {
-
         setIsRecording(false);
+        setIsStoppingRecording(
+          false
+        );
         setRecordingSeconds(0);
 
         return;
       }
 
+      /*
+      ----------------------------------------------------------
+      Stop recorder FIRST.
+      onstop will then play the 2-second stop sound and send.
+      ----------------------------------------------------------
+      */
+
       if (
         recorder.state !==
         "inactive"
       ) {
-
         try {
           recorder.stop();
         } catch (error) {
-
           console.error(
             "Stopping recorder failed:",
             error
           );
+
+          setIsRecording(false);
+          setIsStoppingRecording(
+            false
+          );
         }
       }
-    };
-
-  /*
-  ============================================================
-  CANCEL RECORDING PREPARATION
-  ============================================================
-  */
-
-  const cancelRecordingPreparation =
-    () => {
-
-      if (
-        recordingSequenceRef.current
-      ) {
-
-        clearTimeout(
-          recordingSequenceRef.current
-        );
-
-        recordingSequenceRef.current =
-          null;
-      }
-
-      setIsPreparingRecording(false);
     };
 
   /*
@@ -1468,7 +1230,6 @@ export default function AntimateAI() {
 
   const parseResponse =
     async (response) => {
-
       const contentType =
         response.headers.get(
           "content-type"
@@ -1486,11 +1247,8 @@ export default function AntimateAI() {
         await response.text();
 
       try {
-
         return JSON.parse(raw);
-
       } catch (_) {
-
         return {
           success: false,
           error:
@@ -1509,7 +1267,6 @@ export default function AntimateAI() {
   const extractAnswer = (
     data
   ) => {
-
     if (!data) return "";
 
     return (
@@ -1533,7 +1290,6 @@ export default function AntimateAI() {
     text: messageText,
     voice = false,
   }) => {
-
     const id =
       `user-${Date.now()}-${Math.random()
         .toString(36)
@@ -1555,12 +1311,14 @@ export default function AntimateAI() {
     );
 
     /*
-    --------------------------------------------------------
+    ----------------------------------------------------------
     IMMEDIATE AUTO SCROLL
-    --------------------------------------------------------
+    ----------------------------------------------------------
     */
 
-    scrollToBottom("smooth");
+    setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 30);
 
     return message;
   };
@@ -1576,7 +1334,6 @@ export default function AntimateAI() {
     audioUrl = null,
     autoPlay = false,
   }) => {
-
     const id =
       `ai-${Date.now()}-${Math.random()
         .toString(36)
@@ -1598,26 +1355,15 @@ export default function AntimateAI() {
       ]
     );
 
-    /*
-    --------------------------------------------------------
-    Auto scroll when AI response arrives
-    --------------------------------------------------------
-    */
-
-    scrollToBottom("smooth");
-
     if (
       audioUrl &&
       autoPlay
     ) {
-
       setTimeout(() => {
-
         playVoice(
           id,
           audioUrl
         );
-
       }, 180);
     }
 
@@ -1631,7 +1377,6 @@ export default function AntimateAI() {
   */
 
   const sendText = async () => {
-
     const cleanText =
       inputText.trim();
 
@@ -1639,37 +1384,33 @@ export default function AntimateAI() {
       !cleanText ||
       isSending ||
       isRecording ||
-      isPreparingRecording
+      isStartingRecording ||
+      isStoppingRecording
     ) {
       return;
     }
 
     /*
-    --------------------------------------------------------
+    ----------------------------------------------------------
     SEND SOUND
-    --------------------------------------------------------
+    ----------------------------------------------------------
     */
 
-    await playSendSound();
-
-    /*
-    --------------------------------------------------------
-    Clear input
-    --------------------------------------------------------
-    */
+    await playProfessionalSound(
+      "send"
+    );
 
     setInputText("");
 
     if (inputRef.current) {
-
       inputRef.current.style.height =
         "auto";
     }
 
     /*
-    --------------------------------------------------------
+    ----------------------------------------------------------
     USER MESSAGE
-    --------------------------------------------------------
+    ----------------------------------------------------------
     */
 
     addUserMessage({
@@ -1678,27 +1419,18 @@ export default function AntimateAI() {
     });
 
     /*
-    --------------------------------------------------------
-    Thinking
-    --------------------------------------------------------
+    ----------------------------------------------------------
+    AUTO SCROLL IMMEDIATELY
+    ----------------------------------------------------------
     */
+
+    scrollToBottom("smooth");
 
     setIsSending(true);
 
     startThinking("text");
 
-    /*
-    --------------------------------------------------------
-    Extra scroll after thinking appears
-    --------------------------------------------------------
-    */
-
-    setTimeout(() => {
-      scrollToBottom("smooth");
-    }, 80);
-
     try {
-
       const response =
         await fetch(
           ANTIMATE_TEXT_ENDPOINT,
@@ -1724,7 +1456,6 @@ export default function AntimateAI() {
         !response.ok ||
         data?.success === false
       ) {
-
         throw new Error(
           data?.error ||
             `Request failed (${response.status})`
@@ -1735,13 +1466,10 @@ export default function AntimateAI() {
         extractAnswer(data);
 
       if (!answer) {
-
         throw new Error(
           "ANTIMATE ntiyagaruye igisubizo."
         );
       }
-
-      stopThinking();
 
       addAIMessage({
         text: answer,
@@ -1751,15 +1479,11 @@ export default function AntimateAI() {
           null,
         autoPlay: false,
       });
-
     } catch (error) {
-
       console.error(
         "Text request error:",
         error
       );
-
-      stopThinking();
 
       addAIMessage({
         text:
@@ -1767,15 +1491,16 @@ export default function AntimateAI() {
             ? "Mbabarira, habaye ikibazo mu kubona igisubizo. Ongera ugerageze."
             : "Sorry, there was a problem getting a response. Please try again.",
       });
-
     } finally {
-
       stopThinking();
 
       setIsSending(false);
 
       setTimeout(() => {
         inputRef.current?.focus();
+        scrollToBottom(
+          "smooth"
+        );
       }, 100);
     }
   };
@@ -1788,25 +1513,19 @@ export default function AntimateAI() {
 
   const sendVoice =
     async (blob) => {
-
       setIsSending(true);
 
       startThinking("voice");
 
       /*
-      --------------------------------------------------------
-      Auto-scroll immediately after recording is submitted
-      --------------------------------------------------------
+      ----------------------------------------------------------
+      AUTO SCROLL AS SOON AS VOICE IS SENT
+      ----------------------------------------------------------
       */
 
       scrollToBottom("smooth");
 
-      setTimeout(() => {
-        scrollToBottom("smooth");
-      }, 100);
-
       try {
-
         const formData =
           new FormData();
 
@@ -1841,7 +1560,6 @@ export default function AntimateAI() {
           !response.ok ||
           data?.success === false
         ) {
-
           throw new Error(
             data?.error ||
               `Voice request failed (${response.status})`
@@ -1874,15 +1592,21 @@ export default function AntimateAI() {
           "";
 
         if (transcript) {
-
           addUserMessage({
             text: transcript,
             voice: true,
           });
         }
 
-        if (!answer) {
+        /*
+        --------------------------------------------------------
+        AUTO SCROLL AFTER TRANSCRIPT
+        --------------------------------------------------------
+        */
 
+        scrollToBottom("smooth");
+
+        if (!answer) {
           throw new Error(
             "ANTIMATE ntiyagaruye voice answer."
           );
@@ -1895,8 +1619,6 @@ export default function AntimateAI() {
           data.voice_url ||
           null;
 
-        stopThinking();
-
         addAIMessage({
           text: answer,
           audioUrl,
@@ -1904,14 +1626,18 @@ export default function AntimateAI() {
             Boolean(audioUrl),
         });
 
-      } catch (error) {
+        /*
+        --------------------------------------------------------
+        AUTO SCROLL AFTER AI RESPONSE
+        --------------------------------------------------------
+        */
 
+        scrollToBottom("smooth");
+      } catch (error) {
         console.error(
           "Voice request error:",
           error
         );
-
-        stopThinking();
 
         addAIMessage({
           text:
@@ -1920,11 +1646,21 @@ export default function AntimateAI() {
               : "Sorry, I could not understand you or get a response. Please try again.",
         });
 
+        scrollToBottom(
+          "smooth"
+        );
       } finally {
-
         stopThinking();
-
         setIsSending(false);
+        setIsStoppingRecording(
+          false
+        );
+
+        setTimeout(() => {
+          scrollToBottom(
+            "smooth"
+          );
+        }, 100);
       }
     };
 
@@ -1938,20 +1674,16 @@ export default function AntimateAI() {
     messageId,
     url
   ) => {
-
     if (!url) return;
 
     try {
-
       Object.entries(
         audioRefs.current
       ).forEach(
         ([id, audio]) => {
-
           if (
             id !== messageId
           ) {
-
             try {
               audio.pause();
               audio.currentTime = 0;
@@ -1966,29 +1698,23 @@ export default function AntimateAI() {
         ];
 
       if (!audio) {
+        audio = new Audio(url);
 
-        audio =
-          new Audio(url);
-
-        audio.preload =
-          "auto";
+        audio.preload = "auto";
 
         audio.onplay = () => {
-
           setAudioPlayingId(
             messageId
           );
         };
 
         audio.onended = () => {
-
           setAudioPlayingId(
             null
           );
         };
 
         audio.onerror = () => {
-
           setAudioPlayingId(
             null
           );
@@ -2006,9 +1732,7 @@ export default function AntimateAI() {
       audio.currentTime = 0;
 
       await audio.play();
-
     } catch (error) {
-
       console.error(
         "Audio playback error:",
         error
@@ -2026,7 +1750,6 @@ export default function AntimateAI() {
 
   const replayVoice =
     (message) => {
-
       if (
         !message?.audioUrl
       ) {
@@ -2047,7 +1770,6 @@ export default function AntimateAI() {
 
   const handleInputChange =
     (event) => {
-
       const value =
         event.target.value;
 
@@ -2074,12 +1796,10 @@ export default function AntimateAI() {
 
   const handleKeyDown =
     (event) => {
-
       if (
         event.key === "Enter" &&
         !event.shiftKey
       ) {
-
         event.preventDefault();
 
         sendText();
@@ -2088,29 +1808,23 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  RECORDING ERROR AUTO CLEAR
+  RECORDING ERROR
   ============================================================
   */
 
   useEffect(() => {
-
     if (!recordingError) {
       return;
     }
 
     const timer =
       setTimeout(() => {
-
         setRecordingError("");
-
       }, 5000);
 
     return () =>
       clearTimeout(timer);
-
-  }, [
-    recordingError,
-  ]);
+  }, [recordingError]);
 
   /*
   ============================================================
@@ -2179,9 +1893,14 @@ export default function AntimateAI() {
           --ai-success:
             #35c77a;
 
-          width: 100%;
-          min-height: 100vh;
-          height: 100%;
+          width:
+            100%;
+
+          min-height:
+            100vh;
+
+          height:
+            100%;
 
           background:
             var(--ai-bg);
@@ -2189,12 +1908,17 @@ export default function AntimateAI() {
           color:
             var(--ai-text);
 
-          display: flex;
-          flex-direction: column;
+          display:
+            flex;
 
-          position: relative;
+          flex-direction:
+            column;
 
-          overflow: hidden;
+          position:
+            relative;
+
+          overflow:
+            hidden;
 
           font-family:
             Inter,
@@ -2214,18 +1938,32 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-header {
-          position: fixed;
+          position:
+            fixed;
 
-          top: 0;
-          left: 0;
-          right: 0;
+          top:
+            0;
 
-          height: 76px;
-          min-height: 76px;
+          left:
+            0;
 
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
+          right:
+            0;
+
+          height:
+            76px;
+
+          min-height:
+            76px;
+
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          justify-content:
+            space-between;
 
           padding:
             0 25px;
@@ -2239,7 +1977,8 @@ export default function AntimateAI() {
               ? "rgba(9, 11, 16, 0.94)"
               : "rgba(247, 249, 252, 0.94)"};
 
-          z-index: 100;
+          z-index:
+            100;
 
           backdrop-filter:
             blur(16px);
@@ -2255,9 +1994,14 @@ export default function AntimateAI() {
         }
 
         .antimate-title-area {
-          display: flex;
-          align-items: center;
-          gap: 13px;
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          gap:
+            13px;
         }
 
         /* ====================================================
@@ -2265,27 +2009,40 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-logo-o {
-          position: relative;
+          position:
+            relative;
 
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display:
+            flex;
 
-          flex-shrink: 0;
+          align-items:
+            center;
 
-          border-radius: 50%;
+          justify-content:
+            center;
 
-          isolation: isolate;
+          flex-shrink:
+            0;
+
+          border-radius:
+            50%;
+
+          isolation:
+            isolate;
         }
 
         .antimate-logo-o::before {
-          content: "";
+          content:
+            "";
 
-          position: absolute;
+          position:
+            absolute;
 
-          inset: -5px;
+          inset:
+            -5px;
 
-          border-radius: 50%;
+          border-radius:
+            50%;
 
           background:
             conic-gradient(
@@ -2313,35 +2070,52 @@ export default function AntimateAI() {
         }
 
         .antimate-logo-ring {
-          width: 100%;
-          height: 100%;
+          width:
+            100%;
 
-          padding: 3px;
+          height:
+            100%;
 
-          border-radius: 50%;
+          padding:
+            3px;
 
-          position: relative;
+          border-radius:
+            50%;
 
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          position:
+            relative;
+
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          justify-content:
+            center;
 
           background:
             transparent;
 
-          isolation: isolate;
+          isolation:
+            isolate;
 
-          overflow: hidden;
+          overflow:
+            hidden;
         }
 
         .antimate-logo-ring::before {
-          content: "";
+          content:
+            "";
 
-          position: absolute;
+          position:
+            absolute;
 
-          inset: 0;
+          inset:
+            0;
 
-          border-radius: 50%;
+          border-radius:
+            50%;
 
           background:
             conic-gradient(
@@ -2369,15 +2143,23 @@ export default function AntimateAI() {
           height:
             calc(100% - 6px);
 
-          border-radius: 50%;
+          border-radius:
+            50%;
 
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display:
+            flex;
 
-          position: relative;
+          align-items:
+            center;
 
-          z-index: 2;
+          justify-content:
+            center;
+
+          position:
+            relative;
+
+          z-index:
+            2;
 
           box-shadow:
             inset
@@ -2450,9 +2232,11 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-title {
-          font-size: 17px;
+          font-size:
+            17px;
 
-          font-weight: 750;
+          font-weight:
+            750;
 
           letter-spacing:
             -0.3px;
@@ -2462,9 +2246,11 @@ export default function AntimateAI() {
         }
 
         .antimate-subtitle {
-          margin-top: 3px;
+          margin-top:
+            3px;
 
-          font-size: 12px;
+          font-size:
+            12px;
 
           color:
             var(--ai-muted);
@@ -2475,21 +2261,31 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-status {
-          display: flex;
-          align-items: center;
-          gap: 7px;
+          display:
+            flex;
 
-          font-size: 12px;
+          align-items:
+            center;
+
+          gap:
+            7px;
+
+          font-size:
+            12px;
 
           color:
             var(--ai-muted);
         }
 
         .antimate-status-dot {
-          width: 8px;
-          height: 8px;
+          width:
+            8px;
 
-          border-radius: 50%;
+          height:
+            8px;
+
+          border-radius:
+            50%;
 
           background:
             var(--ai-success);
@@ -2506,26 +2302,31 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-chat {
-          flex: 1;
+          flex:
+            1;
 
-          width: 100%;
+          width:
+            100%;
 
-          max-width: 980px;
+          max-width:
+            980px;
 
           margin:
             0 auto;
 
-          overflow-y: auto;
+          overflow-y:
+            auto;
 
           padding:
-            108px 24px 160px;
+            108px 24px 180px;
 
           scrollbar-width:
             thin;
         }
 
         .antimate-chat::-webkit-scrollbar {
-          width: 6px;
+          width:
+            6px;
         }
 
         .antimate-chat::-webkit-scrollbar-thumb {
@@ -2544,7 +2345,8 @@ export default function AntimateAI() {
           min-height:
             calc(100vh - 250px);
 
-          display: flex;
+          display:
+            flex;
 
           flex-direction:
             column;
@@ -2601,14 +2403,17 @@ export default function AntimateAI() {
         ==================================================== */
 
         .antimate-message {
-          width: 100%;
+          width:
+            100%;
 
-          display: flex;
+          display:
+            flex;
 
           margin-bottom:
             25px;
 
-          gap: 10px;
+          gap:
+            10px;
         }
 
         .antimate-message.user {
@@ -2976,63 +2781,89 @@ export default function AntimateAI() {
         /* ====================================================
            THINKING
            
-           IMPORTANT:
-           The thinking area is deliberately tall.
-           Its visible animation sits around the lower
-           third of the viewport when scrolled to bottom.
+           Positioned approximately 1/3 from bottom.
         ==================================================== */
 
-        .antimate-thinking-zone {
-          min-height:
+        .antimate-thinking {
+          position:
+            fixed;
+
+          left:
+            50%;
+
+          bottom:
             33vh;
 
-          display:
-            flex;
+          transform:
+            translateX(-50%);
 
-          align-items:
-            flex-start;
+          z-index:
+            90;
 
-          padding-top:
-            6px;
-
-          padding-bottom:
-            8vh;
-        }
-
-        .antimate-thinking {
           display:
             flex;
 
           align-items:
             center;
 
+          justify-content:
+            center;
+
           gap:
             10px;
+
+          min-width:
+            min(340px, calc(100vw - 30px));
+
+          max-width:
+            calc(100vw - 30px);
+
+          padding:
+            11px 16px;
+
+          border-radius:
+            14px;
 
           color:
             var(--ai-muted);
 
+          background:
+            ${isDark
+              ? "rgba(18,22,29,0.92)"
+              : "rgba(255,255,255,0.94)"};
+
+          border:
+            1px solid
+            var(--ai-border);
+
+          box-shadow:
+            0 12px 35px
+            ${isDark
+              ? "rgba(0,0,0,0.30)"
+              : "rgba(15,23,42,0.10)"};
+
+          backdrop-filter:
+            blur(14px);
+
+          -webkit-backdrop-filter:
+            blur(14px);
+
           font-size:
             13px;
 
-          margin:
-            0 0 0 45px;
-
-          min-height:
-            30px;
-
           animation:
-            antimate-thinking-enter
+            antimate-thinking-in
             0.25s ease;
         }
 
-        @keyframes antimate-thinking-enter {
+        @keyframes antimate-thinking-in {
           from {
             opacity:
               0;
 
             transform:
-              translateY(5px);
+              translateX(-50%)
+              translateY(8px);
           }
 
           to {
@@ -3040,6 +2871,7 @@ export default function AntimateAI() {
               1;
 
             transform:
+              translateX(-50%)
               translateY(0);
           }
         }
@@ -3049,7 +2881,10 @@ export default function AntimateAI() {
             flex;
 
           gap:
-            3px;
+            4px;
+
+          flex-shrink:
+            0;
         }
 
         .antimate-thinking-dots span {
@@ -3300,38 +3135,6 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           PREPARING RECORDING
-        ==================================================== */
-
-        .antimate-action-button.preparing {
-          background:
-            linear-gradient(
-              135deg,
-              #475569,
-              #64748b
-            );
-
-          animation:
-            antimate-preparing-pulse
-            1.4s infinite;
-        }
-
-        @keyframes antimate-preparing-pulse {
-          0%,
-          100% {
-            box-shadow:
-              0 5px 16px
-              rgba(100,116,139,0.18);
-          }
-
-          50% {
-            box-shadow:
-              0 0 0 9px
-              rgba(100,116,139,0.05);
-          }
-        }
-
-        /* ====================================================
            RECORDING BUTTON
         ==================================================== */
 
@@ -3366,6 +3169,22 @@ export default function AntimateAI() {
               0 0 0 0
               rgba(239,68,68,0);
           }
+        }
+
+        /* ====================================================
+           RECORDING BUTTON WHILE STARTING / STOPPING
+        ==================================================== */
+
+        .antimate-action-button.recording-loading {
+          background:
+            linear-gradient(
+              135deg,
+              #475569,
+              #64748b
+            );
+
+          cursor:
+            wait;
         }
 
         /* ====================================================
@@ -3471,10 +3290,10 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           PREPARING STATUS
+           PRE-RECORDING STATUS
         ==================================================== */
 
-        .antimate-preparing-area {
+        .antimate-starting-recording {
           position:
             fixed;
 
@@ -3497,10 +3316,10 @@ export default function AntimateAI() {
             center;
 
           gap:
-            10px;
+            9px;
 
           padding:
-            10px 16px;
+            10px 15px;
 
           border-radius:
             14px;
@@ -3525,12 +3344,12 @@ export default function AntimateAI() {
             var(--ai-muted);
         }
 
-        .antimate-preparing-spinner {
+        .antimate-starting-spinner {
           width:
-            15px;
+            13px;
 
           height:
-            15px;
+            13px;
 
           border:
             2px solid
@@ -3543,11 +3362,11 @@ export default function AntimateAI() {
             50%;
 
           animation:
-            antimate-spinner
+            antimate-spin
             0.8s linear infinite;
         }
 
-        @keyframes antimate-spinner {
+        @keyframes antimate-spin {
           to {
             transform:
               rotate(360deg);
@@ -3734,7 +3553,7 @@ export default function AntimateAI() {
           }
 
           .antimate-recording-area,
-          .antimate-preparing-area {
+          .antimate-starting-recording {
             bottom:
               79px;
 
@@ -3751,13 +3570,20 @@ export default function AntimateAI() {
           }
 
           .antimate-thinking {
-            margin-left:
-              40px;
-          }
+            bottom:
+              33vh;
 
-          .antimate-thinking-zone {
-            min-height:
-              35vh;
+            min-width:
+              auto;
+
+            width:
+              max-content;
+
+            max-width:
+              calc(100vw - 24px);
+
+            font-size:
+              12px;
           }
 
           .antimate-error {
@@ -3800,11 +3626,9 @@ export default function AntimateAI() {
           .antimate-logo-o::before,
           .antimate-logo-ring::before,
           .antimate-action-button.recording,
-          .antimate-action-button.preparing,
           .antimate-recording-dot,
           .antimate-thinking-dots span,
-          .antimate-preparing-spinner,
-          .antimate-thinking {
+          .antimate-starting-spinner {
             animation:
               none !important;
           }
@@ -3943,9 +3767,6 @@ export default function AntimateAI() {
                             "rw"
                             ? "Ubutumwa bw'amajwi"
                             : "Voice message"
-                          : language ===
-                            "rw"
-                          ? "ANTIMATE Voice"
                           : "ANTIMATE Voice"}
 
                       </div>
@@ -4070,33 +3891,6 @@ export default function AntimateAI() {
             )
           )}
 
-          {/* ==================================================
-              THINKING
-          ================================================== */}
-
-          {thinkingText && (
-            <div
-              ref={thinkingRef}
-              className="antimate-thinking-zone"
-            >
-
-              <div className="antimate-thinking">
-
-                <div className="antimate-thinking-dots">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-
-                <span>
-                  {thinkingText}
-                </span>
-
-              </div>
-
-            </div>
-          )}
-
           <div
             ref={messagesEndRef}
             className="antimate-empty-space"
@@ -4105,18 +3899,39 @@ export default function AntimateAI() {
         </main>
 
         {/* ==================================================
-            RECORDING PREPARATION
+            THINKING
+            Positioned ~1/3 from bottom
         ================================================== */}
 
-        {isPreparingRecording && (
-          <div className="antimate-preparing-area">
+        {thinkingText && (
+          <div className="antimate-thinking">
 
-            <span className="antimate-preparing-spinner" />
+            <div className="antimate-thinking-dots">
+              <span />
+              <span />
+              <span />
+            </div>
+
+            <span>
+              {thinkingText}
+            </span>
+
+          </div>
+        )}
+
+        {/* ==================================================
+            STARTING RECORDING
+        ================================================== */}
+
+        {isStartingRecording && (
+          <div className="antimate-starting-recording">
+
+            <span className="antimate-starting-spinner" />
 
             <span>
               {language === "rw"
-                ? "ANTIMATE iritegura microphone..."
-                : "ANTIMATE is preparing the microphone..."}
+                ? "Tegereza gato..."
+                : "Get ready..."}
             </span>
 
           </div>
@@ -4132,7 +3947,11 @@ export default function AntimateAI() {
             <span className="antimate-recording-dot" />
 
             <span>
-              {language === "rw"
+              {isStoppingRecording
+                ? language === "rw"
+                  ? "Ndahagarika..."
+                  : "Stopping..."
+                : language === "rw"
                 ? "Ndakumva..."
                 : "Listening..."}
             </span>
@@ -4143,11 +3962,13 @@ export default function AntimateAI() {
               )}
             </span>
 
-            <span className="antimate-recording-hint">
-              {language === "rw"
-                ? "kanda microphone guhagarika"
-                : "press microphone to stop"}
-            </span>
+            {!isStoppingRecording && (
+              <span className="antimate-recording-hint">
+                {language === "rw"
+                  ? "kanda microphone guhagarika"
+                  : "press microphone to stop"}
+              </span>
+            )}
 
           </div>
         )}
@@ -4189,7 +4010,8 @@ export default function AntimateAI() {
               disabled={
                 isSending ||
                 isRecording ||
-                isPreparingRecording
+                isStartingRecording ||
+                isStoppingRecording
               }
               aria-label={
                 language === "rw"
@@ -4203,38 +4025,34 @@ export default function AntimateAI() {
             ================================================== */}
 
             {!inputText.trim() ? (
-
               <button
                 type="button"
                 className={`antimate-action-button ${
                   isRecording
                     ? "recording"
-                    : isPreparingRecording
-                    ? "preparing"
+                    : isStartingRecording ||
+                      isStoppingRecording
+                    ? "recording-loading"
                     : ""
                 }`}
                 onClick={
                   isRecording
                     ? stopVoiceRecording
-                    : isPreparingRecording
-                    ? cancelRecordingPreparation
                     : startVoiceRecording
                 }
                 disabled={
-                  isSending
+                  isSending ||
+                  isStartingRecording ||
+                  isStoppingRecording
                 }
                 aria-label={
                   isRecording
                     ? "Stop recording"
-                    : isPreparingRecording
-                    ? "Cancel recording"
                     : "Start voice recording"
                 }
                 title={
                   isRecording
                     ? "Stop"
-                    : isPreparingRecording
-                    ? "Cancel"
                     : language ===
                       "rw"
                     ? "Vuga"
@@ -4243,7 +4061,6 @@ export default function AntimateAI() {
               >
 
                 {isRecording ? (
-
                   <svg
                     width="20"
                     height="20"
@@ -4262,28 +4079,7 @@ export default function AntimateAI() {
                       rx="2"
                     />
                   </svg>
-
-                ) : isPreparingRecording ? (
-
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 6v12" />
-                    <path d="M6 10v4" />
-                    <path d="M18 10v4" />
-                    <path d="M9 8v8" />
-                    <path d="M15 8v8" />
-                  </svg>
-
                 ) : (
-
                   <svg
                     width="22"
                     height="22"
@@ -4299,13 +4095,10 @@ export default function AntimateAI() {
                     <path d="M16 7v10" />
                     <path d="M20 10v4" />
                   </svg>
-
                 )}
 
               </button>
-
             ) : (
-
               /* ==================================================
                  TEXT = SEND
               ================================================== */
@@ -4318,6 +4111,9 @@ export default function AntimateAI() {
                 }
                 disabled={
                   isSending ||
+                  isRecording ||
+                  isStartingRecording ||
+                  isStoppingRecording ||
                   !inputText.trim()
                 }
                 aria-label="Send message"

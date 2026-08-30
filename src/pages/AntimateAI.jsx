@@ -33,32 +33,38 @@ FEATURES
 - Native CSS only
 
 ============================================================
-ANTIMATE SIGNATURE UI SOUNDS
+ANTIMATE UNIQUE UI SOUNDS
 ============================================================
+
+SOURCE
+------------------------------------------------------------
+public/sounds/antimate-ringtone.mp3
+
+The source sound is the Pixabay track provided for ANTIMATE.
+
+The application does NOT generate generic Web Audio beeps.
+
+Instead:
+- The source MP3 is decoded once.
+- Different sections of the source track are used.
+- Each action has its own short sound.
+- Volume is intentionally low and clean.
+- Sounds are played immediately after button interaction.
+
+SOUNDS
+------------------------------------------------------------
+SEND:
+  Short rising clip
+
+RECORD START:
+  Short higher-energy clip
+
+RECORD STOP:
+  Short falling clip
 
 IMPORTANT
 ------------------------------------------------------------
-These are NOT generic social-media / standard-AI click sounds.
-
-ANTIMATE has its own sonic identity:
-
-SEND
-  → short "digital bloom"
-  → low harmonic + rising crystalline overtone
-  → soft resonance
-
-RECORD START
-  → deeper "activation" tone
-  → two-stage harmonic rise
-  → feels like ANTIMATE waking/listening
-
-RECORD STOP
-  → descending "deactivation" tone
-  → reverse character of activation
-  → soft digital tail
-
-All sounds are generated locally using Web Audio API.
-No mp3/wav files are required.
+The AI response audio is completely separate from UI sounds.
 ============================================================
 */
 
@@ -73,6 +79,58 @@ const ANTIMATE_TEXT_ENDPOINT =
   `${API_BASE}/api/antimate/chat`;
 
 const MAX_RECORDING_SECONDS = 30;
+
+/*
+============================================================
+ANTIMATE UNIQUE SOUND FILE
+============================================================
+*/
+
+const ANTIMATE_UI_SOUND =
+  "/sounds/antimate-ringtone.mp3";
+
+/*
+============================================================
+ANTIMATE UI SOUND CLIPS
+============================================================
+
+The complete source track is around 7 seconds.
+
+These are deliberately different portions of the same
+ANTIMATE source sound.
+
+If you want to tune the exact moments later, only change
+these values.
+
+start = starting position in seconds
+duration = length of clip
+volume = playback volume
+playbackRate = speed
+============================================================
+*/
+
+const ANTIMATE_SOUND_CLIPS = {
+  send: {
+    start: 0.00,
+    duration: 0.55,
+    volume: 0.24,
+    playbackRate: 1.05,
+  },
+
+  recordStart: {
+    start: 1.05,
+    duration: 0.70,
+    volume: 0.27,
+    playbackRate: 1.00,
+  },
+
+  recordStop: {
+    start: 2.15,
+    duration: 0.58,
+    volume: 0.24,
+    playbackRate: 0.94,
+  },
+};
 
 /*
 ============================================================
@@ -127,7 +185,6 @@ MAIN COMPONENT
 */
 
 export default function AntimateAI() {
-
   /*
   ============================================================
   APP SETTINGS
@@ -149,8 +206,7 @@ export default function AntimateAI() {
 
   const [messages, setMessages] = useState([]);
 
-  const [inputText, setInputText] =
-    useState("");
+  const [inputText, setInputText] = useState("");
 
   const [isSending, setIsSending] =
     useState(false);
@@ -196,465 +252,380 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  ANTIMATE SOUND ENGINE
+  ANTIMATE UI SOUND ENGINE REFS
   ============================================================
   */
 
-  const audioContextRef =
+  const uiAudioContextRef =
+    useRef(null);
+
+  const uiAudioBufferRef =
+    useRef(null);
+
+  const uiSoundLoadingRef =
     useRef(null);
 
   /*
   ============================================================
-  INITIALIZE ANTIMATE AUDIO ENGINE
+  LOAD ANTIMATE UNIQUE SOUND
   ============================================================
   */
 
-  const getAudioContext = () => {
-    try {
-      const AudioContext =
-        window.AudioContext ||
-        window.webkitAudioContext;
+  useEffect(() => {
+    let cancelled = false;
 
-      if (!AudioContext) {
-        return null;
-      }
+    const loadAntimateUISound =
+      async () => {
+        try {
+          const AudioContext =
+            window.AudioContext ||
+            window.webkitAudioContext;
 
-      if (!audioContextRef.current) {
-        audioContextRef.current =
-          new AudioContext();
-      }
+          if (!AudioContext) {
+            console.warn(
+              "Web Audio API is not supported."
+            );
 
-      return audioContextRef.current;
+            return;
+          }
 
-    } catch (error) {
-      console.warn(
-        "ANTIMATE audio engine unavailable:",
-        error
-      );
+          /*
+          ------------------------------------------------------
+          Create AudioContext only once.
+          ------------------------------------------------------
+          */
 
-      return null;
-    }
-  };
+          if (
+            !uiAudioContextRef.current
+          ) {
+            uiAudioContextRef.current =
+              new AudioContext();
+          }
+
+          const context =
+            uiAudioContextRef.current;
+
+          /*
+          ------------------------------------------------------
+          Avoid duplicate loading.
+          ------------------------------------------------------
+          */
+
+          if (
+            uiAudioBufferRef.current
+          ) {
+            return;
+          }
+
+          if (
+            uiSoundLoadingRef.current
+          ) {
+            await uiSoundLoadingRef.current;
+            return;
+          }
+
+          /*
+          ------------------------------------------------------
+          Fetch local ANTIMATE sound.
+          ------------------------------------------------------
+          */
+
+          uiSoundLoadingRef.current =
+            fetch(
+              ANTIMATE_UI_SOUND,
+              {
+                cache: "force-cache",
+              }
+            )
+              .then(
+                async (response) => {
+                  if (!response.ok) {
+                    throw new Error(
+                      `Could not load ANTIMATE UI sound (${response.status})`
+                    );
+                  }
+
+                  const arrayBuffer =
+                    await response.arrayBuffer();
+
+                  const audioBuffer =
+                    await context.decodeAudioData(
+                      arrayBuffer
+                    );
+
+                  if (!cancelled) {
+                    uiAudioBufferRef.current =
+                      audioBuffer;
+                  }
+
+                  return audioBuffer;
+                }
+              )
+              .finally(() => {
+                uiSoundLoadingRef.current =
+                  null;
+              });
+
+          await uiSoundLoadingRef.current;
+
+        } catch (error) {
+          console.warn(
+            "ANTIMATE UI sound could not be loaded:",
+            error
+          );
+
+          uiSoundLoadingRef.current =
+            null;
+        }
+      };
+
+    loadAntimateUISound();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /*
   ============================================================
-  ANTIMATE SIGNATURE SOUND ENGINE
-  ============================================================
-
-  This is intentionally different from a normal:
-    - click
-    - beep
-    - notification
-    - social media pop
-
-  It uses multiple oscillators and envelopes to create
-  ANTIMATE's own sonic signature.
+  PLAY ANTIMATE UNIQUE UI SOUND
   ============================================================
   */
 
-  const playUISound = (
-    type = "send"
-  ) => {
+  const playUISound =
+    async (soundType) => {
+      try {
+        const AudioContext =
+          window.AudioContext ||
+          window.webkitAudioContext;
 
-    try {
+        if (!AudioContext) {
+          return;
+        }
 
-      const ctx =
-        getAudioContext();
+        /*
+        --------------------------------------------------------
+        Create context if necessary.
+        --------------------------------------------------------
+        */
 
-      if (!ctx) {
-        return;
-      }
+        if (
+          !uiAudioContextRef.current
+        ) {
+          uiAudioContextRef.current =
+            new AudioContext();
+        }
 
-      /*
-      ----------------------------------------------------------
-      Browser audio contexts can start suspended.
-      ----------------------------------------------------------
-      */
+        const context =
+          uiAudioContextRef.current;
 
-      if (
-        ctx.state === "suspended"
-      ) {
-        ctx.resume().catch(() => {});
-      }
+        /*
+        --------------------------------------------------------
+        Browser may suspend AudioContext until user gesture.
+        The button click itself is a user gesture, so resume.
+        --------------------------------------------------------
+        */
 
-      const now =
-        ctx.currentTime;
+        if (
+          context.state ===
+          "suspended"
+        ) {
+          await context.resume();
+        }
 
-      /*
-      ==========================================================
-      MASTER GAIN
-      ==========================================================
-      */
+        /*
+        --------------------------------------------------------
+        Load sound if it has not finished loading yet.
+        --------------------------------------------------------
+        */
 
-      const master =
-        ctx.createGain();
+        if (
+          !uiAudioBufferRef.current
+        ) {
+          if (
+            !uiSoundLoadingRef.current
+          ) {
+            uiSoundLoadingRef.current =
+              fetch(
+                ANTIMATE_UI_SOUND,
+                {
+                  cache:
+                    "force-cache",
+                }
+              )
+                .then(
+                  async (
+                    response
+                  ) => {
+                    if (
+                      !response.ok
+                    ) {
+                      throw new Error(
+                        "ANTIMATE sound file not found."
+                      );
+                    }
 
-      master.gain.setValueAtTime(
-        0.0001,
-        now
-      );
+                    const buffer =
+                      await response.arrayBuffer();
 
-      master.connect(
-        ctx.destination
-      );
+                    const decoded =
+                      await context.decodeAudioData(
+                        buffer
+                      );
 
-      /*
-      ==========================================================
-      FILTER
-      ==========================================================
-      */
+                    uiAudioBufferRef.current =
+                      decoded;
 
-      const filter =
-        ctx.createBiquadFilter();
+                    return decoded;
+                  }
+                )
+                .finally(() => {
+                  uiSoundLoadingRef.current =
+                    null;
+                });
+          }
 
-      filter.type =
-        "lowpass";
+          await uiSoundLoadingRef.current;
+        }
 
-      filter.frequency.setValueAtTime(
-        4200,
-        now
-      );
+        const buffer =
+          uiAudioBufferRef.current;
 
-      filter.Q.setValueAtTime(
-        0.65,
-        now
-      );
+        if (!buffer) {
+          return;
+        }
 
-      filter.connect(master);
+        const clip =
+          ANTIMATE_SOUND_CLIPS[
+            soundType
+          ];
 
-      /*
-      ==========================================================
-      HELPER: CREATE OSCILLATOR
-      ==========================================================
-      */
+        if (!clip) {
+          return;
+        }
 
-      const createTone = ({
-        frequency,
-        type = "sine",
-        start,
-        attack,
-        release,
-        volume,
-        endFrequency = null,
-      }) => {
+        /*
+        --------------------------------------------------------
+        Protect against an offset beyond the source duration.
+        --------------------------------------------------------
+        */
 
-        const oscillator =
-          ctx.createOscillator();
+        const sourceDuration =
+          buffer.duration;
+
+        const safeStart =
+          Math.min(
+            Math.max(
+              clip.start,
+              0
+            ),
+            Math.max(
+              sourceDuration -
+                0.01,
+              0
+            )
+          );
+
+        const available =
+          Math.max(
+            sourceDuration -
+              safeStart,
+            0.01
+          );
+
+        const safeDuration =
+          Math.min(
+            clip.duration,
+            available
+          );
+
+        /*
+        --------------------------------------------------------
+        AUDIO SOURCE
+        --------------------------------------------------------
+        */
+
+        const source =
+          context.createBufferSource();
+
+        source.buffer =
+          buffer;
+
+        source.playbackRate.value =
+          clip.playbackRate;
+
+        /*
+        --------------------------------------------------------
+        GAIN
+        --------------------------------------------------------
+        */
 
         const gain =
-          ctx.createGain();
-
-        oscillator.type =
-          type;
-
-        oscillator.frequency.setValueAtTime(
-          frequency,
-          start
-        );
-
-        if (endFrequency) {
-          oscillator.frequency.exponentialRampToValueAtTime(
-            Math.max(
-              20,
-              endFrequency
-            ),
-            start + attack + release
-          );
-        }
+          context.createGain();
 
         gain.gain.setValueAtTime(
           0.0001,
-          start
+          context.currentTime
         );
 
+        /*
+        Short fade-in.
+        */
+
         gain.gain.exponentialRampToValueAtTime(
+          clip.volume,
+          context.currentTime +
+            0.012
+        );
+
+        /*
+        Short fade-out.
+        */
+
+        const fadeOutTime =
           Math.max(
-            0.0001,
-            volume
-          ),
-          start + attack
+            safeDuration -
+              0.045,
+            0.04
+          );
+
+        gain.gain.setValueAtTime(
+          clip.volume,
+          context.currentTime +
+            fadeOutTime
         );
 
         gain.gain.exponentialRampToValueAtTime(
           0.0001,
-          start +
-            attack +
-            release
+          context.currentTime +
+            safeDuration
         );
 
-        oscillator.connect(gain);
-        gain.connect(filter);
+        source.connect(gain);
 
-        oscillator.start(start);
-
-        oscillator.stop(
-          start +
-            attack +
-            release +
-            0.02
+        gain.connect(
+          context.destination
         );
 
-        return oscillator;
-      };
-
-      /*
-      ==========================================================
-      SEND
-      ==========================================================
-
-      ANTIMATE SEND SIGNATURE
-
-      Concept:
-        "message launched into the AI"
-
-      Character:
-        low warm body
-        + rising glass-like overtone
-        + tiny upper harmonic
-        + soft tail
-      ==========================================================
-      */
-
-      if (type === "send") {
-
-        const sendStart =
-          now;
-
         /*
-        Main body
+        --------------------------------------------------------
+        PLAY ONLY THE SELECTED CLIP
+        --------------------------------------------------------
         */
 
-        createTone({
-          frequency: 246.94,
-          type: "triangle",
-          start: sendStart,
-          attack: 0.012,
-          release: 0.16,
-          volume: 0.065,
-          endFrequency: 329.63,
-        });
-
-        /*
-        Rising identity tone
-        */
-
-        createTone({
-          frequency: 493.88,
-          type: "sine",
-          start:
-            sendStart + 0.025,
-          attack: 0.008,
-          release: 0.13,
-          volume: 0.045,
-          endFrequency: 739.99,
-        });
-
-        /*
-        Very short crystalline overtone
-        */
-
-        createTone({
-          frequency: 987.77,
-          type: "sine",
-          start:
-            sendStart + 0.055,
-          attack: 0.005,
-          release: 0.075,
-          volume: 0.018,
-          endFrequency: 1174.66,
-        });
-
-        /*
-        Master envelope
-        */
-
-        master.gain.exponentialRampToValueAtTime(
-          0.82,
-          sendStart + 0.012
+        source.start(
+          0,
+          safeStart,
+          safeDuration
         );
 
-        master.gain.exponentialRampToValueAtTime(
-          0.0001,
-          sendStart + 0.23
+      } catch (error) {
+        console.warn(
+          "ANTIMATE UI sound playback failed:",
+          error
         );
       }
-
-      /*
-      ==========================================================
-      RECORD START
-      ==========================================================
-
-      ANTIMATE LISTENING ACTIVATION
-
-      Concept:
-        "ANTIMATE is opening its listening channel"
-
-      Character:
-        deeper
-        wider
-        rising
-        more intentional than SEND
-      ==========================================================
-      */
-
-      else if (
-        type === "record-start"
-      ) {
-
-        const start =
-          now;
-
-        /*
-        Deep activation layer
-        */
-
-        createTone({
-          frequency: 130.81,
-          type: "triangle",
-          start,
-          attack: 0.025,
-          release: 0.22,
-          volume: 0.085,
-          endFrequency: 196.00,
-        });
-
-        /*
-        Main activation tone
-        */
-
-        createTone({
-          frequency: 261.63,
-          type: "sine",
-          start:
-            start + 0.035,
-          attack: 0.018,
-          release: 0.24,
-          volume: 0.055,
-          endFrequency: 392.00,
-        });
-
-        /*
-        AI "spark"
-        */
-
-        createTone({
-          frequency: 523.25,
-          type: "sine",
-          start:
-            start + 0.085,
-          attack: 0.008,
-          release: 0.16,
-          volume: 0.025,
-          endFrequency: 783.99,
-        });
-
-        /*
-        Master
-        */
-
-        master.gain.exponentialRampToValueAtTime(
-          0.85,
-          start + 0.018
-        );
-
-        master.gain.exponentialRampToValueAtTime(
-          0.0001,
-          start + 0.38
-        );
-      }
-
-      /*
-      ==========================================================
-      RECORD STOP
-      ==========================================================
-
-      ANTIMATE LISTENING DEACTIVATION
-
-      Concept:
-        "listening channel is closing"
-
-      Character:
-        descending
-        soft
-        controlled
-        clearly different from START
-      ==========================================================
-      */
-
-      else if (
-        type === "record-stop"
-      ) {
-
-        const stop =
-          now;
-
-        /*
-        Main descending tone
-        */
-
-        createTone({
-          frequency: 392.00,
-          type: "triangle",
-          start: stop,
-          attack: 0.012,
-          release: 0.22,
-          volume: 0.065,
-          endFrequency: 196.00,
-        });
-
-        /*
-        Lower resonance
-        */
-
-        createTone({
-          frequency: 196.00,
-          type: "sine",
-          start:
-            stop + 0.025,
-          attack: 0.01,
-          release: 0.20,
-          volume: 0.045,
-          endFrequency: 130.81,
-        });
-
-        /*
-        Soft closing harmonic
-        */
-
-        createTone({
-          frequency: 783.99,
-          type: "sine",
-          start:
-            stop + 0.02,
-          attack: 0.006,
-          release: 0.11,
-          volume: 0.015,
-          endFrequency: 523.25,
-        });
-
-        /*
-        Master fade
-        */
-
-        master.gain.exponentialRampToValueAtTime(
-          0.80,
-          stop + 0.012
-        );
-
-        master.gain.exponentialRampToValueAtTime(
-          0.0001,
-          stop + 0.31
-        );
-      }
-
-    } catch (error) {
-
-      console.warn(
-        "ANTIMATE UI sound error:",
-        error
-      );
-    }
-  };
+    };
 
   /*
   ============================================================
@@ -663,12 +634,10 @@ export default function AntimateAI() {
   */
 
   useEffect(() => {
-
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
-
   }, [
     messages,
     thinkingText,
@@ -681,9 +650,7 @@ export default function AntimateAI() {
   */
 
   useEffect(() => {
-
     return () => {
-
       stopRecordingTimer();
 
       if (
@@ -707,28 +674,26 @@ export default function AntimateAI() {
       Object.values(
         audioRefs.current
       ).forEach((audio) => {
-
         try {
           audio.pause();
           audio.src = "";
         } catch (_) {}
-
       });
 
+      /*
+      --------------------------------------------------------
+      Close UI AudioContext.
+      --------------------------------------------------------
+      */
+
       if (
-        audioContextRef.current
+        uiAudioContextRef.current
       ) {
-
         try {
-          audioContextRef.current.close();
+          uiAudioContextRef.current.close();
         } catch (_) {}
-
-        audioContextRef.current =
-          null;
       }
-
     };
-
   }, []);
 
   /*
@@ -740,9 +705,7 @@ export default function AntimateAI() {
   const startThinking = (
     type = "text"
   ) => {
-
     if (type === "voice") {
-
       setThinkingText(
         language === "rw"
           ? "🎤 Ndumva ibyo uvuze..."
@@ -770,11 +733,9 @@ export default function AntimateAI() {
   */
 
   const stopRecordingTimer = () => {
-
     if (
       recordingTimerRef.current
     ) {
-
       clearInterval(
         recordingTimerRef.current
       );
@@ -785,17 +746,14 @@ export default function AntimateAI() {
   };
 
   const startRecordingTimer = () => {
-
     stopRecordingTimer();
 
     setRecordingSeconds(0);
 
     recordingTimerRef.current =
       setInterval(() => {
-
         setRecordingSeconds(
           (previous) => {
-
             const next =
               previous + 1;
 
@@ -803,7 +761,6 @@ export default function AntimateAI() {
               next >=
               MAX_RECORDING_SECONDS
             ) {
-
               clearInterval(
                 recordingTimerRef.current
               );
@@ -821,7 +778,6 @@ export default function AntimateAI() {
             return next;
           }
         );
-
       }, 1000);
   };
 
@@ -834,7 +790,6 @@ export default function AntimateAI() {
   const formatRecordingTime = (
     seconds
   ) => {
-
     const remaining =
       Math.max(
         0,
@@ -867,7 +822,6 @@ export default function AntimateAI() {
 
   const getSupportedMimeType =
     () => {
-
       if (
         typeof MediaRecorder ===
           "undefined" ||
@@ -886,7 +840,6 @@ export default function AntimateAI() {
       for (
         const type of types
       ) {
-
         if (
           MediaRecorder.isTypeSupported(
             type
@@ -894,7 +847,6 @@ export default function AntimateAI() {
         ) {
           return type;
         }
-
       }
 
       return "";
@@ -908,7 +860,6 @@ export default function AntimateAI() {
 
   const startVoiceRecording =
     async () => {
-
       if (
         isSending ||
         isRecording
@@ -917,29 +868,34 @@ export default function AntimateAI() {
       }
 
       /*
-      ==========================================================
-      ANTIMATE RECORD START SOUND
-      ==========================================================
+      ========================================================
+      ANTIMATE UNIQUE SOUND
+      ========================================================
 
       IMPORTANT:
-      Play immediately on user gesture.
-      ==========================================================
+      This happens immediately when the user presses
+      the microphone button.
+
+      It does NOT wait for:
+      - getUserMedia()
+      - microphone permission
+      - backend
+      - recording initialization
+      ========================================================
       */
 
       playUISound(
-        "record-start"
+        "recordStart"
       );
 
       setRecordingError("");
 
       try {
-
         if (
           !navigator.mediaDevices ||
           !navigator.mediaDevices
             .getUserMedia
         ) {
-
           throw new Error(
             language === "rw"
               ? "Browser ntabwo ishyigikira microphone."
@@ -977,22 +933,18 @@ export default function AntimateAI() {
 
         recorder.ondataavailable =
           (event) => {
-
             if (
               event.data &&
               event.data.size > 0
             ) {
-
               chunks.push(
                 event.data
               );
             }
-
           };
 
         recorder.onstop =
           async () => {
-
             stopRecordingTimer();
 
             stream
@@ -1010,11 +962,9 @@ export default function AntimateAI() {
               null;
 
             setIsRecording(false);
-
             setRecordingSeconds(0);
 
             if (!chunks.length) {
-
               setRecordingError(
                 language === "rw"
                   ? "Nta audio yafashwe. Ongera ugerageze."
@@ -1038,7 +988,6 @@ export default function AntimateAI() {
 
         recorder.onerror =
           () => {
-
             stopRecordingTimer();
 
             stream
@@ -1056,7 +1005,6 @@ export default function AntimateAI() {
               null;
 
             setIsRecording(false);
-
             setRecordingSeconds(0);
 
             setRecordingError(
@@ -1074,22 +1022,18 @@ export default function AntimateAI() {
         setIsRecording(true);
 
         startRecordingTimer();
-
       } catch (error) {
-
         console.error(
           "Microphone error:",
           error
         );
 
         setIsRecording(false);
-
         setRecordingSeconds(0);
 
         if (
           mediaStreamRef.current
         ) {
-
           mediaStreamRef.current
             .getTracks()
             .forEach(
@@ -1119,15 +1063,14 @@ export default function AntimateAI() {
 
   const stopVoiceRecording =
     () => {
-
       /*
-      ==========================================================
-      ANTIMATE RECORD STOP SOUND
-      ==========================================================
+      ========================================================
+      ANTIMATE UNIQUE STOP SOUND
+      ========================================================
       */
 
       playUISound(
-        "record-stop"
+        "recordStop"
       );
 
       stopRecordingTimer();
@@ -1136,9 +1079,7 @@ export default function AntimateAI() {
         mediaRecorderRef.current;
 
       if (!recorder) {
-
         setIsRecording(false);
-
         setRecordingSeconds(0);
 
         return;
@@ -1148,13 +1089,9 @@ export default function AntimateAI() {
         recorder.state !==
         "inactive"
       ) {
-
         try {
-
           recorder.stop();
-
         } catch (error) {
-
           console.error(
             "Stopping recorder failed:",
             error
@@ -1171,7 +1108,6 @@ export default function AntimateAI() {
 
   const parseResponse =
     async (response) => {
-
       const contentType =
         response.headers.get(
           "content-type"
@@ -1182,7 +1118,6 @@ export default function AntimateAI() {
           "application/json"
         )
       ) {
-
         return await response.json();
       }
 
@@ -1190,11 +1125,8 @@ export default function AntimateAI() {
         await response.text();
 
       try {
-
         return JSON.parse(raw);
-
       } catch (_) {
-
         return {
           success: false,
           error:
@@ -1213,7 +1145,6 @@ export default function AntimateAI() {
   const extractAnswer = (
     data
   ) => {
-
     if (!data) return "";
 
     return (
@@ -1237,7 +1168,6 @@ export default function AntimateAI() {
     text: messageText,
     voice = false,
   }) => {
-
     const id =
       `user-${Date.now()}-${Math.random()
         .toString(36)
@@ -1272,7 +1202,6 @@ export default function AntimateAI() {
     audioUrl = null,
     autoPlay = false,
   }) => {
-
     const id =
       `ai-${Date.now()}-${Math.random()
         .toString(36)
@@ -1298,14 +1227,11 @@ export default function AntimateAI() {
       audioUrl &&
       autoPlay
     ) {
-
       setTimeout(() => {
-
         playVoice(
           id,
           audioUrl
         );
-
       }, 150);
     }
 
@@ -1319,7 +1245,6 @@ export default function AntimateAI() {
   */
 
   const sendText = async () => {
-
     const cleanText =
       inputText.trim();
 
@@ -1332,12 +1257,17 @@ export default function AntimateAI() {
     }
 
     /*
-    ==========================================================
-    ANTIMATE SEND SOUND
-    ==========================================================
+    ========================================================
+    ANTIMATE UNIQUE SEND SOUND
+    ========================================================
 
-    Plays immediately when the user presses SEND.
-    ==========================================================
+    Plays immediately on button press.
+
+    It does NOT wait for:
+    - fetch()
+    - server
+    - thinking state
+    ========================================================
     */
 
     playUISound("send");
@@ -1345,7 +1275,6 @@ export default function AntimateAI() {
     setInputText("");
 
     if (inputRef.current) {
-
       inputRef.current.style.height =
         "auto";
     }
@@ -1360,18 +1289,15 @@ export default function AntimateAI() {
     startThinking("text");
 
     try {
-
       const response =
         await fetch(
           ANTIMATE_TEXT_ENDPOINT,
           {
             method: "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               text: cleanText,
               message: cleanText,
@@ -1388,7 +1314,6 @@ export default function AntimateAI() {
         !response.ok ||
         data?.success === false
       ) {
-
         throw new Error(
           data?.error ||
             `Request failed (${response.status})`
@@ -1399,7 +1324,6 @@ export default function AntimateAI() {
         extractAnswer(data);
 
       if (!answer) {
-
         throw new Error(
           "ANTIMATE ntiyagaruye igisubizo."
         );
@@ -1413,9 +1337,7 @@ export default function AntimateAI() {
           null,
         autoPlay: false,
       });
-
     } catch (error) {
-
       console.error(
         "Text request error:",
         error
@@ -1427,9 +1349,7 @@ export default function AntimateAI() {
             ? "Mbabarira, habaye ikibazo mu kubona igisubizo. Ongera ugerageze."
             : "Sorry, there was a problem getting a response. Please try again.",
       });
-
     } finally {
-
       stopThinking();
 
       setIsSending(false);
@@ -1448,13 +1368,11 @@ export default function AntimateAI() {
 
   const sendVoice =
     async (blob) => {
-
       setIsSending(true);
 
       startThinking("voice");
 
       try {
-
         const formData =
           new FormData();
 
@@ -1489,7 +1407,6 @@ export default function AntimateAI() {
           !response.ok ||
           data?.success === false
         ) {
-
           throw new Error(
             data?.error ||
               `Voice request failed (${response.status})`
@@ -1522,7 +1439,6 @@ export default function AntimateAI() {
           "";
 
         if (transcript) {
-
           addUserMessage({
             text: transcript,
             voice: true,
@@ -1530,7 +1446,6 @@ export default function AntimateAI() {
         }
 
         if (!answer) {
-
           throw new Error(
             "ANTIMATE ntiyagaruye voice answer."
           );
@@ -1549,9 +1464,7 @@ export default function AntimateAI() {
           autoPlay:
             Boolean(audioUrl),
         });
-
       } catch (error) {
-
         console.error(
           "Voice request error:",
           error
@@ -1563,11 +1476,8 @@ export default function AntimateAI() {
               ? "Mbabarira, sinabashije kumva neza cyangwa kubona igisubizo. Ongera uvuge."
               : "Sorry, I could not understand you or get a response. Please try again.",
         });
-
       } finally {
-
         stopThinking();
-
         setIsSending(false);
       }
     };
@@ -1582,26 +1492,19 @@ export default function AntimateAI() {
     messageId,
     url
   ) => {
-
     if (!url) return;
 
     try {
-
       Object.entries(
         audioRefs.current
       ).forEach(
         ([id, audio]) => {
-
           if (
             id !== messageId
           ) {
-
             try {
-
               audio.pause();
-
               audio.currentTime = 0;
-
             } catch (_) {}
           }
         }
@@ -1613,28 +1516,23 @@ export default function AntimateAI() {
         ];
 
       if (!audio) {
-
         audio = new Audio(url);
 
-        audio.preload =
-          "auto";
+        audio.preload = "auto";
 
         audio.onplay = () => {
-
           setAudioPlayingId(
             messageId
           );
         };
 
         audio.onended = () => {
-
           setAudioPlayingId(
             null
           );
         };
 
         audio.onerror = () => {
-
           setAudioPlayingId(
             null
           );
@@ -1652,9 +1550,7 @@ export default function AntimateAI() {
       audio.currentTime = 0;
 
       await audio.play();
-
     } catch (error) {
-
       console.error(
         "Audio playback error:",
         error
@@ -1672,7 +1568,6 @@ export default function AntimateAI() {
 
   const replayVoice =
     (message) => {
-
       if (
         !message?.audioUrl
       ) {
@@ -1693,7 +1588,6 @@ export default function AntimateAI() {
 
   const handleInputChange =
     (event) => {
-
       const value =
         event.target.value;
 
@@ -1720,12 +1614,10 @@ export default function AntimateAI() {
 
   const handleKeyDown =
     (event) => {
-
       if (
         event.key === "Enter" &&
         !event.shiftKey
       ) {
-
         event.preventDefault();
 
         sendText();
@@ -1739,7 +1631,6 @@ export default function AntimateAI() {
   */
 
   useEffect(() => {
-
     if (!recordingError) {
       return;
     }
@@ -1751,7 +1642,6 @@ export default function AntimateAI() {
 
     return () =>
       clearTimeout(timer);
-
   }, [recordingError]);
 
   /*
@@ -3339,7 +3229,6 @@ export default function AntimateAI() {
 
           {messages.length === 0 &&
             !thinkingText && (
-
               <div className="antimate-welcome">
 
                 <h1>
@@ -3359,7 +3248,6 @@ export default function AntimateAI() {
 
           {messages.map(
             (message) => (
-
               <div
                 key={message.id}
                 className={`antimate-message ${
@@ -3372,7 +3260,6 @@ export default function AntimateAI() {
 
                 {message.role ===
                   "assistant" && (
-
                   <div className="antimate-avatar antimate-avatar-ai">
 
                     <AntimateLogo
@@ -3399,7 +3286,6 @@ export default function AntimateAI() {
                   <div className="antimate-bubble">
 
                     {message.voice && (
-
                       <div className="antimate-voice-mark">
 
                         <VoiceWave />
@@ -3410,9 +3296,6 @@ export default function AntimateAI() {
                             "rw"
                             ? "Ubutumwa bw'amajwi"
                             : "Voice message"
-                          : language ===
-                            "rw"
-                          ? "ANTIMATE Voice"
                           : "ANTIMATE Voice"}
 
                       </div>
@@ -3425,7 +3308,6 @@ export default function AntimateAI() {
                   {message.role ===
                     "assistant" &&
                     message.audioUrl && (
-
                       <div className="antimate-voice-controls">
 
                         <button
@@ -3456,7 +3338,6 @@ export default function AntimateAI() {
 
                           {audioPlayingId ===
                           message.id ? (
-
                             <svg
                               width="16"
                               height="16"
@@ -3467,7 +3348,6 @@ export default function AntimateAI() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             >
-
                               <rect
                                 x="6"
                                 y="5"
@@ -3483,11 +3363,8 @@ export default function AntimateAI() {
                                 height="14"
                                 rx="1"
                               />
-
                             </svg>
-
                           ) : (
-
                             <svg
                               width="17"
                               height="17"
@@ -3498,9 +3375,7 @@ export default function AntimateAI() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                             >
-
                               <polygon points="5 3 19 12 5 21 5 3" />
-
                             </svg>
                           )}
 
@@ -3528,7 +3403,6 @@ export default function AntimateAI() {
 
                 {message.role ===
                   "user" && (
-
                   <div className="antimate-avatar antimate-avatar-user">
                     YOU
                   </div>
@@ -3539,7 +3413,6 @@ export default function AntimateAI() {
           )}
 
           {thinkingText && (
-
             <div className="antimate-thinking">
 
               <div className="antimate-thinking-dots">
@@ -3567,7 +3440,6 @@ export default function AntimateAI() {
         ================================================== */}
 
         {isRecording && (
-
           <div className="antimate-recording-area">
 
             <span className="antimate-recording-dot" />
@@ -3598,7 +3470,6 @@ export default function AntimateAI() {
         ================================================== */}
 
         {recordingError && (
-
           <div className="antimate-error">
             {recordingError}
           </div>
@@ -3644,7 +3515,6 @@ export default function AntimateAI() {
             ================================================== */}
 
             {!inputText.trim() ? (
-
               <button
                 type="button"
                 className={`antimate-action-button ${
@@ -3676,7 +3546,6 @@ export default function AntimateAI() {
               >
 
                 {isRecording ? (
-
                   <svg
                     width="20"
                     height="20"
@@ -3687,7 +3556,6 @@ export default function AntimateAI() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-
                     <rect
                       x="7"
                       y="7"
@@ -3695,11 +3563,8 @@ export default function AntimateAI() {
                       height="10"
                       rx="2"
                     />
-
                   </svg>
-
                 ) : (
-
                   <svg
                     width="22"
                     height="22"
@@ -3709,20 +3574,16 @@ export default function AntimateAI() {
                     strokeWidth="1.8"
                     strokeLinecap="round"
                   >
-
                     <path d="M4 10v4" />
                     <path d="M8 7v10" />
                     <path d="M12 4v16" />
                     <path d="M16 7v10" />
                     <path d="M20 10v4" />
-
                   </svg>
                 )}
 
               </button>
-
             ) : (
-
               /* ==================================================
                  TEXT = SEND
               ================================================== */
@@ -3755,11 +3616,8 @@ export default function AntimateAI() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-
                   <path d="M22 2L11 13" />
-
                   <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-
                 </svg>
 
               </button>

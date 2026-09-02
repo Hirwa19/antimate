@@ -74,7 +74,7 @@ const MAX_RECORDING_MS =
   Baby chicks in a brooder.
 */
 const BROODER_IMAGE =
-  "https://commons.wikimedia.org/wiki/Special:FilePath/Brooder%20Cage.jpg";
+  "https://imgs.search.brave.com/ImG1osAd3QEKhrfy6aD1UmapElyvTEn1OOOJwq02wNs/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93d3cu/bGl2ZXN0b2NraW5n/Lm5ldC93cC1jb250/ZW50L3VwbG9hZHMv/MjAxNS8wNy9BLXR5/cGljYWwtYnJvb2Rl/ci1ob3VzZS0xMDI0/eDUzOC5qcGc";
 
 /* =========================================================
    VIDEOS

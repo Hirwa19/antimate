@@ -43,7 +43,7 @@ import React, {
 } from "react";
 
 import { io } from "socket.io-client";
-//import "./AntimateAI.css";
+import "./AntimateAI.css";
 
 // ============================================================
 // CONFIG

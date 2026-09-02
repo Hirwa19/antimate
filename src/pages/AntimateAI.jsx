@@ -5,44 +5,39 @@ import React, {
   useRef,
   useState,
 } from "react";
-
 import { io } from "socket.io-client";
 
 /*
 ============================================================
-ANTIMATE AI — MARKET LEVEL UI
-============================================================
-
-FEATURES
-------------------------------------------------------------
-• Apple-inspired premium UI
-• Light / dark theme
-• Responsive desktop + mobile
-• Smooth message animations
-• Edit recent user message
-• Copy messages
-• Replay assistant voice
-• Stop assistant voice
-• Regenerate last answer
-• Live Voice mode
-• Automatic silence detection
-• Live transcript
-• Streaming answer text
-• Voice waveform
-• Scroll-to-bottom button
-• Welcome prompt cards
-• Conversation statistics
-• Message timestamps
-• Message action toolbar
-• Character counter
-• Auto-growing textarea
-• Connection status
-• Thinking animation
-• Keyboard shortcuts
-• Mobile safe-area support
-• Socket.IO voice pipeline preserved
-
-NO AntimateAI.css REQUIRED
+ ANTIMATE AI — MARKET LEVEL CHAT UI
+ ------------------------------------------------------------
+ Features:
+ - Apple-inspired premium UI
+ - Responsive desktop/mobile
+ - Light/Dark theme
+ - Smooth message animations
+ - Edit recent user message
+ - Copy message
+ - Replay AI voice
+ - Stop AI voice
+ - Regenerate last AI answer
+ - Live Voice
+ - Live transcript / captions
+ - Recording timer
+ - Silence detection
+ - Socket.IO voice streaming
+ - Text chat
+ - Quick prompts
+ - Auto scroll
+ - Scroll-to-bottom button
+ - Message timestamps
+ - Message action toolbar
+ - Connection indicator
+ - Thinking animation
+ - Voice waveform
+ - Composer auto resize
+ - Keyboard shortcuts
+ - Mobile safe-area support
 ============================================================
 */
 
@@ -75,7 +70,24 @@ const THINKING_MESSAGES = [
   "Hasigaye akanya gato…",
 ];
 
-const MAX_TEXT_LENGTH = 4000;
+const QUICK_PROMPTS = [
+  {
+    icon: "🐔",
+    text: "Mpa inama zo kurera inkoko neza",
+  },
+  {
+    icon: "🌡️",
+    text: "Ni gute nakwirinda ubushyuhe bwinshi mu kiraro?",
+  },
+  {
+    icon: "💧",
+    text: "Humidity nziza ku nkoko ni ingahe?",
+  },
+  {
+    icon: "🩺",
+    text: "Ni ibihe bimenyetso by'indwara mu nkoko?",
+  },
+];
 
 /* ============================================================
    ICON SYSTEM
@@ -84,7 +96,7 @@ const MAX_TEXT_LENGTH = 4000;
 function Icon({
   name,
   size = 20,
-  stroke = 1.9,
+  strokeWidth = 1.9,
   className = "",
 }) {
   const common = {
@@ -93,7 +105,7 @@ function Icon({
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: stroke,
+    strokeWidth,
     strokeLinecap: "round",
     strokeLinejoin: "round",
     className,
@@ -103,8 +115,8 @@ function Icon({
   const paths = {
     send: (
       <>
-        <path d="M22 2 11 13" />
-        <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+        <path d="M21.7 2.3 10.8 13.2" />
+        <path d="m21.7 2.3-7 19.4-3.9-8.5-8.5-3.9 19.4-7Z" />
       </>
     ),
 
@@ -131,8 +143,8 @@ function Icon({
 
     copy: (
       <>
-        <rect x="9" y="9" width="11" height="11" rx="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        <rect x="8" y="8" width="11" height="11" rx="2" />
+        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
       </>
     ),
 
@@ -141,16 +153,16 @@ function Icon({
     edit: (
       <>
         <path d="M12 20h9" />
-        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
       </>
     ),
 
     refresh: (
       <>
-        <path d="M20 11a8.1 8.1 0 0 0-15.5-2" />
-        <path d="M4 4v5h5" />
-        <path d="M4 13a8.1 8.1 0 0 0 15.5 2" />
-        <path d="M20 20v-5h-5" />
+        <path d="M20 11a8.1 8.1 0 0 0-14.8-4L3 10" />
+        <path d="M3 4v6h6" />
+        <path d="M4 13a8.1 8.1 0 0 0 14.8 4L21 14" />
+        <path d="M21 20v-6h-6" />
       </>
     ),
 
@@ -165,34 +177,17 @@ function Icon({
     volumeOff: (
       <>
         <path d="m4 4 16 16" />
-        <path d="M9 9 13 6v12l-4-3H5V9h4Z" />
+        <path d="M4 10v4h4l5 4v-6" />
+        <path d="M13 6v2" />
       </>
     ),
 
     chevronDown: <path d="m6 9 6 6 6-6" />,
 
-    chevronUp: <path d="m18 15-6-6-6 6" />,
-
     arrowDown: (
       <>
         <path d="M12 5v14" />
-        <path d="m19 12-7 7-7-7" />
-      </>
-    ),
-
-    sparkles: (
-      <>
-        <path d="m12 3-1.2 3.8L7 8l3.8 1.2L12 13l1.2-3.8L17 8l-3.8-1.2L12 3Z" />
-        <path d="m19 13-.8 2.2L16 16l2.2.8L19 19l.8-2.2L22 16l-2.2-.8L19 13Z" />
-        <path d="m5 14-.7 2L2 17l2.3 1L5 20l.7-2L8 17l-2.3-1L5 14Z" />
-      </>
-    ),
-
-    menu: (
-      <>
-        <path d="M4 6h16" />
-        <path d="M4 12h16" />
-        <path d="M4 18h16" />
+        <path d="m6 13 6 6 6-6" />
       </>
     ),
 
@@ -206,25 +201,23 @@ function Icon({
     x: (
       <>
         <path d="m6 6 12 12" />
-        <path d="M18 6 6 18" />
+        <path d="m18 6-12 12" />
       </>
     ),
 
-    trash: (
+    sparkles: (
       <>
-        <path d="M4 7h16" />
-        <path d="M10 11v6" />
-        <path d="M14 11v6" />
-        <path d="m6 7 1 14h10l1-14" />
-        <path d="M9 7V4h6v3" />
+        <path d="m12 3-1.1 4.1L7 8.5l3.9 1.4L12 14l1.1-4.1L17 8.5l-3.9-1.4Z" />
+        <path d="m19 13-.6 2.4L16 16l2.4.6L19 19l.6-2.4L22 16l-2.4-.6Z" />
+        <path d="m5 15-.5 2L2 17.5l2.5.5L5 20l.5-2L8 17.5 5.5 17Z" />
       </>
     ),
 
-    more: (
+    menu: (
       <>
-        <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-        <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
+        <path d="M4 6h16" />
+        <path d="M4 12h16" />
+        <path d="M4 18h16" />
       </>
     ),
 
@@ -235,87 +228,51 @@ function Icon({
       </>
     ),
 
-    activity: (
+    wifi: (
       <>
-        <path d="M3 12h4l2-7 4 14 2-7h6" />
-      </>
-    ),
-
-    headphones: (
-      <>
-        <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
-        <path d="M4 14h3v5H5a1 1 0 0 1-1-1v-4Z" />
-        <path d="M20 14h-3v5h2a1 1 0 0 0 1-1v-4Z" />
-      </>
-    ),
-
-    info: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 11v5" />
-        <path d="M12 8h.01" />
-      </>
-    ),
-
-    moon: (
-      <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z" />
-    ),
-
-    sun: (
-      <>
-        <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2" />
-        <path d="M12 20v2" />
-        <path d="m4.93 4.93 1.41 1.41" />
-        <path d="m17.66 17.66 1.41 1.41" />
-        <path d="M2 12h2" />
-        <path d="M20 12h2" />
-        <path d="m6.34 17.66-1.41 1.41" />
-        <path d="m19.07 4.93-1.41 1.41" />
-      </>
-    ),
-
-    globe: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18" />
-        <path d="M12 3a14 14 0 0 1 0 18" />
-        <path d="M12 3a14 14 0 0 0 0 18" />
+        <path d="M5 12.5a11 11 0 0 1 14 0" />
+        <path d="M8 15.5a6.8 6.8 0 0 1 8 0" />
+        <path d="M11 18.5a2.5 2.5 0 0 1 2 0" />
       </>
     ),
 
     keyboard: (
       <>
         <rect x="3" y="6" width="18" height="12" rx="2" />
-        <path d="M7 10h.01M10 10h.01M13 10h.01M16 10h.01" />
+        <path d="M7 10h.01M11 10h.01M15 10h.01M19 10h.01" />
         <path d="M7 14h10" />
+      </>
+    ),
+
+    arrowUp: (
+      <>
+        <path d="M12 19V5" />
+        <path d="m6 11 6-6 6 6" />
       </>
     ),
   };
 
-  return (
-    <svg {...common}>
-      {paths[name] || null}
-    </svg>
-  );
+  return <svg {...common}>{paths[name]}</svg>;
 }
 
 /* ============================================================
    LOGO
 ============================================================ */
 
-function LogoMark({ size = 38, mini = false }) {
+function LogoMark({ size = 38 }) {
   return (
     <div
-      className={`antimate-logo ${mini ? "mini" : ""}`}
+      className="antimate-logo"
       style={{
         width: size,
         height: size,
       }}
     >
-      <span className="logo-orbit orbit-one" />
-      <span className="logo-orbit orbit-two" />
-      <span className="logo-core" />
+      <div className="antimate-logo-orbit orbit-one" />
+      <div className="antimate-logo-orbit orbit-two" />
+      <div className="antimate-logo-core">
+        <span />
+      </div>
     </div>
   );
 }
@@ -371,9 +328,7 @@ function extensionFromMimeType(type = "") {
 }
 
 function makeAbsoluteUrl(url) {
-  if (!url) {
-    return "";
-  }
+  if (!url) return "";
 
   if (
     url.startsWith("blob:") ||
@@ -392,9 +347,7 @@ function makeAbsoluteUrl(url) {
 }
 
 function getAudioUrl(payload) {
-  if (!payload) {
-    return "";
-  }
+  if (!payload) return "";
 
   if (typeof payload === "string") {
     return makeAbsoluteUrl(payload);
@@ -441,11 +394,25 @@ function getAudioUrl(payload) {
   return "";
 }
 
-function formatTime(date = new Date()) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+function formatTime(date = Date.now()) {
+  try {
+    return new Intl.DateTimeFormat("rw-RW", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(date));
+  } catch {
+    return "";
+  }
+}
+
+function formatRecordingTime(seconds) {
+  const safe = Math.max(0, Number(seconds) || 0);
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+
+  return `${String(mins).padStart(2, "0")}:${String(
+    secs
+  ).padStart(2, "0")}`;
 }
 
 /* ============================================================
@@ -454,42 +421,14 @@ function formatTime(date = new Date()) {
 
 export default function AntimateAI() {
   /* ==========================================================
-     CHAT STATE
+     CHAT
   ========================================================== */
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
-
   const [copiedId, setCopiedId] = useState(null);
-  const [replayingId, setReplayingId] = useState(null);
-
-  const [showScrollButton, setShowScrollButton] =
-    useState(false);
-
-  /* ==========================================================
-     UI STATE
-  ========================================================== */
-
-  const [darkMode, setDarkMode] = useState(() => {
-    try {
-      const saved =
-        localStorage.getItem("antimate-theme");
-
-      if (saved === "dark") return true;
-      if (saved === "light") return false;
-
-      return window.matchMedia?.(
-        "(prefers-color-scheme: dark)"
-      ).matches ?? false;
-    } catch {
-      return false;
-    }
-  });
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /* ==========================================================
      CONNECTION
@@ -502,32 +441,16 @@ export default function AntimateAI() {
      AI STATUS
   ========================================================== */
 
-  const [isRecording, setIsRecording] =
-    useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const [isProcessing, setIsProcessing] =
-    useState(false);
-
-  const [isPlaying, setIsPlaying] =
-    useState(false);
-
-  const [status, setStatus] =
-    useState("ready");
-
-  const [statusMessage, setStatusMessage] =
-    useState("");
-
-  const [transcript, setTranscript] =
-    useState("");
-
-  const [thinkingText, setThinkingText] =
-    useState("");
-
-  const [currentAnswer, setCurrentAnswer] =
-    useState("");
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [status, setStatus] = useState("ready");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [transcript, setTranscript] = useState("");
+  const [thinkingText, setThinkingText] = useState("");
+  const [currentAnswer, setCurrentAnswer] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   /* ==========================================================
      RECORDING
@@ -539,15 +462,26 @@ export default function AntimateAI() {
   const [recordingMode, setRecordingMode] =
     useState("tap");
 
-  const [liveVoice, setLiveVoice] =
-    useState(false);
+  const [liveVoice, setLiveVoice] = useState(false);
 
   /* ==========================================================
      THINKING
   ========================================================== */
 
-  const [thinkingIndex, setThinkingIndex] =
-    useState(0);
+  const [thinkingIndex, setThinkingIndex] = useState(0);
+
+  /* ==========================================================
+     UI
+  ========================================================== */
+
+  const [showScrollButton, setShowScrollButton] =
+    useState(false);
+
+  const [showQuickPrompts, setShowQuickPrompts] =
+    useState(true);
+
+  const [isNearBottom, setIsNearBottom] =
+    useState(true);
 
   /* ==========================================================
      REFS
@@ -555,272 +489,267 @@ export default function AntimateAI() {
 
   const socketRef = useRef(null);
 
-  const mediaRecorderRef =
-    useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
-  const mediaStreamRef =
-    useRef(null);
+  const recordingMimeTypeRef = useRef("");
+  const recordingExtensionRef = useRef("");
 
-  const recordingMimeTypeRef =
-    useRef("");
+  const holdTimerRef = useRef(null);
+  const recordingTimerRef = useRef(null);
 
-  const recordingExtensionRef =
-    useRef("");
+  const pointerActiveRef = useRef(false);
+  const isRecordingRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
-  const holdTimerRef =
-    useRef(null);
+  const recordingModeRef = useRef("tap");
 
-  const recordingTimerRef =
-    useRef(null);
+  const liveVoiceRef = useRef(false);
+  const voiceSessionActiveRef = useRef(false);
 
-  const pressStartedAtRef =
-    useRef(0);
+  const audioRef = useRef(null);
+  const currentAudioUrlRef = useRef("");
 
-  const pointerActiveRef =
-    useRef(false);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
 
-  const isRecordingRef =
-    useRef(false);
+  const silenceAnimationRef = useRef(null);
+  const silenceStartedAtRef = useRef(null);
+  const speechDetectedRef = useRef(false);
 
-  const isPlayingRef =
-    useRef(false);
+  const liveWaitingForResponseRef = useRef(false);
+  const liveAudioReceivedRef = useRef(false);
 
-  const recordingModeRef =
-    useRef("tap");
+  const wakeLockRef = useRef(null);
 
-  const liveVoiceRef =
-    useRef(false);
+  const mountedRef = useRef(true);
 
-  const voiceSessionActiveRef =
-    useRef(false);
+  const textareaRef = useRef(null);
+  const chatScrollRef = useRef(null);
 
-  const audioRef =
-    useRef(null);
+  const stopRecordingRef = useRef(null);
+  const startRecordingInternalRef = useRef(null);
 
-  const audioContextRef =
-    useRef(null);
+  const messageIdRef = useRef(1);
 
-  const analyserRef =
-    useRef(null);
-
-  const silenceAnimationRef =
-    useRef(null);
-
-  const silenceStartedAtRef =
-    useRef(null);
-
-  const speechDetectedRef =
-    useRef(false);
-
-  const liveWaitingForResponseRef =
-    useRef(false);
-
-  const liveAudioReceivedRef =
-    useRef(false);
-
-  const wakeLockRef =
-    useRef(null);
-
-  const mountedRef =
-    useRef(true);
-
-  const textareaRef =
-    useRef(null);
-
-  const scrollRef =
-    useRef(null);
-
-  const bottomRef =
-    useRef(null);
-
-  const stopRecordingRef =
-    useRef(null);
-
-  const startRecordingInternalRef =
-    useRef(null);
-
-  const messageIdRef =
-    useRef(1);
-
-  const replayingMessageRef =
-    useRef(null);
+  const latestUserMessageRef = useRef("");
 
   /* ==========================================================
      CREATE ID
   ========================================================== */
 
   const createId = useCallback(() => {
-    const id =
-      messageIdRef.current;
-
+    const id = messageIdRef.current;
     messageIdRef.current += 1;
 
     return `${Date.now()}-${id}`;
   }, []);
 
   /* ==========================================================
-     THEME
-  ========================================================== */
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "antimate-theme",
-        darkMode ? "dark" : "light"
-      );
-    } catch {
-      // Ignore.
-    }
-  }, [darkMode]);
-
-  /* ==========================================================
      WAKE LOCK
   ========================================================== */
 
-  const requestWakeLock =
-    useCallback(async () => {
-      try {
-        if (!("wakeLock" in navigator)) {
-          return;
-        }
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if (!("wakeLock" in navigator)) return;
+      if (wakeLockRef.current) return;
 
-        if (wakeLockRef.current) {
-          return;
-        }
+      wakeLockRef.current =
+        await navigator.wakeLock.request("screen");
 
-        wakeLockRef.current =
-          await navigator.wakeLock.request(
-            "screen"
-          );
-
-        wakeLockRef.current.addEventListener(
-          "release",
-          () => {
-            wakeLockRef.current = null;
-          }
-        );
-      } catch {
-        // Optional feature.
-      }
-    }, []);
-
-  const releaseWakeLock =
-    useCallback(async () => {
-      try {
-        if (wakeLockRef.current) {
-          await wakeLockRef.current.release();
+      wakeLockRef.current.addEventListener(
+        "release",
+        () => {
           wakeLockRef.current = null;
         }
-      } catch {
+      );
+    } catch {
+      // Optional feature.
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    try {
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release();
         wakeLockRef.current = null;
       }
-    }, []);
+    } catch {
+      wakeLockRef.current = null;
+    }
+  }, []);
 
   /* ==========================================================
-     SCROLL
+     STOP AUDIO
   ========================================================== */
 
-  const scrollToBottom =
-    useCallback((smooth = true) => {
-      bottomRef.current?.scrollIntoView({
-        behavior: smooth ? "smooth" : "auto",
-        block: "end",
-      });
-    }, []);
+  const stopAudio = useCallback(() => {
+    const audio = audioRef.current;
 
-  const handleScroll =
-    useCallback(() => {
-      const element =
-        scrollRef.current;
-
-      if (!element) return;
-
-      const distance =
-        element.scrollHeight -
-        element.scrollTop -
-        element.clientHeight;
-
-      setShowScrollButton(
-        distance > 260
-      );
-    }, []);
-
-  useEffect(() => {
-    if (
-      messages.length ||
-      currentAnswer ||
-      transcript
-    ) {
-      scrollToBottom();
+    if (audio) {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {
+        // Ignore.
+      }
     }
-  }, [
-    messages.length,
-    currentAnswer,
-    transcript,
-    isProcessing,
-    scrollToBottom,
-  ]);
+
+    if (
+      currentAudioUrlRef.current &&
+      currentAudioUrlRef.current.startsWith("blob:")
+    ) {
+      try {
+        URL.revokeObjectURL(
+          currentAudioUrlRef.current
+        );
+      } catch {
+        // Ignore.
+      }
+    }
+
+    currentAudioUrlRef.current = "";
+    audioRef.current = null;
+
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+
+    if (!liveVoiceRef.current) {
+      setStatus("ready");
+      setStatusMessage("");
+    }
+  }, []);
 
   /* ==========================================================
      SILENCE DETECTION
   ========================================================== */
 
-  const stopSilenceDetection =
-    useCallback(() => {
-      if (silenceAnimationRef.current) {
-        cancelAnimationFrame(
-          silenceAnimationRef.current
+  const stopSilenceDetection = useCallback(() => {
+    if (silenceAnimationRef.current) {
+      cancelAnimationFrame(
+        silenceAnimationRef.current
+      );
+
+      silenceAnimationRef.current = null;
+    }
+
+    silenceStartedAtRef.current = null;
+    speechDetectedRef.current = false;
+
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch {
+        // Ignore.
+      }
+
+      audioContextRef.current = null;
+    }
+
+    analyserRef.current = null;
+  }, []);
+
+  /* ==========================================================
+     STOP MEDIA TRACKS
+  ========================================================== */
+
+  const stopMediaTracks = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current
+        .getTracks()
+        .forEach((track) => {
+          try {
+            track.stop();
+          } catch {
+            // Ignore.
+          }
+        });
+
+      mediaStreamRef.current = null;
+    }
+
+    stopSilenceDetection();
+  }, [stopSilenceDetection]);
+
+  /* ==========================================================
+     ADD MESSAGE
+  ========================================================== */
+
+  const addMessage = useCallback(
+    (role, content, extra = {}) => {
+      if (!content) return null;
+
+      const id = createId();
+
+      const message = {
+        id,
+        role,
+        content,
+        createdAt: Date.now(),
+        ...extra,
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        message,
+      ]);
+
+      return id;
+    },
+    [createId]
+  );
+
+  /* ==========================================================
+     UPDATE MESSAGE
+  ========================================================== */
+
+  const updateMessage = useCallback(
+    (id, updates) => {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === id
+            ? {
+                ...message,
+                ...updates,
+              }
+            : message
+        )
+      );
+    },
+    []
+  );
+
+  /* ==========================================================
+     REMOVE MESSAGE
+  ========================================================== */
+
+  const removeMessagesAfter = useCallback(
+    (id) => {
+      setMessages((prev) => {
+        const index = prev.findIndex(
+          (message) => message.id === id
         );
 
-        silenceAnimationRef.current = null;
-      }
+        if (index === -1) return prev;
 
-      silenceStartedAtRef.current = null;
+        return prev.slice(0, index + 1);
+      });
+    },
+    []
+  );
 
-      speechDetectedRef.current = false;
+  /* ==========================================================
+     START SILENCE DETECTION
+  ========================================================== */
 
-      if (audioContextRef.current) {
-        try {
-          audioContextRef.current.close();
-        } catch {
-          // Ignore.
-        }
-
-        audioContextRef.current = null;
-      }
-
-      analyserRef.current = null;
-    }, []);
-
-  const stopMediaTracks =
-    useCallback(() => {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current
-          .getTracks()
-          .forEach((track) => {
-            try {
-              track.stop();
-            } catch {
-              // Ignore.
-            }
-          });
-
-        mediaStreamRef.current = null;
-      }
-
-      stopSilenceDetection();
-    }, [stopSilenceDetection]);
-
-  const startSilenceDetection =
-    useCallback((stream) => {
+  const startSilenceDetection = useCallback(
+    (stream) => {
       try {
         const AudioContextClass =
           window.AudioContext ||
           window.webkitAudioContext;
 
-        if (!AudioContextClass) {
-          return;
-        }
+        if (!AudioContextClass) return;
 
         const audioContext =
           new AudioContextClass();
@@ -841,64 +770,41 @@ export default function AntimateAI() {
         audioContextRef.current =
           audioContext;
 
-        analyserRef.current =
-          analyser;
+        analyserRef.current = analyser;
 
-        const data =
-          new Uint8Array(
-            analyser.fftSize
-          );
+        const data = new Uint8Array(
+          analyser.fftSize
+        );
 
         const detect = () => {
-          if (!isRecordingRef.current) {
-            return;
-          }
+          if (!isRecordingRef.current) return;
 
-          if (!liveVoiceRef.current) {
-            return;
-          }
+          if (!liveVoiceRef.current) return;
 
-          analyser.getByteTimeDomainData(
-            data
-          );
+          analyser.getByteTimeDomainData(data);
 
           let sum = 0;
 
-          for (
-            let i = 0;
-            i < data.length;
-            i++
-          ) {
+          for (let i = 0; i < data.length; i++) {
             const normalized =
               (data[i] - 128) / 128;
 
-            sum +=
-              normalized *
-              normalized;
+            sum += normalized * normalized;
           }
 
-          const rms =
-            Math.sqrt(
-              sum / data.length
-            );
+          const rms = Math.sqrt(
+            sum / data.length
+          );
 
-          const voiceThreshold =
-            0.025;
+          const voiceThreshold = 0.025;
 
-          if (
-            rms > voiceThreshold
-          ) {
-            speechDetectedRef.current =
-              true;
-
-            silenceStartedAtRef.current =
-              null;
+          if (rms > voiceThreshold) {
+            speechDetectedRef.current = true;
+            silenceStartedAtRef.current = null;
           } else if (
             speechDetectedRef.current
           ) {
-            if (
-              !silenceStartedAtRef.current
-            ) {
+            if (!silenceStartedAtRef.current) {
               silenceStartedAtRef.current =
                 Date.now();
             }
@@ -908,24 +814,22 @@ export default function AntimateAI() {
               silenceStartedAtRef.current;
 
             if (
-              silentFor >=
-              LIVE_SILENCE_MS
+              silentFor >= LIVE_SILENCE_MS
             ) {
-              silenceStartedAtRef.current =
-                null;
+              silenceStartedAtRef.current = null;
 
-              stopRecordingRef.current?.({
-                liveSegment: true,
-              });
+              if (stopRecordingRef.current) {
+                stopRecordingRef.current({
+                  liveSegment: true,
+                });
+              }
 
               return;
             }
           }
 
           silenceAnimationRef.current =
-            requestAnimationFrame(
-              detect
-            );
+            requestAnimationFrame(detect);
         };
 
         detect();
@@ -935,687 +839,479 @@ export default function AntimateAI() {
           error
         );
       }
-    }, []);
-
-  /* ==========================================================
-     ADD MESSAGE
-  ========================================================== */
-
-  const addMessage =
-    useCallback(
-      (
-        role,
-        content,
-        extra = {}
-      ) => {
-        if (!content) {
-          return null;
-        }
-
-        const newMessage = {
-          id: createId(),
-          role,
-          content,
-          timestamp:
-            extra.timestamp ||
-            new Date(),
-          ...extra,
-        };
-
-        setMessages((prev) => [
-          ...prev,
-          newMessage,
-        ]);
-
-        return newMessage;
-      },
-      [createId]
-    );
-
-  /* ==========================================================
-     COPY MESSAGE
-  ========================================================== */
-
-  const copyMessage =
-    useCallback(async (
-      message
-    ) => {
-      try {
-        await navigator.clipboard.writeText(
-          message.content
-        );
-
-        setCopiedId(message.id);
-
-        setTimeout(() => {
-          if (mountedRef.current) {
-            setCopiedId(null);
-          }
-        }, 1600);
-      } catch {
-        try {
-          const textarea =
-            document.createElement(
-              "textarea"
-            );
-
-          textarea.value =
-            message.content;
-
-          document.body.appendChild(
-            textarea
-          );
-
-          textarea.select();
-
-          document.execCommand(
-            "copy"
-          );
-
-          textarea.remove();
-
-          setCopiedId(message.id);
-
-          setTimeout(() => {
-            if (
-              mountedRef.current
-            ) {
-              setCopiedId(null);
-            }
-          }, 1600);
-        } catch {
-          // Ignore.
-        }
-      }
-    }, []);
+    },
+    []
+  );
 
   /* ==========================================================
      PLAY AUDIO
   ========================================================== */
 
-  const playAudio =
-    useCallback(
-      (
-        payload,
-        messageId = null
-      ) => {
-        const audioUrl =
-          getAudioUrl(payload);
+  const playAudio = useCallback(
+    (payload, messageId = null) => {
+      const audioUrl = getAudioUrl(payload);
 
-        if (!audioUrl) {
-          if (
-            liveVoiceRef.current &&
-            voiceSessionActiveRef.current
-          ) {
-            liveWaitingForResponseRef.current =
-              false;
+      if (!audioUrl) {
+        if (
+          liveVoiceRef.current &&
+          voiceSessionActiveRef.current
+        ) {
+          liveWaitingForResponseRef.current =
+            false;
 
-            setTimeout(() => {
-              if (
-                liveVoiceRef.current &&
-                voiceSessionActiveRef.current &&
-                !isRecordingRef.current &&
-                !isPlayingRef.current
-              ) {
-                startRecordingInternalRef.current?.(
-                  "live"
-                );
-              }
-            }, 350);
-          }
-
-          return;
+          setTimeout(() => {
+            if (
+              liveVoiceRef.current &&
+              voiceSessionActiveRef.current &&
+              !isRecordingRef.current &&
+              !isPlayingRef.current
+            ) {
+              startRecordingInternalRef.current?.(
+                "live"
+              );
+            }
+          }, 350);
         }
 
-        if (audioRef.current) {
+        return;
+      }
+
+      stopAudio();
+
+      currentAudioUrlRef.current = audioUrl;
+
+      const audio = new Audio(audioUrl);
+
+      audio.preload = "auto";
+
+      audioRef.current = audio;
+
+      isPlayingRef.current = true;
+
+      setIsPlaying(true);
+      setStatus("speaking");
+
+      setStatusMessage(
+        "ANTIMATE iri kuvuga…"
+      );
+
+      liveAudioReceivedRef.current = true;
+
+      if (messageId) {
+        updateMessage(messageId, {
+          audioUrl,
+        });
+      }
+
+      audio.onended = () => {
+        if (!mountedRef.current) return;
+
+        if (
+          audioUrl.startsWith("blob:")
+        ) {
           try {
-            audioRef.current.pause();
+            URL.revokeObjectURL(audioUrl);
           } catch {
             // Ignore.
           }
-
-          audioRef.current = null;
         }
 
-        const audio =
-          new Audio(audioUrl);
-
-        audio.preload = "auto";
-
-        audioRef.current =
-          audio;
-
-        isPlayingRef.current =
-          true;
-
-        setIsPlaying(true);
-
-        if (messageId) {
-          replayingMessageRef.current =
-            messageId;
-
-          setReplayingId(messageId);
-        }
-
-        setStatus("speaking");
-
-        setStatusMessage(
-          "ANTIMATE iri kuvuga…"
-        );
-
-        liveAudioReceivedRef.current =
-          true;
-
-        audio.onended = () => {
-          if (!mountedRef.current) {
-            return;
-          }
-
-          isPlayingRef.current =
-            false;
-
-          setIsPlaying(false);
-
-          setReplayingId(null);
-
-          replayingMessageRef.current =
-            null;
-
-          setStatus("ready");
-
-          setStatusMessage("");
-
-          if (
-            audioUrl.startsWith("blob:")
-          ) {
-            try {
-              URL.revokeObjectURL(
-                audioUrl
-              );
-            } catch {
-              // Ignore.
-            }
-          }
-
-          audioRef.current = null;
-
-          if (
-            liveVoiceRef.current &&
-            voiceSessionActiveRef.current
-          ) {
-            liveWaitingForResponseRef.current =
-              false;
-
-            setTimeout(() => {
-              if (
-                liveVoiceRef.current &&
-                voiceSessionActiveRef.current &&
-                !isRecordingRef.current &&
-                !isPlayingRef.current
-              ) {
-                startRecordingInternalRef.current?.(
-                  "live"
-                );
-              }
-            }, 300);
-          } else {
-            releaseWakeLock();
-          }
-        };
-
-        audio.onerror = () => {
-          if (!mountedRef.current) {
-            return;
-          }
-
-          isPlayingRef.current =
-            false;
-
-          setIsPlaying(false);
-
-          setReplayingId(null);
-
-          replayingMessageRef.current =
-            null;
-
-          audioRef.current = null;
-
-          if (
-            liveVoiceRef.current &&
-            voiceSessionActiveRef.current
-          ) {
-            liveWaitingForResponseRef.current =
-              false;
-
-            setTimeout(() => {
-              if (
-                liveVoiceRef.current &&
-                voiceSessionActiveRef.current &&
-                !isRecordingRef.current &&
-                !isPlayingRef.current
-              ) {
-                startRecordingInternalRef.current?.(
-                  "live"
-                );
-              }
-            }, 400);
-          } else {
-            releaseWakeLock();
-          }
-        };
-
-        audio.play().catch((error) => {
-          console.warn(
-            "Audio playback failed:",
-            error
-          );
-
-          isPlayingRef.current =
-            false;
-
-          setIsPlaying(false);
-
-          setReplayingId(null);
-
-          replayingMessageRef.current =
-            null;
-
-          if (
-            liveVoiceRef.current &&
-            voiceSessionActiveRef.current
-          ) {
-            liveWaitingForResponseRef.current =
-              false;
-
-            setTimeout(() => {
-              if (
-                liveVoiceRef.current &&
-                voiceSessionActiveRef.current &&
-                !isRecordingRef.current &&
-                !isPlayingRef.current
-              ) {
-                startRecordingInternalRef.current?.(
-                  "live"
-                );
-              }
-            }, 500);
-          }
-        });
-      },
-      [releaseWakeLock]
-    );
-
-  /* ==========================================================
-     STOP AUDIO
-  ========================================================== */
-
-  const stopAudio =
-    useCallback(() => {
-      if (audioRef.current) {
-        try {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        } catch {
-          // Ignore.
-        }
+        currentAudioUrlRef.current = "";
 
         audioRef.current = null;
-      }
 
-      isPlayingRef.current =
-        false;
+        isPlayingRef.current = false;
 
-      setIsPlaying(false);
+        setIsPlaying(false);
 
-      setReplayingId(null);
-
-      replayingMessageRef.current =
-        null;
-
-      if (!liveVoiceRef.current) {
         setStatus("ready");
         setStatusMessage("");
-        releaseWakeLock();
-      }
-    }, [releaseWakeLock]);
 
-  /* ==========================================================
-     REPLAY ASSISTANT MESSAGE
-  ========================================================== */
+        if (
+          liveVoiceRef.current &&
+          voiceSessionActiveRef.current
+        ) {
+          liveWaitingForResponseRef.current =
+            false;
 
-  const replayMessage =
-    useCallback(
-      (message) => {
-        if (!message?.audioUrl) {
-          return;
+          setTimeout(() => {
+            if (
+              liveVoiceRef.current &&
+              voiceSessionActiveRef.current &&
+              !isRecordingRef.current &&
+              !isPlayingRef.current
+            ) {
+              startRecordingInternalRef.current?.(
+                "live"
+              );
+            }
+          }, 300);
+        } else {
+          releaseWakeLock();
         }
+      };
 
-        playAudio(
-          message.audioUrl,
-          message.id
+      audio.onerror = () => {
+        if (!mountedRef.current) return;
+
+        currentAudioUrlRef.current = "";
+
+        audioRef.current = null;
+
+        isPlayingRef.current = false;
+
+        setIsPlaying(false);
+
+        if (
+          liveVoiceRef.current &&
+          voiceSessionActiveRef.current
+        ) {
+          liveWaitingForResponseRef.current =
+            false;
+
+          setTimeout(() => {
+            if (
+              liveVoiceRef.current &&
+              voiceSessionActiveRef.current &&
+              !isRecordingRef.current &&
+              !isPlayingRef.current
+            ) {
+              startRecordingInternalRef.current?.(
+                "live"
+              );
+            }
+          }, 400);
+        } else {
+          releaseWakeLock();
+        }
+      };
+
+      audio.play().catch((error) => {
+        console.warn(
+          "Audio autoplay failed:",
+          error
         );
-      },
-      [playAudio]
-    );
+
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+
+        if (
+          liveVoiceRef.current &&
+          voiceSessionActiveRef.current
+        ) {
+          liveWaitingForResponseRef.current =
+            false;
+
+          setTimeout(() => {
+            if (
+              liveVoiceRef.current &&
+              voiceSessionActiveRef.current &&
+              !isRecordingRef.current &&
+              !isPlayingRef.current
+            ) {
+              startRecordingInternalRef.current?.(
+                "live"
+              );
+            }
+          }, 500);
+        }
+      });
+    },
+    [
+      releaseWakeLock,
+      stopAudio,
+      updateMessage,
+    ]
+  );
 
   /* ==========================================================
      START RECORDING
   ========================================================== */
 
-  const startRecordingInternal =
-    useCallback(
-      async (mode = "tap") => {
-        if (
-          !socketRef.current?.connected
-        ) {
-          setErrorMessage(
-            "Connection to ANTIMATE server ntiraboneka."
+  const startRecordingInternal = useCallback(
+    async (mode = "tap") => {
+      if (
+        !socketRef.current?.connected
+      ) {
+        setErrorMessage(
+          "Connection to ANTIMATE server ntiraboneka."
+        );
+
+        setStatus("offline");
+
+        return;
+      }
+
+      if (isRecordingRef.current) {
+        return;
+      }
+
+      if (
+        isPlayingRef.current &&
+        !liveVoiceRef.current
+      ) {
+        return;
+      }
+
+      if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+      ) {
+        setErrorMessage(
+          "Browser yawe ntabwo yemera microphone."
+        );
+
+        setStatus("error");
+
+        return;
+      }
+
+      setErrorMessage("");
+      setTranscript("");
+      setCurrentAnswer("");
+
+      try {
+        await requestWakeLock();
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+            }
           );
 
-          setStatus("offline");
+        mediaStreamRef.current = stream;
 
-          return;
-        }
+        const mimeType =
+          getSupportedMimeType();
 
-        if (
-          isRecordingRef.current
-        ) {
-          return;
-        }
+        recordingMimeTypeRef.current =
+          mimeType;
 
-        if (
-          isPlayingRef.current &&
-          !liveVoiceRef.current
-        ) {
-          return;
-        }
-
-        if (
-          !navigator.mediaDevices ||
-          !navigator.mediaDevices.getUserMedia
-        ) {
-          setErrorMessage(
-            "Browser yawe ntabwo yemera microphone."
-          );
-
-          setStatus("error");
-
-          return;
-        }
-
-        setErrorMessage("");
-
-        setTranscript("");
-
-        setCurrentAnswer("");
-
-        try {
-          await requestWakeLock();
-
-          const stream =
-            await navigator.mediaDevices.getUserMedia(
-              {
-                audio: {
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true,
-                },
-              }
-            );
-
-          mediaStreamRef.current =
-            stream;
-
-          const mimeType =
-            getSupportedMimeType();
-
-          recordingMimeTypeRef.current =
-            mimeType;
-
-          recordingExtensionRef.current =
-            extensionFromMimeType(
-              mimeType
-            );
-
-          const recorderOptions =
+        recordingExtensionRef.current =
+          extensionFromMimeType(
             mimeType
-              ? { mimeType }
-              : undefined;
+          );
 
-          const recorder =
-            new MediaRecorder(
-              stream,
-              recorderOptions
-            );
+        const recorderOptions = mimeType
+          ? { mimeType }
+          : undefined;
 
-          mediaRecorderRef.current =
-            recorder;
+        const recorder =
+          new MediaRecorder(
+            stream,
+            recorderOptions
+          );
 
-          const sessionMimeType =
-            mimeType ||
-            recorder.mimeType ||
-            "audio/webm";
+        mediaRecorderRef.current = recorder;
 
-          recordingMimeTypeRef.current =
-            sessionMimeType;
+        const sessionMimeType =
+          mimeType ||
+          recorder.mimeType ||
+          "audio/webm";
 
-          recordingExtensionRef.current =
-            extensionFromMimeType(
-              sessionMimeType
-            );
+        recordingMimeTypeRef.current =
+          sessionMimeType;
 
-          recordingModeRef.current =
-            mode;
+        recordingExtensionRef.current =
+          extensionFromMimeType(
+            sessionMimeType
+          );
 
-          isRecordingRef.current =
+        recordingModeRef.current = mode;
+
+        isRecordingRef.current = true;
+
+        if (mode === "live") {
+          liveVoiceRef.current = true;
+          voiceSessionActiveRef.current =
             true;
 
-          if (mode === "live") {
-            liveVoiceRef.current =
-              true;
+          setLiveVoice(true);
+          setRecordingMode("live");
 
-            voiceSessionActiveRef.current =
-              true;
+          setStatus("listening");
 
-            setLiveVoice(true);
-
-            setRecordingMode("live");
-
-            setStatus("listening");
-
-            setStatusMessage(
-              "Live Voice: ndagutega…"
-            );
-
-            speechDetectedRef.current =
-              false;
-
-            silenceStartedAtRef.current =
-              null;
-          } else {
-            setLiveVoice(false);
-
-            setRecordingMode("tap");
-
-            setRecordingSeconds(30);
-
-            setStatus("recording");
-
-            setStatusMessage(
-              "Ndumva…"
-            );
-          }
-
-          socketRef.current.emit(
-            "antimate:voice:start",
-            {
-              mimeType:
-                sessionMimeType,
-
-              extension:
-                extensionFromMimeType(
-                  sessionMimeType
-                ),
-
-              language: "rw",
-
-              mode,
-            }
+          setStatusMessage(
+            "Live Voice: ndagutega…"
           );
 
-          recorder.ondataavailable =
-            async (event) => {
-              if (
-                !event.data ||
-                event.data.size === 0
-              ) {
-                return;
-              }
+          speechDetectedRef.current = false;
+          silenceStartedAtRef.current = null;
+        } else {
+          setLiveVoice(false);
+          setRecordingMode("tap");
 
-              if (
-                !socketRef.current?.connected
-              ) {
-                return;
-              }
+          setRecordingSeconds(30);
 
-              try {
-                const buffer =
-                  await event.data.arrayBuffer();
+          setStatus("recording");
 
-                socketRef.current.emit(
-                  "antimate:voice:chunk",
-                  buffer
-                );
-              } catch (error) {
-                console.warn(
-                  "Audio chunk failed:",
-                  error
-                );
-              }
-            };
+          setStatusMessage(
+            "Ndumva…"
+          );
+        }
 
-          recorder.onstop = () => {
+        socketRef.current.emit(
+          "antimate:voice:start",
+          {
+            mimeType: sessionMimeType,
+            extension:
+              extensionFromMimeType(
+                sessionMimeType
+              ),
+            language: "rw",
+            mode,
+          }
+        );
+
+        recorder.ondataavailable =
+          async (event) => {
             if (
-              mediaRecorderRef.current ===
-              recorder
+              !event.data ||
+              event.data.size === 0
             ) {
-              mediaRecorderRef.current =
-                null;
+              return;
             }
 
-            stopMediaTracks();
-
             if (
-              socketRef.current?.connected
+              !socketRef.current?.connected
             ) {
+              return;
+            }
+
+            try {
+              const buffer =
+                await event.data.arrayBuffer();
+
               socketRef.current.emit(
-                "antimate:voice:end",
-                {
-                  mode,
-                }
+                "antimate:voice:chunk",
+                buffer
               );
-            }
-
-            setIsProcessing(true);
-
-            setStatus("processing");
-
-            setStatusMessage(
-              "ANTIMATE irimo gutunganya…"
-            );
-
-            if (mode === "live") {
-              liveWaitingForResponseRef.current =
-                true;
-
-              liveAudioReceivedRef.current =
-                false;
+            } catch (error) {
+              console.warn(
+                "Audio chunk failed:",
+                error
+              );
             }
           };
 
-          recorder.onerror =
-            (event) => {
-              console.error(
-                "MediaRecorder error:",
-                event
-              );
+        recorder.onstop = () => {
+          if (
+            mediaRecorderRef.current ===
+            recorder
+          ) {
+            mediaRecorderRef.current = null;
+          }
 
-              isRecordingRef.current =
-                false;
+          stopMediaTracks();
 
-              setIsRecording(false);
-
-              stopMediaTracks();
-
-              setIsProcessing(false);
-
-              setStatus("error");
-
-              setStatusMessage("");
-
-              setErrorMessage(
-                "Habaye ikibazo mu gufata amajwi."
-              );
-            };
-
-          recorder.start(
-            AUDIO_CHUNK_MS
-          );
-
-          setIsRecording(true);
-
-          if (mode === "live") {
-            startSilenceDetection(
-              stream
+          if (
+            socketRef.current?.connected
+          ) {
+            socketRef.current.emit(
+              "antimate:voice:end",
+              {
+                mode,
+              }
             );
           }
-        } catch (error) {
-          console.error(
-            "START RECORDING ERROR:",
-            error
+
+          setIsProcessing(true);
+
+          setStatus("processing");
+
+          setStatusMessage(
+            "ANTIMATE irimo gutunganya…"
           );
 
-          isRecordingRef.current =
-            false;
+          if (mode === "live") {
+            liveWaitingForResponseRef.current =
+              true;
+
+            liveAudioReceivedRef.current =
+              false;
+          }
+        };
+
+        recorder.onerror = (event) => {
+          console.error(
+            "MediaRecorder error:",
+            event
+          );
+
+          isRecordingRef.current = false;
 
           setIsRecording(false);
 
           stopMediaTracks();
 
-          if (
-            error?.name ===
-            "NotAllowedError"
-          ) {
-            setErrorMessage(
-              "Microphone ntiyemerewe. Fungura microphone permission muri browser."
-            );
-          } else if (
-            error?.name ===
-            "NotFoundError"
-          ) {
-            setErrorMessage(
-              "Nta microphone yabonetse kuri device."
-            );
-          } else {
-            setErrorMessage(
-              "Ntabwo nshoboye gufungura microphone."
-            );
-          }
+          setIsProcessing(false);
 
           setStatus("error");
 
           setStatusMessage("");
 
-          releaseWakeLock();
+          setErrorMessage(
+            "Habaye ikibazo mu gufata amajwi."
+          );
+        };
+
+        recorder.start(AUDIO_CHUNK_MS);
+
+        setIsRecording(true);
+
+        if (mode === "live") {
+          startSilenceDetection(stream);
         }
-      },
-      [
-        requestWakeLock,
-        releaseWakeLock,
-        startSilenceDetection,
-        stopMediaTracks,
-      ]
-    );
+      } catch (error) {
+        console.error(
+          "START RECORDING ERROR:",
+          error
+        );
+
+        isRecordingRef.current = false;
+
+        setIsRecording(false);
+
+        stopMediaTracks();
+
+        if (
+          error?.name ===
+          "NotAllowedError"
+        ) {
+          setErrorMessage(
+            "Microphone ntiyemerewe. Fungura microphone permission muri browser."
+          );
+        } else if (
+          error?.name ===
+          "NotFoundError"
+        ) {
+          setErrorMessage(
+            "Nta microphone yabonetse kuri device."
+          );
+        } else {
+          setErrorMessage(
+            "Ntabwo nshoboye gufungura microphone."
+          );
+        }
+
+        setStatus("error");
+        setStatusMessage("");
+
+        releaseWakeLock();
+      }
+    },
+    [
+      releaseWakeLock,
+      requestWakeLock,
+      startSilenceDetection,
+      stopMediaTracks,
+    ]
+  );
 
   useEffect(() => {
     startRecordingInternalRef.current =
@@ -1626,80 +1322,70 @@ export default function AntimateAI() {
      STOP RECORDING
   ========================================================== */
 
-  const stopRecording =
-    useCallback(
-      ({
-        liveSegment = false,
-      } = {}) => {
-        if (!isRecordingRef.current) {
-          return;
-        }
+  const stopRecording = useCallback(
+    ({ liveSegment = false } = {}) => {
+      if (!isRecordingRef.current) {
+        return;
+      }
 
-        isRecordingRef.current =
+      isRecordingRef.current = false;
+
+      setIsRecording(false);
+
+      stopSilenceDetection();
+
+      if (recordingTimerRef.current) {
+        clearInterval(
+          recordingTimerRef.current
+        );
+
+        recordingTimerRef.current = null;
+      }
+
+      const recorder =
+        mediaRecorderRef.current;
+
+      if (
+        recorder &&
+        recorder.state !== "inactive"
+      ) {
+        try {
+          recorder.stop();
+        } catch (error) {
+          console.warn(
+            "Recorder stop failed:",
+            error
+          );
+        }
+      }
+
+      if (!liveSegment) {
+        liveVoiceRef.current = false;
+
+        voiceSessionActiveRef.current =
           false;
 
-        setIsRecording(false);
+        setLiveVoice(false);
 
-        stopSilenceDetection();
+        setRecordingMode("tap");
 
-        if (
-          recordingTimerRef.current
-        ) {
-          clearInterval(
-            recordingTimerRef.current
-          );
+        releaseWakeLock();
+      } else {
+        liveVoiceRef.current = true;
 
-          recordingTimerRef.current =
-            null;
-        }
+        voiceSessionActiveRef.current =
+          true;
 
-        const recorder =
-          mediaRecorderRef.current;
+        setLiveVoice(true);
 
-        if (
-          recorder &&
-          recorder.state !==
-            "inactive"
-        ) {
-          try {
-            recorder.stop();
-          } catch (error) {
-            console.warn(
-              "Recorder stop failed:",
-              error
-            );
-          }
-        }
-
-        if (!liveSegment) {
-          liveVoiceRef.current =
-            false;
-
-          voiceSessionActiveRef.current =
-            false;
-
-          setLiveVoice(false);
-
-          setRecordingMode("tap");
-
-          releaseWakeLock();
-        } else {
-          liveVoiceRef.current =
-            true;
-
-          voiceSessionActiveRef.current =
-            true;
-
-          setLiveVoice(true);
-
-          setRecordingMode("live");
-        }
-      },
-      [
-        releaseWakeLock,
-        stopSilenceDetection,
-      ]
-    );
+        setRecordingMode("live");
+      }
+    },
+    [
+      releaseWakeLock,
+      stopSilenceDetection,
+    ]
+  );
 
   useEffect(() => {
     stopRecordingRef.current =
@@ -1715,15 +1401,12 @@ export default function AntimateAI() {
       !isRecording ||
       recordingMode !== "tap"
     ) {
-      if (
-        recordingTimerRef.current
-      ) {
+      if (recordingTimerRef.current) {
         clearInterval(
           recordingTimerRef.current
         );
 
-        recordingTimerRef.current =
-          null;
+        recordingTimerRef.current = null;
       }
 
       return;
@@ -1731,44 +1414,39 @@ export default function AntimateAI() {
 
     recordingTimerRef.current =
       setInterval(() => {
-        setRecordingSeconds(
-          (prev) => {
-            if (prev <= 1) {
-              if (
+        setRecordingSeconds((prev) => {
+          if (prev <= 1) {
+            if (
+              recordingTimerRef.current
+            ) {
+              clearInterval(
                 recordingTimerRef.current
-              ) {
-                clearInterval(
-                  recordingTimerRef.current
-                );
+              );
 
-                recordingTimerRef.current =
-                  null;
-              }
-
-              setTimeout(() => {
-                stopRecording({
-                  liveSegment: false,
-                });
-              }, 0);
-
-              return 0;
+              recordingTimerRef.current =
+                null;
             }
 
-            return prev - 1;
+            setTimeout(() => {
+              stopRecording({
+                liveSegment: false,
+              });
+            }, 0);
+
+            return 0;
           }
-        );
+
+          return prev - 1;
+        });
       }, 1000);
 
     return () => {
-      if (
-        recordingTimerRef.current
-      ) {
+      if (recordingTimerRef.current) {
         clearInterval(
           recordingTimerRef.current
         );
 
-        recordingTimerRef.current =
-          null;
+        recordingTimerRef.current = null;
       }
     };
   }, [
@@ -1784,9 +1462,7 @@ export default function AntimateAI() {
   const handleVoicePointerDown =
     useCallback(
       (event) => {
-        if (text.trim()) {
-          return;
-        }
+        if (text.trim()) return;
 
         if (
           event.pointerType === "mouse" &&
@@ -1806,18 +1482,10 @@ export default function AntimateAI() {
           event.pointerId
         );
 
-        pointerActiveRef.current =
-          true;
+        pointerActiveRef.current = true;
 
-        pressStartedAtRef.current =
-          Date.now();
-
-        if (
-          isRecordingRef.current
-        ) {
-          if (
-            !liveVoiceRef.current
-          ) {
+        if (isRecordingRef.current) {
+          if (!liveVoiceRef.current) {
             stopRecording({
               liveSegment: false,
             });
@@ -1826,26 +1494,19 @@ export default function AntimateAI() {
           return;
         }
 
-        startRecordingInternal(
-          "tap"
-        );
+        startRecordingInternal("tap");
 
         holdTimerRef.current =
           setTimeout(() => {
-            if (
-              !pointerActiveRef.current
-            ) {
+            if (!pointerActiveRef.current) {
               return;
             }
 
-            if (
-              !isRecordingRef.current
-            ) {
+            if (!isRecordingRef.current) {
               return;
             }
 
-            liveVoiceRef.current =
-              true;
+            liveVoiceRef.current = true;
 
             voiceSessionActiveRef.current =
               true;
@@ -1869,9 +1530,7 @@ export default function AntimateAI() {
             silenceStartedAtRef.current =
               null;
 
-            if (
-              mediaStreamRef.current
-            ) {
+            if (mediaStreamRef.current) {
               startSilenceDetection(
                 mediaStreamRef.current
               );
@@ -1888,53 +1547,40 @@ export default function AntimateAI() {
     );
 
   const handleVoicePointerUp =
-    useCallback(
-      (event) => {
-        try {
-          event.currentTarget.releasePointerCapture?.(
-            event.pointerId
-          );
-        } catch {
-          // Ignore.
-        }
+    useCallback((event) => {
+      try {
+        event.currentTarget.releasePointerCapture?.(
+          event.pointerId
+        );
+      } catch {
+        // Ignore.
+      }
 
-        pointerActiveRef.current =
-          false;
+      pointerActiveRef.current = false;
 
-        if (
-          holdTimerRef.current
-        ) {
-          clearTimeout(
-            holdTimerRef.current
-          );
-
-          holdTimerRef.current =
-            null;
-        }
-
-        if (
-          liveVoiceRef.current
-        ) {
-          return;
-        }
-      },
-      []
-    );
-
-  const handleVoicePointerCancel =
-    useCallback(() => {
-      pointerActiveRef.current =
-        false;
-
-      if (
-        holdTimerRef.current
-      ) {
+      if (holdTimerRef.current) {
         clearTimeout(
           holdTimerRef.current
         );
 
-        holdTimerRef.current =
-          null;
+        holdTimerRef.current = null;
+      }
+
+      if (liveVoiceRef.current) {
+        return;
+      }
+    }, []);
+
+  const handleVoicePointerCancel =
+    useCallback(() => {
+      pointerActiveRef.current = false;
+
+      if (holdTimerRef.current) {
+        clearTimeout(
+          holdTimerRef.current
+        );
+
+        holdTimerRef.current = null;
       }
     }, []);
 
@@ -1942,379 +1588,581 @@ export default function AntimateAI() {
      STOP LIVE VOICE
   ========================================================== */
 
-  const stopLiveVoice =
-    useCallback(() => {
-      liveVoiceRef.current =
-        false;
+  const stopLiveVoice = useCallback(() => {
+    liveVoiceRef.current = false;
 
-      voiceSessionActiveRef.current =
-        false;
+    voiceSessionActiveRef.current = false;
 
-      liveWaitingForResponseRef.current =
-        false;
+    liveWaitingForResponseRef.current =
+      false;
 
-      setLiveVoice(false);
+    setLiveVoice(false);
 
-      if (isRecordingRef.current) {
-        stopRecording({
-          liveSegment: false,
-        });
-      }
+    if (isRecordingRef.current) {
+      stopRecording({
+        liveSegment: false,
+      });
+    }
 
-      stopAudio();
+    stopAudio();
 
-      setIsProcessing(false);
+    setIsProcessing(false);
 
-      setStatus("ready");
+    setStatus("ready");
 
-      setStatusMessage("");
+    setStatusMessage("");
 
-      releaseWakeLock();
-    }, [
-      releaseWakeLock,
-      stopAudio,
-      stopRecording,
-    ]);
+    releaseWakeLock();
+  }, [
+    releaseWakeLock,
+    stopAudio,
+    stopRecording,
+  ]);
 
   /* ==========================================================
      SEND TEXT
   ========================================================== */
 
-  const sendTextMessage =
-    useCallback(
-      async (
-        customText = null,
-        editMessageId = null
-      ) => {
-        const value =
-          (
-            customText ??
-            text
-          ).trim();
+  const sendTextMessage = useCallback(
+    async (
+      overrideText = null,
+      options = {}
+    ) => {
+      const value =
+        overrideText !== null
+          ? overrideText.trim()
+          : text.trim();
 
-        if (!value) {
-          return;
-        }
+      if (!value) return;
 
-        if (
-          value.length >
-          MAX_TEXT_LENGTH
-        ) {
-          setErrorMessage(
-            `Ubutumwa ntiburenza inyuguti ${MAX_TEXT_LENGTH.toLocaleString()}.`
-          );
+      if (
+        isProcessing &&
+        !options.allowDuringProcessing
+      ) {
+        return;
+      }
 
-          return;
-        }
+      if (isRecording) return;
+      if (liveVoice) return;
 
-        if (isProcessing) {
-          return;
-        }
+      setErrorMessage("");
 
-        if (isRecording) {
-          return;
-        }
-
-        if (liveVoice) {
-          return;
-        }
-
-        setErrorMessage("");
-
+      if (overrideText === null) {
         setText("");
+      }
 
-        setTranscript("");
+      setTranscript("");
+      setCurrentAnswer("");
 
-        setCurrentAnswer("");
+      const userId = addMessage(
+        "user",
+        value,
+        {
+          edited: Boolean(
+            options.edited
+          ),
+        }
+      );
 
-        if (editMessageId) {
-          setMessages((prev) => {
-            const index =
-              prev.findIndex(
-                (message) =>
-                  message.id ===
-                  editMessageId
-              );
+      latestUserMessageRef.current =
+        value;
 
-            if (index === -1) {
-              return prev;
-            }
+      setIsProcessing(true);
 
-            return [
-              ...prev.slice(
-                0,
-                index
-              ),
-              {
-                ...prev[index],
-                content: value,
-                timestamp:
-                  new Date(),
-                edited: true,
-              },
-              ...prev.slice(
-                index + 1
-              ),
-            ];
-          });
+      setStatus("processing");
+      setStatusMessage("");
 
-          setEditingId(null);
-          setEditingText("");
-        } else {
-          addMessage(
-            "user",
-            value
+      try {
+        const response = await fetch(
+          CHAT_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+              Accept:
+                "application/json",
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+              message: value,
+              language: "rw",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Request failed: ${response.status}`
           );
         }
 
-        setIsProcessing(true);
+        const data =
+          await response.json();
 
-        setStatus("processing");
+        const answer =
+          data?.answer ||
+          data?.response ||
+          data?.message ||
+          data?.text ||
+          data?.answer_kinyarwanda ||
+          data?.answer_rw ||
+          "";
+
+        if (!answer) {
+          throw new Error(
+            "Empty answer"
+          );
+        }
+
+        setCurrentAnswer(answer);
+
+        const assistantId = addMessage(
+          "assistant",
+          answer
+        );
+
+        const audioPayload =
+          data?.audio ||
+          data?.audioUrl ||
+          data?.audio_url ||
+          data?.voice_url ||
+          data?.voiceUrl;
+
+        if (audioPayload) {
+          const audioUrl =
+            getAudioUrl(audioPayload);
+
+          updateMessage(
+            assistantId,
+            {
+              audioUrl,
+            }
+          );
+
+          playAudio(
+            audioPayload,
+            assistantId
+          );
+        }
+
+        setIsProcessing(false);
+
+        setStatus("ready");
 
         setStatusMessage("");
 
-        try {
-          const response =
-            await fetch(
-              CHAT_URL,
-              {
-                method: "POST",
+        return {
+          userId,
+          assistantId,
+          answer,
+        };
+      } catch (error) {
+        console.error(
+          "ANTIMATE CHAT ERROR:",
+          error
+        );
 
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                  Accept:
-                    "application/json",
-                },
+        setIsProcessing(false);
 
-                credentials:
-                  "include",
+        setStatus("error");
 
-                body: JSON.stringify({
-                  message: value,
-                  language: "rw",
-                }),
-              }
-            );
+        setErrorMessage(
+          "Ntabwo nshoboye kubona igisubizo ubu. Ongera ugerageze."
+        );
 
-          if (!response.ok) {
-            throw new Error(
-              `Request failed: ${response.status}`
-            );
-          }
-
-          const data =
-            await response.json();
-
-          const answer =
-            data?.answer ||
-            data?.response ||
-            data?.message ||
-            data?.text ||
-            data?.answer_kinyarwanda ||
-            data?.answer_rw ||
-            "";
-
-          if (!answer) {
-            throw new Error(
-              "Empty answer"
-            );
-          }
-
-          setCurrentAnswer(
-            answer
-          );
-
-          const audioPayload =
-            data?.audio ||
-            data?.audioUrl ||
-            data?.audio_url ||
-            data?.voice_url ||
-            data?.voiceUrl;
-
-          const audioUrl =
-            getAudioUrl(
-              audioPayload
-            );
-
-          const newAssistant =
-            addMessage(
-              "assistant",
-              answer,
-              {
-                audioUrl:
-                  audioUrl ||
-                  null,
-              }
-            );
-
-          setIsProcessing(
-            false
-          );
-
-          setStatus(
-            audioPayload
-              ? "speaking"
-              : "ready"
-          );
-
-          setStatusMessage("");
-
-          if (audioPayload) {
-            playAudio(
-              audioPayload,
-              newAssistant?.id
-            );
-          }
-        } catch (error) {
-          console.error(
-            "ANTIMATE CHAT ERROR:",
-            error
-          );
-
-          setIsProcessing(false);
-
-          setStatus("error");
-
-          setErrorMessage(
-            "Ntabwo nshoboye kubona igisubizo ubu. Ongera ugerageze."
-          );
-        }
-      },
-      [
-        addMessage,
-        isProcessing,
-        isRecording,
-        liveVoice,
-        playAudio,
-        text,
-      ]
-    );
+        return null;
+      }
+    },
+    [
+      addMessage,
+      isProcessing,
+      isRecording,
+      liveVoice,
+      playAudio,
+      text,
+      updateMessage,
+    ]
+  );
 
   /* ==========================================================
      EDIT MESSAGE
   ========================================================== */
 
-  const beginEdit =
-    useCallback(
-      (message) => {
-        setEditingId(
-          message.id
-        );
-
-        setEditingText(
-          message.content
-        );
-
-        setTimeout(() => {
-          const input =
-            document.querySelector(
-              `[data-edit-input="${message.id}"]`
-            );
-
-          input?.focus();
-
-          if (
-            input?.select
-          ) {
-            input.select();
-          }
-        }, 50);
-      },
-      []
-    );
-
-  const cancelEdit =
-    useCallback(() => {
-      setEditingId(null);
-      setEditingText("");
-    }, []);
-
-  const submitEdit =
-    useCallback(
-      (message) => {
-        const value =
-          editingText.trim();
-
-        if (!value) {
-          return;
-        }
-
-        sendTextMessage(
-          value,
-          message.id
-        );
-      },
-      [
-        editingText,
-        sendTextMessage,
-      ]
-    );
-
-  /* ==========================================================
-     REGENERATE
-  ========================================================== */
-
-  const regenerateLastAnswer =
-    useCallback(() => {
-      const lastUser =
-        [...messages]
-          .reverse()
-          .find(
-            (message) =>
-              message.role ===
-              "user"
-          );
-
-      if (!lastUser) {
+  const startEditMessage = useCallback(
+    (message) => {
+      if (!message || message.role !== "user") {
         return;
       }
+
+      setEditingId(message.id);
+      setEditingText(message.content);
+
+      setTimeout(() => {
+        const editor =
+          document.querySelector(
+            `[data-edit-input="${message.id}"]`
+          );
+
+        editor?.focus();
+      }, 50);
+    },
+    []
+  );
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditingText("");
+  }, []);
+
+  const submitEdit = useCallback(
+    async (message) => {
+      const value =
+        editingText.trim();
+
+      if (!value) return;
+
+      setEditingId(null);
+      setEditingText("");
+
+      setMessages((prev) => {
+        const index = prev.findIndex(
+          (item) =>
+            item.id === message.id
+        );
+
+        if (index === -1) {
+          return prev;
+        }
+
+        const next = prev.slice(
+          0,
+          index
+        );
+
+        return next;
+      });
 
       setIsProcessing(true);
       setStatus("processing");
 
-      setMessages((prev) => {
-        const lastAssistantIndex =
-          [...prev]
-            .map(
-              (message, index) => ({
-                message,
-                index,
-              })
-            )
-            .reverse()
-            .find(
-              ({
-                message,
-              }) =>
-                message.role ===
-                "assistant"
-            )?.index;
+      setErrorMessage("");
 
-        if (
-          lastAssistantIndex ===
-          undefined
-        ) {
-          return prev;
+      try {
+        const response = await fetch(
+          CHAT_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+              Accept:
+                "application/json",
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+              message: value,
+              language: "rw",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Request failed: ${response.status}`
+          );
         }
 
-        return prev.filter(
-          (_, index) =>
-            index !==
-            lastAssistantIndex
-        );
-      });
+        const data =
+          await response.json();
 
-      sendTextMessage(
-        lastUser.content
+        const answer =
+          data?.answer ||
+          data?.response ||
+          data?.message ||
+          data?.text ||
+          data?.answer_kinyarwanda ||
+          data?.answer_rw ||
+          "";
+
+        if (!answer) {
+          throw new Error(
+            "Empty answer"
+          );
+        }
+
+        const newUserId = addMessage(
+          "user",
+          value,
+          {
+            edited: true,
+          }
+        );
+
+        const assistantId = addMessage(
+          "assistant",
+          answer
+        );
+
+        const audioPayload =
+          data?.audio ||
+          data?.audioUrl ||
+          data?.audio_url ||
+          data?.voice_url ||
+          data?.voiceUrl;
+
+        if (audioPayload) {
+          updateMessage(
+            assistantId,
+            {
+              audioUrl:
+                getAudioUrl(
+                  audioPayload
+                ),
+            }
+          );
+
+          playAudio(
+            audioPayload,
+            assistantId
+          );
+        }
+
+        latestUserMessageRef.current =
+          value;
+
+        setCurrentAnswer(answer);
+
+        setIsProcessing(false);
+        setStatus("ready");
+        setStatusMessage("");
+
+        return {
+          newUserId,
+          assistantId,
+        };
+      } catch (error) {
+        console.error(
+          "EDIT MESSAGE ERROR:",
+          error
+        );
+
+        setIsProcessing(false);
+
+        setStatus("error");
+
+        setErrorMessage(
+          "Ntabwo nshoboye kohereza ubutumwa bwahinduwe."
+        );
+      }
+    },
+    [
+      addMessage,
+      editingText,
+      playAudio,
+      updateMessage,
+    ]
+  );
+
+  /* ==========================================================
+     COPY MESSAGE
+  ========================================================== */
+
+  const copyMessage = useCallback(
+    async (message) => {
+      try {
+        await navigator.clipboard.writeText(
+          message.content
+        );
+
+        setCopiedId(message.id);
+
+        setTimeout(() => {
+          setCopiedId((current) =>
+            current === message.id
+              ? null
+              : current
+          );
+        }, 1600);
+      } catch (error) {
+        console.warn(
+          "Clipboard unavailable:",
+          error
+        );
+      }
+    },
+    []
+  );
+
+  /* ==========================================================
+     REPLAY MESSAGE AUDIO
+  ========================================================== */
+
+  const replayMessage = useCallback(
+    (message) => {
+      if (!message?.audioUrl) {
+        return;
+      }
+
+      playAudio(
+        message.audioUrl,
+        message.id
       );
+    },
+    [playAudio]
+  );
+
+  /* ==========================================================
+     REGENERATE LAST ANSWER
+  ========================================================== */
+
+  const regenerateLastAnswer =
+    useCallback(async () => {
+      const lastUser = [...messages]
+        .reverse()
+        .find(
+          (message) =>
+            message.role === "user"
+        );
+
+      if (!lastUser) return;
+
+      if (
+        isProcessing ||
+        isRecording ||
+        liveVoice
+      ) {
+        return;
+      }
+
+      const index = messages.findIndex(
+        (message) =>
+          message.id === lastUser.id
+      );
+
+      setMessages((prev) =>
+        prev.slice(0, index + 1)
+      );
+
+      setIsProcessing(true);
+
+      setStatus("thinking");
+
+      setStatusMessage("");
+
+      try {
+        const response = await fetch(
+          CHAT_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+              Accept:
+                "application/json",
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+              message:
+                lastUser.content,
+              language: "rw",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Request failed: ${response.status}`
+          );
+        }
+
+        const data =
+          await response.json();
+
+        const answer =
+          data?.answer ||
+          data?.response ||
+          data?.message ||
+          data?.text ||
+          data?.answer_kinyarwanda ||
+          data?.answer_rw ||
+          "";
+
+        if (!answer) {
+          throw new Error(
+            "Empty answer"
+          );
+        }
+
+        const assistantId = addMessage(
+          "assistant",
+          answer
+        );
+
+        const audioPayload =
+          data?.audio ||
+          data?.audioUrl ||
+          data?.audio_url ||
+          data?.voice_url ||
+          data?.voiceUrl;
+
+        if (audioPayload) {
+          updateMessage(
+            assistantId,
+            {
+              audioUrl:
+                getAudioUrl(
+                  audioPayload
+                ),
+            }
+          );
+
+          playAudio(
+            audioPayload,
+            assistantId
+          );
+        }
+
+        setCurrentAnswer(answer);
+
+        setIsProcessing(false);
+
+        setStatus("ready");
+      } catch (error) {
+        console.error(
+          "REGENERATE ERROR:",
+          error
+        );
+
+        setIsProcessing(false);
+
+        setStatus("error");
+
+        setErrorMessage(
+          "Ntabwo nshoboye kongera gutanga igisubizo."
+        );
+      }
     }, [
+      addMessage,
+      isProcessing,
+      isRecording,
+      liveVoice,
       messages,
-      sendTextMessage,
+      playAudio,
+      updateMessage,
     ]);
 
   /* ==========================================================
-     ENTER
+     ENTER KEY
   ========================================================== */
 
   const handleTextareaKeyDown =
@@ -2326,21 +2174,23 @@ export default function AntimateAI() {
         ) {
           event.preventDefault();
 
-          if (
-            text.trim()
-          ) {
+          if (text.trim()) {
             sendTextMessage();
           }
+
+          return;
         }
 
         if (
-          event.key === "Escape"
+          event.key === "Escape" &&
+          editingId
         ) {
-          setText("");
-          textareaRef.current?.blur();
+          cancelEdit();
         }
       },
       [
+        cancelEdit,
+        editingId,
         sendTextMessage,
         text,
       ]
@@ -2351,73 +2201,54 @@ export default function AntimateAI() {
   ========================================================== */
 
   useEffect(() => {
-    mountedRef.current =
-      true;
+    mountedRef.current = true;
 
-    const socket =
-      io(SOCKET_URL, {
-        transports: [
-          "websocket",
-          "polling",
-        ],
+    const socket = io(SOCKET_URL, {
+      transports: [
+        "websocket",
+        "polling",
+      ],
 
-        withCredentials: true,
+      withCredentials: true,
 
-        reconnection: true,
+      reconnection: true,
 
-        reconnectionAttempts: Infinity,
+      reconnectionAttempts: Infinity,
 
-        reconnectionDelay: 1000,
+      reconnectionDelay: 1000,
 
-        reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 5000,
 
-        timeout: 20000,
-      });
+      timeout: 20000,
+    });
 
-    socketRef.current =
-      socket;
+    socketRef.current = socket;
 
-    socket.on(
-      "connect",
-      () => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+    socket.on("connect", () => {
+      if (!mountedRef.current) return;
 
-        setSocketConnected(
-          true
-        );
+      setSocketConnected(true);
 
-        if (
-          !isRecordingRef.current
-        ) {
-          setStatus("ready");
-
-          setStatusMessage("");
-
-          setErrorMessage("");
-        }
+      if (!isRecordingRef.current) {
+        setStatus("ready");
+        setStatusMessage("");
+        setErrorMessage("");
       }
-    );
+    });
 
     socket.on(
       "disconnect",
-      () => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
-
-        setSocketConnected(
-          false
+      (reason) => {
+        console.warn(
+          "ANTIMATE socket disconnected:",
+          reason
         );
 
-        if (
-          !isRecordingRef.current
-        ) {
+        if (!mountedRef.current) return;
+
+        setSocketConnected(false);
+
+        if (!isRecordingRef.current) {
           setStatus("offline");
 
           setStatusMessage(
@@ -2429,16 +2260,15 @@ export default function AntimateAI() {
 
     socket.on(
       "connect_error",
-      () => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
-
-        setSocketConnected(
-          false
+      (error) => {
+        console.error(
+          "ANTIMATE socket error:",
+          error
         );
+
+        if (!mountedRef.current) return;
+
+        setSocketConnected(false);
 
         setStatus("offline");
 
@@ -2451,12 +2281,13 @@ export default function AntimateAI() {
     socket.io.on(
       "reconnect",
       () => {
-        if (
-          mountedRef.current
-        ) {
-          setSocketConnected(
-            true
-          );
+        if (!mountedRef.current) return;
+
+        setSocketConnected(true);
+
+        if (!isRecordingRef.current) {
+          setStatus("ready");
+          setStatusMessage("");
         }
       }
     );
@@ -2464,24 +2295,17 @@ export default function AntimateAI() {
     socket.on(
       "antimate:status",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
         const message =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.message ||
               payload?.status ||
               "";
 
         if (message) {
-          setStatusMessage(
-            message
-          );
+          setStatusMessage(message);
         }
       }
     );
@@ -2489,24 +2313,17 @@ export default function AntimateAI() {
     socket.on(
       "antimate:transcript",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
         const value =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.text ||
               payload?.transcript ||
               "";
 
         if (value) {
-          setTranscript(
-            value
-          );
+          setTranscript(value);
         }
       }
     );
@@ -2514,32 +2331,21 @@ export default function AntimateAI() {
     socket.on(
       "antimate:thinking",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
-        setIsProcessing(
-          true
-        );
+        setIsProcessing(true);
 
-        setStatus(
-          "thinking"
-        );
+        setStatus("thinking");
 
         const value =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.message ||
               payload?.text ||
               "";
 
         if (value) {
-          setThinkingText(
-            value
-          );
+          setThinkingText(value);
         }
       }
     );
@@ -2547,15 +2353,10 @@ export default function AntimateAI() {
     socket.on(
       "antimate:answer:chunk",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
         const chunk =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.text ||
               payload?.chunk ||
@@ -2564,8 +2365,7 @@ export default function AntimateAI() {
 
         if (chunk) {
           setCurrentAnswer(
-            (prev) =>
-              prev + chunk
+            (prev) => prev + chunk
           );
         }
       }
@@ -2574,15 +2374,10 @@ export default function AntimateAI() {
     socket.on(
       "antimate:answer",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
         const answer =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.answer ||
               payload?.text ||
@@ -2593,34 +2388,15 @@ export default function AntimateAI() {
               "";
 
         if (answer) {
-          setCurrentAnswer(
-            answer
-          );
-
-          const audioUrl =
-            getAudioUrl(
-              payload?.audio ||
-              payload?.audioUrl ||
-              payload?.audio_url ||
-              payload?.voice_url ||
-              payload?.voiceUrl
-            );
+          setCurrentAnswer(answer);
 
           addMessage(
             "assistant",
-            answer,
-            {
-              audioUrl:
-                audioUrl ||
-                null,
-            }
+            answer
           );
         }
 
-        setStatus(
-          "speaking"
-        );
-
+        setStatus("speaking");
         setStatusMessage("");
       }
     );
@@ -2628,35 +2404,61 @@ export default function AntimateAI() {
     socket.on(
       "antimate:audio",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
-        playAudio(
-          payload
-        );
+        /*
+         * Attach audio to the most recent
+         * assistant message when possible.
+         */
+
+        setMessages((prev) => {
+          const lastAssistant =
+            [...prev]
+              .reverse()
+              .find(
+                (message) =>
+                  message.role ===
+                  "assistant"
+              );
+
+          if (!lastAssistant) {
+            return prev;
+          }
+
+          const audioUrl =
+            getAudioUrl(payload);
+
+          if (!audioUrl) {
+            return prev;
+          }
+
+          return prev.map(
+            (message) =>
+              message.id ===
+              lastAssistant.id
+                ? {
+                    ...message,
+                    audioUrl,
+                  }
+                : message
+          );
+        });
+
+        playAudio(payload);
       }
     );
 
     socket.on(
       "antimate:complete",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
 
         console.log(
           "ANTIMATE voice complete:",
           payload
         );
 
-        setIsProcessing(
-          false
-        );
+        setIsProcessing(false);
 
         setStatus(
           liveVoiceRef.current
@@ -2694,27 +2496,23 @@ export default function AntimateAI() {
     socket.on(
       "antimate:error",
       (payload) => {
-        if (
-          !mountedRef.current
-        ) {
-          return;
-        }
+        if (!mountedRef.current) return;
+
+        console.error(
+          "ANTIMATE voice error:",
+          payload
+        );
 
         const message =
-          typeof payload ===
-          "string"
+          typeof payload === "string"
             ? payload
             : payload?.message ||
               payload?.error ||
               "ANTIMATE habonye ikibazo.";
 
-        setErrorMessage(
-          message
-        );
+        setErrorMessage(message);
 
-        setIsProcessing(
-          false
-        );
+        setIsProcessing(false);
 
         setStatus("error");
 
@@ -2744,8 +2542,7 @@ export default function AntimateAI() {
     );
 
     return () => {
-      mountedRef.current =
-        false;
+      mountedRef.current = false;
 
       socket.removeAllListeners();
 
@@ -2755,18 +2552,11 @@ export default function AntimateAI() {
 
       socket.disconnect();
 
-      if (
-        socketRef.current ===
-        socket
-      ) {
-        socketRef.current =
-          null;
+      if (socketRef.current === socket) {
+        socketRef.current = null;
       }
     };
-  }, [
-    addMessage,
-    playAudio,
-  ]);
+  }, [addMessage, playAudio]);
 
   /* ==========================================================
      THINKING ROTATION
@@ -2778,20 +2568,71 @@ export default function AntimateAI() {
       return;
     }
 
-    const interval =
-      setInterval(() => {
-        setThinkingIndex(
-          (prev) =>
-            (prev + 1) %
-            THINKING_MESSAGES.length
-        );
-      }, 2200);
+    const interval = setInterval(() => {
+      setThinkingIndex(
+        (prev) =>
+          (prev + 1) %
+          THINKING_MESSAGES.length
+      );
+    }, 2200);
 
     return () =>
-      clearInterval(
-        interval
-      );
+      clearInterval(interval);
   }, [isProcessing]);
+
+  /* ==========================================================
+     AUTO SCROLL
+  ========================================================== */
+
+  const scrollToBottom = useCallback(
+    (smooth = true) => {
+      const container =
+        chatScrollRef.current;
+
+      if (!container) return;
+
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: smooth
+          ? "smooth"
+          : "auto",
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (isNearBottom) {
+      requestAnimationFrame(() => {
+        scrollToBottom(true);
+      });
+    }
+  }, [
+    messages,
+    transcript,
+    currentAnswer,
+    isProcessing,
+    isNearBottom,
+    scrollToBottom,
+  ]);
+
+  const handleChatScroll = useCallback(() => {
+    const container =
+      chatScrollRef.current;
+
+    if (!container) return;
+
+    const distance =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight;
+
+    const near =
+      distance < 180;
+
+    setIsNearBottom(near);
+    setShowScrollButton(!near);
+  }, []);
 
   /* ==========================================================
      CLEANUP
@@ -2799,33 +2640,29 @@ export default function AntimateAI() {
 
   useEffect(() => {
     return () => {
-      mountedRef.current =
-        false;
+      mountedRef.current = false;
 
-      if (
-        holdTimerRef.current
-      ) {
+      if (holdTimerRef.current) {
         clearTimeout(
           holdTimerRef.current
         );
+
+        holdTimerRef.current = null;
       }
 
-      if (
-        recordingTimerRef.current
-      ) {
+      if (recordingTimerRef.current) {
         clearInterval(
           recordingTimerRef.current
         );
+
+        recordingTimerRef.current = null;
       }
 
-      if (
-        mediaRecorderRef.current
-      ) {
+      if (mediaRecorderRef.current) {
         try {
           if (
             mediaRecorderRef.current
-              .state !==
-            "inactive"
+              .state !== "inactive"
           ) {
             mediaRecorderRef.current.stop();
           }
@@ -2835,186 +2672,285 @@ export default function AntimateAI() {
       }
 
       stopSilenceDetection();
-
       stopMediaTracks();
+      stopAudio();
 
-      if (
-        audioRef.current
-      ) {
-        try {
-          audioRef.current.pause();
-        } catch {
-          // Ignore.
-        }
+      isPlayingRef.current = false;
+      isRecordingRef.current = false;
 
-        audioRef.current =
-          null;
-      }
-
-      isPlayingRef.current =
-        false;
-
-      isRecordingRef.current =
-        false;
-
-      liveVoiceRef.current =
-        false;
-
-      voiceSessionActiveRef.current =
-        false;
+      liveVoiceRef.current = false;
+      voiceSessionActiveRef.current = false;
 
       releaseWakeLock();
     };
   }, [
     releaseWakeLock,
+    stopAudio,
     stopMediaTracks,
     stopSilenceDetection,
   ]);
 
   /* ==========================================================
-     DERIVED UI
+     TEXTAREA AUTO HEIGHT
   ========================================================== */
 
-  const hasText =
-    text.trim().length > 0;
+  const handleTextChange = useCallback(
+    (event) => {
+      const value = event.target.value;
+
+      setText(value);
+
+      const element = event.target;
+
+      element.style.height = "auto";
+
+      element.style.height = `${Math.min(
+        element.scrollHeight,
+        150
+      )}px`;
+    },
+    []
+  );
+
+  /* ==========================================================
+     QUICK PROMPT
+  ========================================================== */
+
+  const handleQuickPrompt = useCallback(
+    (prompt) => {
+      setText(prompt);
+
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
+    },
+    []
+  );
+
+  /* ==========================================================
+     UI DERIVED VALUES
+  ========================================================== */
+
+  const hasText = text.trim().length > 0;
+
+  const connectionLabel =
+    socketConnected
+      ? "Online"
+      : "Offline";
 
   const displayedThinking =
     thinkingText ||
-    THINKING_MESSAGES[
-      thinkingIndex
-    ];
-
-  const lastUserMessage =
-    [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role ===
-          "user"
-      );
+    THINKING_MESSAGES[thinkingIndex];
 
   const lastAssistantMessage =
-    [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role ===
-          "assistant"
-      );
+    useMemo(
+      () =>
+        [...messages]
+          .reverse()
+          .find(
+            (message) =>
+              message.role ===
+              "assistant"
+          ),
+      [messages]
+    );
 
-  const messageCount =
-    messages.length;
+  const hasConversation =
+    messages.length > 0 ||
+    Boolean(transcript) ||
+    Boolean(currentAnswer);
 
-  const wordCount =
-    messages
-      .reduce(
-        (total, message) =>
-          total +
-          message.content
-            .trim()
-            .split(/\s+/)
-            .filter(Boolean)
-            .length,
-        0
-      );
+  /* ==========================================================
+     MESSAGE ACTIONS
+  ========================================================== */
 
-  const actionTitle =
-    hasText
-      ? "Ohereza ubutumwa"
-      : isRecording
-      ? liveVoice
-        ? "Live Voice irakora"
-        : "Kanda uhagarike recording"
-      : "Kanda ufate amajwi • Hold 5s kuri Live Voice";
+  const renderMessageActions = (
+    message,
+    isLastAssistant
+  ) => {
+    const canEdit =
+      message.role === "user" &&
+      messages[
+        messages.length - 1
+      ]?.id === message.id;
 
-  const quickPrompts = useMemo(
-    () => [
-      {
-        icon: "sparkles",
-        title: "Tangira ikiganiro",
-        text: "Muraho ANTIMATE, wamfasha uyu munsi?",
-      },
-      {
-        icon: "activity",
-        title: "Brooder",
-        text: "Ni gute nakurikirana neza ubushyuhe n'ubushuhe muri brooder?",
-      },
-      {
-        icon: "info",
-        title: "Amakuru",
-        text: "Mbwira ibintu by'ingenzi nkeneye kumenya ku micungire y'inkoko.",
-      },
-    ],
-    []
-  );
+    return (
+      <div
+        className={`message-actions ${
+          message.role === "user"
+            ? "user-actions"
+            : ""
+        }`}
+      >
+        <button
+          type="button"
+          className="message-action"
+          title="Copy"
+          onClick={() =>
+            copyMessage(message)
+          }
+        >
+          <Icon
+            name={
+              copiedId === message.id
+                ? "check"
+                : "copy"
+            }
+            size={15}
+          />
+
+          <span>
+            {copiedId === message.id
+              ? "Copied"
+              : "Copy"}
+          </span>
+        </button>
+
+        {message.role === "user" &&
+          canEdit && (
+            <button
+              type="button"
+              className="message-action"
+              title="Edit"
+              onClick={() =>
+                startEditMessage(
+                  message
+                )
+              }
+            >
+              <Icon
+                name="edit"
+                size={15}
+              />
+
+              <span>Edit</span>
+            </button>
+          )}
+
+        {message.role ===
+          "assistant" &&
+          message.audioUrl && (
+            <button
+              type="button"
+              className={`message-action ${
+                isPlaying &&
+                isLastAssistant
+                  ? "active"
+                  : ""
+              }`}
+              title={
+                isPlaying &&
+                isLastAssistant
+                  ? "Stop"
+                  : "Replay voice"
+              }
+              onClick={() => {
+                if (
+                  isPlaying &&
+                  isLastAssistant
+                ) {
+                  stopAudio();
+                } else {
+                  replayMessage(
+                    message
+                  );
+                }
+              }}
+            >
+              <Icon
+                name={
+                  isPlaying &&
+                  isLastAssistant
+                    ? "stop"
+                    : "volume"
+                }
+                size={15}
+              />
+
+              <span>
+                {isPlaying &&
+                isLastAssistant
+                  ? "Stop"
+                  : "Replay"}
+              </span>
+            </button>
+          )}
+
+        {message.role ===
+          "assistant" &&
+          isLastAssistant && (
+            <button
+              type="button"
+              className="message-action"
+              title="Regenerate"
+              disabled={
+                isProcessing ||
+                isRecording ||
+                liveVoice
+              }
+              onClick={
+                regenerateLastAnswer
+              }
+            >
+              <Icon
+                name="refresh"
+                size={15}
+              />
+
+              <span>Regenerate</span>
+            </button>
+          )}
+      </div>
+    );
+  };
 
   /* ==========================================================
      RENDER
   ========================================================== */
 
   return (
-    <div
-      className={`antimate-app ${
-        darkMode
-          ? "dark"
-          : "light"
-      }`}
-    >
+    <div className="antimate-page">
       <style>{`
-        /* =====================================================
-           RESET
-        ===================================================== */
-
-        .antimate-app,
-        .antimate-app * {
+        * {
           box-sizing: border-box;
         }
 
-        .antimate-app {
-          --bg: #f7f8fa;
-          --bg-deep: #eef1f5;
+        :root {
+          color-scheme: light dark;
+        }
+
+        .antimate-page {
+          --bg: #f5f7fa;
           --surface: rgba(255,255,255,0.78);
           --surface-solid: #ffffff;
-          --surface-soft: rgba(246,248,251,0.88);
-          --surface-hover: rgba(238,242,247,0.95);
-
-          --border: rgba(20,28,43,0.09);
-          --border-strong: rgba(20,28,43,0.14);
-
-          --text: #101522;
-          --text-secondary: #566174;
-          --muted: #8a94a5;
-
+          --surface-soft: rgba(247,249,252,0.86);
+          --surface-hover: rgba(242,245,249,0.95);
+          --border: rgba(17,24,39,0.08);
+          --border-strong: rgba(17,24,39,0.13);
+          --text: #111827;
+          --muted: #6b7280;
+          --muted-2: #9aa2af;
+          --primary: #111827;
+          --primary-text: #ffffff;
           --accent: #2563eb;
           --accent-2: #7c3aed;
-          --accent-soft: rgba(37,99,235,0.09);
-
           --success: #16a34a;
           --danger: #ef4444;
           --warning: #f59e0b;
 
-          --shadow-sm:
-            0 2px 8px rgba(15,23,42,0.05);
-
-          --shadow:
-            0 16px 45px rgba(15,23,42,0.09);
-
-          --shadow-lg:
-            0 30px 80px rgba(15,23,42,0.13);
-
-          min-height: 100vh;
+          min-height: 100dvh;
           width: 100%;
 
           background:
             radial-gradient(
-              circle at 10% 0%,
-              rgba(37,99,235,0.08),
-              transparent 26%
+              900px 450px at 50% -180px,
+              rgba(37,99,235,0.10),
+              transparent 70%
             ),
             radial-gradient(
-              circle at 90% 10%,
+              600px 300px at 100% 10%,
               rgba(124,58,237,0.06),
-              transparent 25%
+              transparent 70%
             ),
             var(--bg);
 
@@ -3023,6 +2959,7 @@ export default function AntimateAI() {
           font-family:
             Inter,
             ui-sans-serif,
+            system-ui,
             -apple-system,
             BlinkMacSystemFont,
             "SF Pro Display",
@@ -3031,59 +2968,47 @@ export default function AntimateAI() {
             sans-serif;
 
           display: flex;
+          flex-direction: column;
+
           overflow: hidden;
-          position: relative;
+
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
 
-        .antimate-app.dark {
-          --bg: #070b12;
-          --bg-deep: #0b111b;
+        @media (prefers-color-scheme: dark) {
+          .antimate-page {
+            --bg: #070a0f;
+            --surface: rgba(15,19,27,0.74);
+            --surface-solid: #10151d;
+            --surface-soft: rgba(18,24,33,0.88);
+            --surface-hover: rgba(26,33,44,0.95);
+            --border: rgba(255,255,255,0.08);
+            --border-strong: rgba(255,255,255,0.13);
+            --text: #f5f7fb;
+            --muted: #929baa;
+            --muted-2: #687283;
+            --primary: #f5f7fb;
+            --primary-text: #0a0d12;
+            --accent: #60a5fa;
+            --accent-2: #a78bfa;
+            --success: #4ade80;
+            --danger: #f87171;
+            --warning: #fbbf24;
 
-          --surface:
-            rgba(13,18,28,0.76);
-
-          --surface-solid:
-            #101722;
-
-          --surface-soft:
-            rgba(18,25,37,0.82);
-
-          --surface-hover:
-            rgba(28,38,53,0.96);
-
-          --border:
-            rgba(255,255,255,0.075);
-
-          --border-strong:
-            rgba(255,255,255,0.12);
-
-          --text: #f4f7fb;
-          --text-secondary: #a7b0c0;
-          --muted: #727e90;
-
-          --accent: #70a5ff;
-          --accent-2: #a78bfa;
-          --accent-soft:
-            rgba(96,165,250,0.12);
-
-          --shadow:
-            0 20px 60px rgba(0,0,0,0.30);
-
-          --shadow-lg:
-            0 30px 100px rgba(0,0,0,0.42);
-
-          background:
-            radial-gradient(
-              circle at 10% 0%,
-              rgba(37,99,235,0.15),
-              transparent 28%
-            ),
-            radial-gradient(
-              circle at 90% 0%,
-              rgba(124,58,237,0.13),
-              transparent 27%
-            ),
-            var(--bg);
+            background:
+              radial-gradient(
+                900px 450px at 50% -180px,
+                rgba(37,99,235,0.16),
+                transparent 70%
+              ),
+              radial-gradient(
+                600px 300px at 100% 10%,
+                rgba(124,58,237,0.11),
+                transparent 70%
+              ),
+              var(--bg);
+          }
         }
 
         button,
@@ -3092,22 +3017,100 @@ export default function AntimateAI() {
         }
 
         button {
-          -webkit-tap-highlight-color:
-            transparent;
+          -webkit-tap-highlight-color: transparent;
         }
 
-        /* =====================================================
-           LOGO
-        ===================================================== */
+        /* ======================================================
+           TOP BAR
+        ====================================================== */
+
+        .antimate-topbar {
+          height: 70px;
+          min-height: 70px;
+
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          padding:
+            0
+            max(
+              18px,
+              env(safe-area-inset-right)
+            )
+            0
+            max(
+              18px,
+              env(safe-area-inset-left)
+            );
+
+          position: relative;
+          z-index: 50;
+
+          border-bottom:
+            1px solid var(--border);
+
+          background:
+            color-mix(
+              in srgb,
+              var(--surface-solid) 74%,
+              transparent
+            );
+
+          backdrop-filter: blur(28px);
+          -webkit-backdrop-filter: blur(28px);
+        }
+
+        .antimate-top-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          min-width: 0;
+        }
+
+        .antimate-brand {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          min-width: 0;
+        }
+
+        .antimate-brand-copy {
+          display: flex;
+          flex-direction: column;
+
+          min-width: 0;
+        }
+
+        .antimate-brand-title {
+          font-size: 15px;
+          line-height: 1.1;
+          font-weight: 800;
+          letter-spacing: -0.025em;
+        }
+
+        .antimate-brand-subtitle {
+          margin-top: 4px;
+
+          color: var(--muted);
+
+          font-size: 9px;
+          font-weight: 700;
+
+          letter-spacing: 0.11em;
+          text-transform: uppercase;
+        }
 
         .antimate-logo {
           position: relative;
-          flex-shrink: 0;
 
-          border-radius: 50%;
+          flex-shrink: 0;
 
           display: grid;
           place-items: center;
+
+          border-radius: 50%;
 
           background:
             conic-gradient(
@@ -3120,27 +3123,22 @@ export default function AntimateAI() {
 
           box-shadow:
             0 0 0 4px
-              rgba(37,99,235,0.08),
-            0 10px 30px
+              rgba(37,99,235,0.07),
+            0 8px 30px
               rgba(37,99,235,0.20);
 
           animation:
-            logoFloat
-            6s
-            ease-in-out
+            antimateLogoRotate
+            12s
+            linear
             infinite;
         }
 
-        .antimate-logo.mini {
-          box-shadow:
-            0 0 0 3px
-              rgba(37,99,235,0.07),
-            0 6px 18px
-              rgba(37,99,235,0.14);
-        }
-
-        .logo-orbit {
+        .antimate-logo-orbit {
           position: absolute;
+
+          width: 68%;
+          height: 68%;
 
           border:
             1.5px solid
@@ -3150,293 +3148,86 @@ export default function AntimateAI() {
         }
 
         .orbit-one {
-          width: 68%;
-          height: 68%;
-
           transform:
-            rotate(28deg)
+            rotate(55deg)
             scaleX(0.62);
         }
 
         .orbit-two {
-          width: 68%;
-          height: 68%;
-
           transform:
-            rotate(-28deg)
+            rotate(-55deg)
             scaleX(0.62);
         }
 
-        .logo-core {
-          width: 18%;
-          height: 18%;
-
-          border-radius: 50%;
-
-          background: white;
-
-          box-shadow:
-            0 0 14px
-            rgba(255,255,255,0.85);
-        }
-
-        @keyframes logoFloat {
-          0%,
-          100% {
-            transform:
-              translateY(0)
-              rotate(0deg);
-          }
-
-          50% {
-            transform:
-              translateY(-2px)
-              rotate(3deg);
-          }
-        }
-
-        /* =====================================================
-           APP LAYOUT
-        ===================================================== */
-
-        .antimate-shell {
-          width: 100%;
-          height: 100vh;
-
-          display: flex;
-          position: relative;
-        }
-
-        /* =====================================================
-           SIDEBAR
-        ===================================================== */
-
-        .antimate-sidebar {
-          width: 272px;
-          height: 100vh;
-
-          flex-shrink: 0;
-
-          display: flex;
-          flex-direction: column;
-
-          padding: 18px;
-
-          border-right:
-            1px solid
-            var(--border);
-
-          background:
-            rgba(
-              250,
-              251,
-              253,
-              0.72
-            );
-
-          backdrop-filter:
-            blur(28px);
-
-          -webkit-backdrop-filter:
-            blur(28px);
-
-          z-index: 50;
-
-          transition:
-            transform 0.32s
-              cubic-bezier(
-                .22,
-                1,
-                .36,
-                1
-              );
-        }
-
-        .dark .antimate-sidebar {
-          background:
-            rgba(
-              8,
-              13,
-              21,
-              0.72
-            );
-        }
-
-        .sidebar-brand {
-          display: flex;
-          align-items: center;
-
-          gap: 11px;
-
-          padding:
-            6px 5px 20px;
-        }
-
-        .sidebar-brand-copy {
-          min-width: 0;
-        }
-
-        .sidebar-brand-name {
-          font-size: 16px;
-          font-weight: 850;
-
-          letter-spacing:
-            -0.04em;
-        }
-
-        .sidebar-brand-sub {
-          margin-top: 4px;
-
-          color:
-            var(--muted);
-
-          font-size: 10px;
-
-          font-weight: 700;
-
-          letter-spacing:
-            0.10em;
-
-          text-transform:
-            uppercase;
-        }
-
-        .new-chat-button {
-          width: 100%;
-
-          height: 46px;
-
-          display: flex;
-          align-items: center;
-          gap: 10px;
-
-          padding:
-            0 14px;
-
-          border:
-            1px solid
-            var(--border-strong);
-
-          border-radius: 14px;
-
-          color:
-            var(--text);
-
-          background:
-            var(--surface);
-
-          box-shadow:
-            var(--shadow-sm);
-
-          cursor: pointer;
-
-          font-weight: 750;
-          font-size: 13px;
-
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease,
-            box-shadow 0.2s ease;
-        }
-
-        .new-chat-button:hover {
-          transform:
-            translateY(-1px);
-
-          background:
-            var(--surface-hover);
-
-          box-shadow:
-            var(--shadow);
-        }
-
-        .sidebar-section {
-          margin-top: 28px;
-        }
-
-        .sidebar-label {
-          padding:
-            0 7px 9px;
-
-          font-size: 10px;
-
-          font-weight: 800;
-
-          text-transform:
-            uppercase;
-
-          letter-spacing:
-            0.09em;
-
-          color:
-            var(--muted);
-        }
-
-        .sidebar-feature {
-          display: flex;
-          align-items: center;
-
-          gap: 10px;
-
-          width: 100%;
-
-          padding:
-            10px 8px;
-
-          border-radius: 12px;
-
-          color:
-            var(--text-secondary);
-
-          font-size: 12px;
-          font-weight: 650;
-        }
-
-        .sidebar-feature-icon {
-          width: 30px;
-          height: 30px;
+        .antimate-logo-core {
+          width: 22%;
+          height: 22%;
 
           display: grid;
           place-items: center;
 
-          border-radius: 9px;
+          border-radius: 50%;
 
-          color:
-            var(--accent);
+          background: #fff;
 
-          background:
-            var(--accent-soft);
+          box-shadow:
+            0 0 12px
+            rgba(255,255,255,0.75);
+
+          position: relative;
         }
 
-        .sidebar-spacer {
-          flex: 1;
+        .antimate-logo-core span {
+          width: 35%;
+          height: 35%;
+
+          border-radius: 50%;
+
+          background: #2563eb;
         }
 
-        .sidebar-status {
+        @keyframes antimateLogoRotate {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .antimate-top-right {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+        }
+
+        .connection-pill {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+
+          min-height: 34px;
+
           padding:
-            12px;
+            0 11px;
 
           border:
             1px solid
             var(--border);
 
-          border-radius: 15px;
+          border-radius: 999px;
 
           background:
-            var(--surface-soft);
-        }
+            var(--surface);
 
-        .sidebar-status-row {
-          display: flex;
-          align-items: center;
-
-          gap: 8px;
+          color:
+            var(--muted);
 
           font-size: 11px;
-          font-weight: 750;
+          font-weight: 700;
+
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
         }
 
-        .status-dot {
+        .connection-dot {
           width: 7px;
           height: 7px;
 
@@ -3444,260 +3235,81 @@ export default function AntimateAI() {
 
           background:
             var(--danger);
+
+          box-shadow:
+            0 0 0 3px
+            rgba(239,68,68,0.09);
         }
 
-        .status-dot.online {
+        .connection-dot.online {
           background:
             var(--success);
 
           box-shadow:
-            0 0 0 5px
-            rgba(22,163,74,0.09);
+            0 0 0 3px
+            rgba(22,163,74,0.10);
         }
 
-        .sidebar-status-text {
-          color:
-            var(--text-secondary);
-        }
+        /* ======================================================
+           CHAT SCROLL
+        ====================================================== */
 
-        .sidebar-footer {
-          padding-top: 12px;
-
-          color:
-            var(--muted);
-
-          text-align: center;
-
-          font-size: 9px;
-
-          line-height: 1.5;
-        }
-
-        /* =====================================================
-           MAIN
-        ===================================================== */
-
-        .antimate-main {
-          min-width: 0;
+        .antimate-chat-scroll {
           flex: 1;
 
-          height: 100vh;
-
-          display: flex;
-          flex-direction: column;
-
-          position: relative;
-        }
-
-        /* =====================================================
-           TOPBAR
-        ===================================================== */
-
-        .antimate-topbar {
-          height: 68px;
-
-          flex-shrink: 0;
-
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-
-          padding:
-            0 26px;
-
-          border-bottom:
-            1px solid
-            var(--border);
-
-          background:
-            var(--surface);
-
-          backdrop-filter:
-            blur(24px);
-
-          -webkit-backdrop-filter:
-            blur(24px);
-
-          position: relative;
-
-          z-index: 20;
-        }
-
-        .topbar-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .mobile-menu {
-          width: 38px;
-          height: 38px;
-
-          display: none;
-          place-items: center;
-
-          border:
-            1px solid
-            var(--border);
-
-          border-radius: 12px;
-
-          background:
-            var(--surface-soft);
-
-          color:
-            var(--text);
-
-          cursor: pointer;
-        }
-
-        .topbar-title {
-          display: flex;
-          flex-direction: column;
-          gap: 3px;
-        }
-
-        .topbar-title-main {
-          font-size: 14px;
-          font-weight: 800;
-
-          letter-spacing:
-            -0.02em;
-        }
-
-        .topbar-title-sub {
-          color:
-            var(--muted);
-
-          font-size: 10px;
-          font-weight: 600;
-        }
-
-        .topbar-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .connection-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-
-          height: 32px;
-
-          padding:
-            0 10px;
-
-          border:
-            1px solid
-            var(--border);
-
-          border-radius:
-            999px;
-
-          background:
-            var(--surface-soft);
-
-          color:
-            var(--text-secondary);
-
-          font-size: 10px;
-          font-weight: 750;
-        }
-
-        .theme-button {
-          width: 34px;
-          height: 34px;
-
-          display: grid;
-          place-items: center;
-
-          border:
-            1px solid
-            var(--border);
-
-          border-radius: 11px;
-
-          color:
-            var(--text-secondary);
-
-          background:
-            var(--surface-soft);
-
-          cursor: pointer;
-
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease;
-        }
-
-        .theme-button:hover {
-          transform:
-            translateY(-1px);
-
-          background:
-            var(--surface-hover);
-        }
-
-        /* =====================================================
-           CHAT SCROLL AREA
-        ===================================================== */
-
-        .antimate-scroll {
-          flex: 1;
+          min-height: 0;
 
           overflow-y: auto;
           overflow-x: hidden;
 
           scroll-behavior: smooth;
 
-          scrollbar-width:
-            thin;
+          overscroll-behavior-y: contain;
 
+          scrollbar-width: thin;
           scrollbar-color:
-            var(--border-strong)
+            rgba(127,127,127,0.20)
             transparent;
         }
 
-        .antimate-scroll::-webkit-scrollbar {
+        .antimate-chat-scroll::-webkit-scrollbar {
           width: 7px;
         }
 
-        .antimate-scroll::-webkit-scrollbar-track {
+        .antimate-chat-scroll::-webkit-scrollbar-track {
           background: transparent;
         }
 
-        .antimate-scroll::-webkit-scrollbar-thumb {
+        .antimate-chat-scroll::-webkit-scrollbar-thumb {
           background:
-            var(--border-strong);
+            rgba(127,127,127,0.18);
 
-          border-radius:
-            999px;
+          border-radius: 999px;
         }
 
-        .chat-container {
+        .antimate-chat-content {
           width:
             min(
-              900px,
-              calc(100% - 40px)
+              930px,
+              calc(100% - 38px)
             );
 
-          margin:
-            0 auto;
+          margin: 0 auto;
 
           padding:
-            36px 0 210px;
+            38px 0 230px;
         }
 
-        /* =====================================================
+        /* ======================================================
            WELCOME
-        ===================================================== */
+        ====================================================== */
 
-        .welcome {
+        .welcome-shell {
           min-height:
             calc(
-              100vh - 280px
+              100dvh -
+              70px -
+              180px
             );
 
           display: flex;
@@ -3705,179 +3317,173 @@ export default function AntimateAI() {
           justify-content: center;
 
           padding:
-            35px 0;
+            45px 0 30px;
         }
 
         .welcome-inner {
           width: 100%;
-          max-width: 690px;
+          max-width: 670px;
 
           text-align: center;
+
+          animation:
+            welcomeIn
+            0.7s
+            cubic-bezier(
+              .22,
+              1,
+              .36,
+              1
+            );
+        }
+
+        @keyframes welcomeIn {
+          from {
+            opacity: 0;
+            transform:
+              translateY(18px)
+              scale(0.98);
+          }
+
+          to {
+            opacity: 1;
+            transform:
+              translateY(0)
+              scale(1);
+          }
         }
 
         .welcome-logo-wrap {
-          width: 74px;
-          height: 74px;
+          width: 76px;
+          height: 76px;
 
           margin:
-            0 auto 20px;
+            0 auto 24px;
 
           display: grid;
           place-items: center;
 
-          border-radius: 25px;
+          border-radius: 28px;
 
           background:
-            linear-gradient(
-              145deg,
-              var(--surface-solid),
-              var(--surface-soft)
-            );
+            var(--surface);
 
           border:
             1px solid
             var(--border);
 
           box-shadow:
-            var(--shadow-lg);
-        }
+            0 24px 70px
+              rgba(15,23,42,0.12);
 
-        .welcome-eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-
-          padding:
-            6px 10px;
-
-          border-radius:
-            999px;
-
-          background:
-            var(--accent-soft);
-
-          color:
-            var(--accent);
-
-          font-size: 10px;
-          font-weight: 800;
-
-          letter-spacing:
-            0.05em;
-
-          text-transform:
-            uppercase;
-
-          margin-bottom: 12px;
+          backdrop-filter: blur(24px);
         }
 
         .welcome-title {
-          margin:
-            0;
+          margin: 0;
 
           font-size:
             clamp(
-              34px,
+              31px,
               6vw,
-              56px
+              48px
             );
 
-          line-height:
-            0.98;
+          line-height: 1.03;
+
+          font-weight: 850;
 
           letter-spacing:
-            -0.065em;
-
-          font-weight:
-            850;
+            -0.055em;
         }
 
         .welcome-title-gradient {
           background:
             linear-gradient(
               100deg,
-              var(--text) 15%,
-              var(--accent) 52%,
-              var(--accent-2) 90%
+              var(--text),
+              var(--accent),
+              var(--accent-2)
             );
 
-          -webkit-background-clip:
-            text;
+          -webkit-background-clip: text;
+          background-clip: text;
 
-          background-clip:
-            text;
-
-          color:
-            transparent;
+          color: transparent;
         }
 
         .welcome-subtitle {
-          max-width:
-            560px;
+          max-width: 580px;
 
           margin:
-            18px auto 0;
+            16px auto 0;
 
           color:
-            var(--text-secondary);
+            var(--muted);
 
           font-size: 14px;
-
-          line-height:
-            1.75;
+          line-height: 1.7;
         }
 
         .quick-prompts {
-          display:
-            grid;
+          display: grid;
 
           grid-template-columns:
             repeat(
-              3,
-              1fr
+              2,
+              minmax(0,1fr)
             );
 
           gap: 10px;
 
-          margin-top:
-            28px;
+          margin:
+            30px auto 0;
+
+          max-width: 630px;
         }
 
-        .quick-card {
-          text-align:
-            left;
+        .quick-prompt {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          min-width: 0;
+
+          padding:
+            13px 14px;
 
           border:
             1px solid
             var(--border);
 
+          border-radius: 16px;
+
           background:
             var(--surface);
-
-          border-radius:
-            17px;
-
-          padding:
-            15px;
-
-          cursor: pointer;
 
           color:
             var(--text);
 
-          box-shadow:
-            var(--shadow-sm);
+          text-align: left;
+
+          cursor: pointer;
 
           transition:
-            transform 0.22s ease,
-            border-color 0.22s ease,
-            background 0.22s ease,
-            box-shadow 0.22s ease;
+            transform 0.2s ease,
+            background 0.2s ease,
+            border-color 0.2s ease,
+            box-shadow 0.2s ease;
+
+          box-shadow:
+            0 8px 30px
+            rgba(15,23,42,0.035);
+
+          backdrop-filter: blur(18px);
         }
 
-        .quick-card:hover {
+        .quick-prompt:hover {
           transform:
-            translateY(-3px);
+            translateY(-2px);
 
           background:
             var(--surface-hover);
@@ -3886,72 +3492,59 @@ export default function AntimateAI() {
             var(--border-strong);
 
           box-shadow:
-            var(--shadow);
+            0 14px 35px
+            rgba(15,23,42,0.08);
         }
 
-        .quick-card-icon {
-          width: 33px;
-          height: 33px;
+        .quick-prompt:active {
+          transform:
+            scale(0.98);
+        }
+
+        .quick-prompt-icon {
+          width: 32px;
+          height: 32px;
+
+          flex-shrink: 0;
 
           display: grid;
           place-items: center;
 
-          border-radius:
-            10px;
+          border-radius: 10px;
 
           background:
-            var(--accent-soft);
+            var(--surface-soft);
 
-          color:
-            var(--accent);
-
-          margin-bottom:
-            11px;
+          font-size: 16px;
         }
 
-        .quick-card-title {
-          font-size:
-            12px;
+        .quick-prompt-text {
+          min-width: 0;
 
-          font-weight:
-            800;
+          overflow: hidden;
 
-          margin-bottom:
-            4px;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+
+          font-size: 12px;
+          font-weight: 650;
         }
 
-        .quick-card-text {
-          color:
-            var(--muted);
-
-          font-size:
-            10px;
-
-          line-height:
-            1.5;
-        }
-
-        /* =====================================================
-           MESSAGE LIST
-        ===================================================== */
+        /* ======================================================
+           MESSAGES
+        ====================================================== */
 
         .message-list {
-          display:
-            flex;
+          display: flex;
+          flex-direction: column;
 
-          flex-direction:
-            column;
-
-          gap:
-            30px;
+          gap: 29px;
         }
 
         .message-row {
-          display:
-            flex;
+          width: 100%;
 
-          width:
-            100%;
+          display: flex;
 
           animation:
             messageIn
@@ -3968,107 +3561,65 @@ export default function AntimateAI() {
           from {
             opacity: 0;
             transform:
-              translateY(8px);
+              translateY(9px)
+              scale(0.995);
           }
 
           to {
             opacity: 1;
             transform:
-              translateY(0);
+              translateY(0)
+              scale(1);
           }
         }
 
         .message-row.user {
-          justify-content:
-            flex-end;
+          justify-content: flex-end;
         }
 
         .message-row.assistant {
-          justify-content:
-            flex-start;
+          justify-content: flex-start;
 
-          align-items:
-            flex-start;
+          align-items: flex-start;
 
-          gap:
-            12px;
+          gap: 11px;
         }
 
         .assistant-avatar {
-          width:
-            34px;
+          width: 34px;
+          height: 34px;
 
-          height:
-            34px;
+          flex-shrink: 0;
 
-          flex-shrink:
-            0;
+          display: grid;
+          place-items: center;
 
-          display:
-            grid;
-
-          place-items:
-            center;
-
-          margin-top:
-            1px;
+          margin-top: 2px;
         }
 
-        .assistant-avatar
-        .antimate-logo {
-          width:
-            32px !important;
-
-          height:
-            32px !important;
+        .assistant-avatar .antimate-logo {
+          width: 31px !important;
+          height: 31px !important;
         }
 
-        .message-content-column {
+        .message-column {
           max-width:
             min(
-              760px,
-              86%
+              790px,
+              88%
             );
 
-          min-width:
-            0;
-        }
-
-        .message-meta {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-
-          margin:
-            0 0 6px 2px;
-
-          color:
-            var(--muted);
-
-          font-size:
-            9px;
-
-          font-weight:
-            700;
+          min-width: 0;
         }
 
         .message-bubble {
-          line-height:
-            1.72;
+          font-size: 14px;
 
-          font-size:
-            14px;
+          line-height: 1.72;
 
-          white-space:
-            pre-wrap;
+          white-space: pre-wrap;
 
-          word-break:
-            break-word;
+          word-break: break-word;
         }
 
         .message-bubble.user {
@@ -4076,121 +3627,97 @@ export default function AntimateAI() {
             12px 16px;
 
           border-radius:
-            19px 19px 6px 19px;
+            20px
+            20px
+            6px
+            20px;
 
           background:
-            linear-gradient(
-              135deg,
-              var(--text),
-              #273246
-            );
+            var(--primary);
 
           color:
-            #ffffff;
+            var(--primary-text);
 
           box-shadow:
-            0 8px 24px
-            rgba(
-              15,
-              23,
-              42,
-              0.12
-            );
-        }
-
-        .dark .message-bubble.user {
-          background:
-            linear-gradient(
-              135deg,
-              #eaf0f7,
-              #cbd5e1
-            );
-
-          color:
-            #101522;
+            0 8px 25px
+              rgba(15,23,42,0.10);
         }
 
         .message-bubble.assistant {
           padding:
-            2px 0;
+            2px 0 0;
 
           color:
             var(--text);
         }
 
-        /* =====================================================
-           MESSAGE ACTIONS
-        ===================================================== */
+        .message-meta {
+          display: flex;
+          align-items: center;
+          gap: 7px;
 
-        .message-actions {
-          display:
-            flex;
+          margin-top: 7px;
 
-          align-items:
-            center;
+          color:
+            var(--muted-2);
 
-          gap:
-            3px;
-
-          margin-top:
-            8px;
-
-          opacity:
-            0;
-
-          transform:
-            translateY(
-              -3px
-            );
-
-          pointer-events:
-            none;
-
-          transition:
-            opacity 0.2s ease,
-            transform 0.2s ease;
+          font-size: 10px;
+          font-weight: 600;
         }
 
-        .message-row:hover
+        .user .message-meta {
+          justify-content: flex-end;
+        }
+
+        .message-actions {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+
+          gap: 3px;
+
+          margin-top: 7px;
+
+          opacity: 0;
+
+          transform:
+            translateY(3px);
+
+          pointer-events: none;
+
+          transition:
+            opacity 0.18s ease,
+            transform 0.18s ease;
+        }
+
+        .message-column:hover
         .message-actions,
         .message-actions:focus-within {
-          opacity:
-            1;
+          opacity: 1;
 
           transform:
             translateY(0);
 
-          pointer-events:
-            auto;
+          pointer-events: auto;
         }
 
-        .message-row.user
-        .message-actions {
-          justify-content:
-            flex-end;
+        .user-actions {
+          justify-content: flex-end;
         }
 
         .message-action {
-          height:
-            29px;
+          min-height: 29px;
 
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
 
           padding:
-            0 7px;
+            0 8px;
 
-          border:
-            0;
+          border: 0;
 
-          border-radius:
-            8px;
+          border-radius: 8px;
 
           background:
             transparent;
@@ -4198,18 +3725,14 @@ export default function AntimateAI() {
           color:
             var(--muted);
 
-          cursor:
-            pointer;
+          cursor: pointer;
 
-          font-size:
-            9px;
-
-          font-weight:
-            700;
+          font-size: 10px;
+          font-weight: 700;
 
           transition:
-            background 0.18s ease,
-            color 0.18s ease;
+            background 0.16s ease,
+            color 0.16s ease;
         }
 
         .message-action:hover {
@@ -4225,181 +3748,695 @@ export default function AntimateAI() {
             var(--accent);
         }
 
-        /* =====================================================
+        .message-action:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        /* ======================================================
            EDIT
-        ===================================================== */
+        ====================================================== */
 
         .edit-box {
-          width:
-            min(
-              700px,
-              100%
-            );
+          width: 100%;
 
-          padding:
-            10px;
+          padding: 8px;
 
           border:
             1px solid
             var(--border-strong);
 
-          border-radius:
-            18px;
+          border-radius: 19px;
 
           background:
             var(--surface);
 
           box-shadow:
-            var(--shadow);
+            0 10px 35px
+              rgba(15,23,42,0.08);
 
           backdrop-filter:
             blur(20px);
         }
 
         .edit-textarea {
-          width:
-            100%;
+          width: 100%;
 
-          min-height:
-            90px;
+          min-height: 80px;
 
-          resize:
-            vertical;
+          border: 0;
+          outline: none;
+          resize: vertical;
 
-          border:
-            0;
+          background: transparent;
 
-          outline:
-            0;
+          color: var(--text);
 
-          background:
-            transparent;
+          padding: 9px;
 
-          color:
-            var(--text);
+          line-height: 1.6;
 
-          font-size:
-            14px;
-
-          line-height:
-            1.6;
-
-          padding:
-            5px;
+          font-size: 14px;
         }
 
-        .edit-controls {
-          display:
-            flex;
+        .edit-footer {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
 
-          justify-content:
-            flex-end;
-
-          gap:
-            7px;
-
-          margin-top:
-            7px;
-        }
-
-        .edit-control {
-          border:
-            0;
-
-          border-radius:
-            10px;
+          gap: 6px;
 
           padding:
-            7px 11px;
+            4px;
+        }
 
-          cursor:
-            pointer;
+        .edit-button {
+          min-height: 33px;
 
-          font-size:
-            10px;
+          padding:
+            0 12px;
 
-          font-weight:
-            800;
+          border: 0;
+
+          border-radius: 10px;
+
+          cursor: pointer;
+
+          font-size: 11px;
+          font-weight: 750;
         }
 
         .edit-cancel {
-          color:
-            var(--text-secondary);
-
           background:
-            var(--surface-hover);
+            var(--surface-soft);
+
+          color:
+            var(--muted);
         }
 
         .edit-save {
-          color:
-            white;
-
           background:
-            var(--accent);
+            var(--primary);
+
+          color:
+            var(--primary-text);
         }
 
-        /* =====================================================
+        /* ======================================================
            TRANSCRIPT
-        ===================================================== */
+        ====================================================== */
 
         .transcript-card {
-          display:
-            flex;
-
-          align-items:
-            flex-start;
-
-          gap:
-            10px;
-
           margin:
-            6px 0 0 46px;
+            8px 0 0 45px;
+
+          max-width: 750px;
 
           padding:
-            12px 14px;
-
-          max-width:
-            700px;
+            13px 15px;
 
           border:
             1px solid
-            rgba(
-              37,
-              99,
-              235,
-              0.14
-            );
+            rgba(37,99,235,0.13);
 
           border-left:
             3px solid
             var(--accent);
 
           border-radius:
-            0 13px 13px 0;
+            0
+            15px
+            15px
+            0;
 
           background:
-            var(--accent-soft);
+            rgba(37,99,235,0.045);
 
           color:
-            var(--text-secondary);
+            var(--muted);
 
-          font-size:
-            11px;
+          font-size: 12px;
 
-          line-height:
-            1.6;
+          line-height: 1.6;
 
           animation:
-            softIn
+            messageIn
             0.3s
             ease;
         }
 
-        @keyframes softIn {
+        .transcript-label {
+          color:
+            var(--accent);
+
+          font-weight: 800;
+        }
+
+        /* ======================================================
+           THINKING
+        ====================================================== */
+
+        .thinking-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          margin-left: 1px;
+
+          min-height: 36px;
+
+          color:
+            var(--muted);
+
+          font-size: 12px;
+        }
+
+        .thinking-content {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+        }
+
+        .thinking-dots {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .thinking-dots span {
+          width: 4px;
+          height: 4px;
+
+          border-radius: 50%;
+
+          background:
+            var(--accent);
+
+          animation:
+            thinkingDot
+            1.25s
+            infinite
+            ease-in-out;
+        }
+
+        .thinking-dots span:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+
+        .thinking-dots span:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+
+        @keyframes thinkingDot {
+          0%,
+          60%,
+          100% {
+            transform:
+              translateY(0);
+
+            opacity:
+              0.28;
+          }
+
+          30% {
+            transform:
+              translateY(-4px);
+
+            opacity:
+              1;
+          }
+        }
+
+        /* ======================================================
+           LIVE CAPTION
+        ====================================================== */
+
+        .live-caption {
+          position: sticky;
+
+          bottom: 0;
+
+          z-index: 5;
+
+          width:
+            min(
+              620px,
+              calc(100% - 20px)
+            );
+
+          margin:
+            18px auto 0;
+
+          padding:
+            12px 16px;
+
+          border:
+            1px solid
+            rgba(124,58,237,0.17);
+
+          border-radius: 18px;
+
+          background:
+            color-mix(
+              in srgb,
+              var(--surface-solid) 80%,
+              transparent
+            );
+
+          backdrop-filter:
+            blur(25px);
+
+          box-shadow:
+            0 16px 50px
+              rgba(15,23,42,0.12);
+
+          animation:
+            captionIn
+            0.35s
+            cubic-bezier(
+              .22,
+              1,
+              .36,
+              1
+            );
+        }
+
+        @keyframes captionIn {
           from {
             opacity: 0;
             transform:
-              translateY(4px);
+              translateY(10px)
+              scale(0.98);
+          }
+
+          to {
+            opacity: 1;
+            transform:
+              translateY(0)
+              scale(1);
+          }
+        }
+
+        .live-caption-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          margin-bottom: 6px;
+        }
+
+        .live-caption-label {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+
+          color:
+            var(--accent-2);
+
+          font-size: 9px;
+          font-weight: 850;
+
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .live-dot {
+          width: 6px;
+          height: 6px;
+
+          border-radius: 50%;
+
+          background:
+            var(--accent-2);
+
+          animation:
+            liveDot
+            1s
+            infinite;
+        }
+
+        @keyframes liveDot {
+          50% {
+            opacity: 0.3;
+            transform: scale(0.7);
+          }
+        }
+
+        .live-caption-text {
+          color:
+            var(--text);
+
+          font-size: 13px;
+
+          line-height: 1.55;
+        }
+
+        /* ======================================================
+           SPEAKING BAR
+        ====================================================== */
+
+        .speaking-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          width:
+            min(
+              650px,
+              calc(100% - 20px)
+            );
+
+          margin:
+            22px auto 0;
+
+          padding:
+            10px 12px 10px 14px;
+
+          border:
+            1px solid
+            var(--border);
+
+          border-radius: 16px;
+
+          background:
+            var(--surface);
+
+          backdrop-filter: blur(22px);
+
+          box-shadow:
+            0 10px 40px
+              rgba(15,23,42,0.07);
+        }
+
+        .speaking-left {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+
+          color:
+            var(--muted);
+
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .speaking-icon {
+          width: 29px;
+          height: 29px;
+
+          display: grid;
+          place-items: center;
+
+          border-radius: 9px;
+
+          color:
+            var(--accent);
+
+          background:
+            rgba(37,99,235,0.08);
+        }
+
+        .speaking-wave {
+          display: flex;
+          align-items: center;
+
+          gap: 3px;
+
+          height: 18px;
+        }
+
+        .speaking-wave span {
+          width: 2.5px;
+
+          border-radius: 999px;
+
+          background:
+            var(--accent);
+
+          animation:
+            voiceWave
+            0.8s
+            ease-in-out
+            infinite;
+        }
+
+        .speaking-wave span:nth-child(1) {
+          height: 6px;
+        }
+
+        .speaking-wave span:nth-child(2) {
+          height: 12px;
+          animation-delay: 0.08s;
+        }
+
+        .speaking-wave span:nth-child(3) {
+          height: 18px;
+          animation-delay: 0.16s;
+        }
+
+        .speaking-wave span:nth-child(4) {
+          height: 11px;
+          animation-delay: 0.24s;
+        }
+
+        .speaking-wave span:nth-child(5) {
+          height: 7px;
+          animation-delay: 0.32s;
+        }
+
+        @keyframes voiceWave {
+          50% {
+            transform:
+              scaleY(0.3);
+          }
+        }
+
+        .stop-speaking {
+          min-height: 31px;
+
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+
+          padding:
+            0 10px;
+
+          border: 0;
+
+          border-radius: 9px;
+
+          background:
+            var(--surface-soft);
+
+          color:
+            var(--muted);
+
+          cursor: pointer;
+
+          font-size: 10px;
+          font-weight: 750;
+
+          transition:
+            background 0.16s ease,
+            color 0.16s ease;
+        }
+
+        .stop-speaking:hover {
+          background:
+            var(--surface-hover);
+
+          color:
+            var(--danger);
+        }
+
+        /* ======================================================
+           ERROR
+        ====================================================== */
+
+        .error-banner {
+          width:
+            min(
+              700px,
+              calc(100% - 20px)
+            );
+
+          margin:
+            18px auto;
+
+          padding:
+            11px 14px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          text-align: center;
+
+          border:
+            1px solid
+            rgba(239,68,68,0.16);
+
+          border-radius: 13px;
+
+          background:
+            rgba(239,68,68,0.07);
+
+          color:
+            var(--danger);
+
+          font-size: 11px;
+          line-height: 1.5;
+        }
+
+        /* ======================================================
+           SCROLL BUTTON
+        ====================================================== */
+
+        .scroll-bottom-button {
+          position: fixed;
+
+          right: 26px;
+          bottom: 180px;
+
+          z-index: 40;
+
+          width: 39px;
+          height: 39px;
+
+          display: grid;
+          place-items: center;
+
+          border:
+            1px solid
+            var(--border);
+
+          border-radius: 50%;
+
+          background:
+            var(--surface);
+
+          color:
+            var(--text);
+
+          box-shadow:
+            0 10px 35px
+              rgba(15,23,42,0.13);
+
+          backdrop-filter:
+            blur(20px);
+
+          cursor: pointer;
+
+          animation:
+            floatIn
+            0.25s
+            ease;
+        }
+
+        @keyframes floatIn {
+          from {
+            opacity: 0;
+            transform:
+              translateY(7px)
+              scale(0.9);
+          }
+
+          to {
+            opacity: 1;
+            transform:
+              translateY(0)
+              scale(1);
+          }
+        }
+
+        /* ======================================================
+           COMPOSER AREA
+        ====================================================== */
+
+        .composer-dock {
+          position: fixed;
+
+          left: 0;
+          right: 0;
+          bottom: 0;
+
+          z-index: 45;
+
+          padding:
+            14px
+            max(
+              16px,
+              env(safe-area-inset-right)
+            )
+            max(
+              15px,
+              env(safe-area-inset-bottom)
+            )
+            max(
+              16px,
+              env(safe-area-inset-left)
+            );
+
+          pointer-events: none;
+
+          background:
+            linear-gradient(
+              to top,
+              var(--bg) 62%,
+              transparent
+            );
+        }
+
+        .composer-container {
+          width:
+            min(
+              930px,
+              calc(100% - 12px)
+            );
+
+          margin: 0 auto;
+
+          pointer-events: auto;
+        }
+
+        .recording-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          min-height: 37px;
+
+          padding:
+            0 12px;
+
+          margin-bottom: 7px;
+
+          border:
+            1px solid
+            var(--border);
+
+          border-radius: 13px;
+
+          background:
+            var(--surface);
+
+          box-shadow:
+            0 10px 30px
+              rgba(15,23,42,0.06);
+
+          backdrop-filter: blur(24px);
+
+          animation:
+            recordingStripIn
+            0.25s
+            ease;
+        }
+
+        @keyframes recordingStripIn {
+          from {
+            opacity: 0;
+            transform:
+              translateY(6px);
           }
 
           to {
@@ -4409,646 +4446,163 @@ export default function AntimateAI() {
           }
         }
 
-        .transcript-label {
-          flex-shrink:
-            0;
-
-          color:
-            var(--accent);
-
-          font-weight:
-            850;
-        }
-
-        /* =====================================================
-           THINKING
-        ===================================================== */
-
-        .thinking-row {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            11px;
-
-          margin-left:
-            46px;
-
-          min-height:
-            34px;
+        .recording-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
 
           color:
             var(--muted);
 
-          font-size:
-            11px;
-
-          animation:
-            softIn
-            0.3s
-            ease;
+          font-size: 10px;
+          font-weight: 800;
         }
 
-        .thinking-avatar {
-          width:
-            32px;
+        .recording-pulse {
+          width: 7px;
+          height: 7px;
 
-          height:
-            32px;
-
-          display:
-            grid;
-
-          place-items:
-            center;
-        }
-
-        .thinking-copy {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            8px;
-        }
-
-        .thinking-dots {
-          display:
-            flex;
-
-          gap:
-            3px;
-        }
-
-        .thinking-dots span {
-          width:
-            4px;
-
-          height:
-            4px;
-
-          border-radius:
-            50%;
+          border-radius: 50%;
 
           background:
-            var(--accent);
-
-          animation:
-            thinkingDot
-            1.15s
-            infinite
-            ease-in-out;
-        }
-
-        .thinking-dots span:nth-child(2) {
-          animation-delay:
-            0.14s;
-        }
-
-        .thinking-dots span:nth-child(3) {
-          animation-delay:
-            0.28s;
-        }
-
-        @keyframes thinkingDot {
-          0%,
-          60%,
-          100% {
-            opacity:
-              0.25;
-
-            transform:
-              translateY(
-                0
-              );
-          }
-
-          30% {
-            opacity:
-              1;
-
-            transform:
-              translateY(
-                -4px
-              );
-          }
-        }
-
-        /* =====================================================
-           SPEAKING BAR
-        ===================================================== */
-
-        .speaking-bar {
-          display:
-            inline-flex;
-
-          align-items:
-            center;
-
-          gap:
-            9px;
-
-          margin:
-            14px 0 0 46px;
-
-          padding:
-            7px 11px;
-
-          border:
-            1px solid
-            var(--border);
-
-          border-radius:
-            999px;
-
-          background:
-            var(--surface);
+            var(--danger);
 
           box-shadow:
-            var(--shadow-sm);
-
-          color:
-            var(--text-secondary);
-
-          font-size:
-            10px;
-
-          font-weight:
-            700;
+            0 0 0 4px
+            rgba(239,68,68,0.09);
 
           animation:
-            softIn
-            0.3s
-            ease;
-        }
-
-        .speaking-bars {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            2px;
-
-          height:
-            15px;
-        }
-
-        .speaking-bars span {
-          width:
-            2px;
-
-          border-radius:
-            4px;
-
-          background:
-            var(--accent);
-
-          animation:
-            audioBar
-            0.8s
-            ease-in-out
+            recordingPulse
+            1.1s
             infinite;
         }
 
-        .speaking-bars span:nth-child(1) {
-          height:
-            5px;
+        .recording-pulse.live {
+          background:
+            var(--accent-2);
+
+          box-shadow:
+            0 0 0 4px
+            rgba(124,58,237,0.09);
         }
 
-        .speaking-bars span:nth-child(2) {
-          height:
-            11px;
-
-          animation-delay:
-            0.1s;
-        }
-
-        .speaking-bars span:nth-child(3) {
-          height:
-            7px;
-
-          animation-delay:
-            0.2s;
-        }
-
-        .speaking-bars span:nth-child(4) {
-          height:
-            13px;
-
-          animation-delay:
-            0.3s;
-        }
-
-        .speaking-bars span:nth-child(5) {
-          height:
-            8px;
-
-          animation-delay:
-            0.4s;
-        }
-
-        @keyframes audioBar {
+        @keyframes recordingPulse {
           50% {
-            transform:
-              scaleY(
-                0.3
-              );
+            opacity: 0.4;
+            transform: scale(0.72);
           }
         }
 
-        /* =====================================================
-           ERROR
-        ===================================================== */
-
-        .error-banner {
-          margin:
-            20px auto 0;
-
-          width:
-            min(
-              700px,
-              100%
-            );
-
-          padding:
-            11px 14px;
-
-          display:
-            flex;
-
-          align-items:
-            flex-start;
-
-          gap:
-            9px;
-
-          border:
-            1px solid
-            rgba(
-              239,
-              68,
-              68,
-              0.16
-            );
-
-          border-radius:
-            13px;
-
-          background:
-            rgba(
-              239,
-              68,
-              68,
-              0.07
-            );
-
-          color:
-            var(--danger);
-
-          font-size:
-            11px;
-
-          line-height:
-            1.5;
-        }
-
-        /* =====================================================
-           SCROLL BUTTON
-        ===================================================== */
-
-        .scroll-button {
-          position:
-            fixed;
-
-          right:
-            30px;
-
-          bottom:
-            135px;
-
-          width:
-            36px;
-
-          height:
-            36px;
-
-          display:
-            grid;
-
-          place-items:
-            center;
-
-          border:
-            1px solid
-            var(--border-strong);
-
-          border-radius:
-            50%;
-
-          background:
-            var(--surface);
-
-          backdrop-filter:
-            blur(18px);
-
+        .recording-right {
           color:
             var(--text);
 
-          box-shadow:
-            var(--shadow);
+          font-size: 10px;
 
-          cursor:
-            pointer;
+          font-variant-numeric:
+            tabular-nums;
 
-          z-index:
-            40;
-
-          animation:
-            softIn
-            0.25s
-            ease;
+          font-weight: 800;
         }
 
-        .scroll-button:hover {
-          transform:
-            translateY(
-              -2px
-            );
-        }
+        .composer-card {
+          position: relative;
 
-        /* =====================================================
-           COMPOSER AREA
-        ===================================================== */
-
-        .composer-layer {
-          position:
-            absolute;
-
-          left:
-            0;
-
-          right:
-            0;
-
-          bottom:
-            0;
-
-          z-index:
-            30;
-
-          pointer-events:
-            none;
-
-          padding:
-            15px 0
-            max(
-              16px,
-              env(
-                safe-area-inset-bottom
-              )
-            );
-        }
-
-        .composer-gradient {
-          position:
-            absolute;
-
-          left:
-            0;
-
-          right:
-            0;
-
-          bottom:
-            0;
-
-          height:
-            180px;
-
-          background:
-            linear-gradient(
-              to top,
-              var(--bg) 15%,
-              transparent
-            );
-
-          pointer-events:
-            none;
-        }
-
-        .composer-inner {
-          width:
-            min(
-              900px,
-              calc(100% - 40px)
-            );
-
-          margin:
-            0 auto;
-
-          position:
-            relative;
-
-          pointer-events:
-            auto;
-        }
-
-        .composer-shell {
           border:
             1px solid
             var(--border-strong);
 
-          border-radius:
-            23px;
+          border-radius: 22px;
 
           background:
-            var(--surface);
-
-          backdrop-filter:
-            blur(28px)
-            saturate(
-              1.25
-            );
-
-          -webkit-backdrop-filter:
-            blur(28px)
-            saturate(
-              1.25
+            color-mix(
+              in srgb,
+              var(--surface-solid) 84%,
+              transparent
             );
 
           box-shadow:
-            var(--shadow-lg);
+            0 20px 70px
+              rgba(15,23,42,0.13);
 
-          padding:
-            8px;
+          backdrop-filter:
+            blur(30px);
+
+          -webkit-backdrop-filter:
+            blur(30px);
 
           transition:
             border-color 0.2s ease,
             box-shadow 0.2s ease;
         }
 
-        .composer-shell:focus-within {
+        .composer-card:focus-within {
           border-color:
-            rgba(
-              37,
-              99,
-              235,
-              0.28
-            );
+            rgba(37,99,235,0.22);
 
           box-shadow:
-            0 22px 70px
-              rgba(
-                15,
-                23,
-                42,
-                0.13
-              );
+            0 20px 75px
+              rgba(15,23,42,0.16),
+            0 0 0 3px
+              rgba(37,99,235,0.035);
         }
 
-        .composer-recording-info {
-          display:
-            flex;
+        .composer-main {
+          display: flex;
+          align-items: flex-end;
 
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          gap:
-            10px;
+          gap: 8px;
 
           padding:
-            4px 10px 7px;
+            8px;
+        }
+
+        .composer-leading {
+          width: 42px;
+          height: 42px;
+
+          flex-shrink: 0;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+
+          border-radius: 13px;
+
+          background:
+            var(--surface-soft);
 
           color:
             var(--muted);
 
-          font-size:
-            9px;
+          cursor: pointer;
 
-          font-weight:
-            750;
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease;
         }
 
-        .recording-info-left {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            7px;
-        }
-
-        .recording-indicator {
-          width:
-            7px;
-
-          height:
-            7px;
-
-          border-radius:
-            50%;
-
+        .composer-leading:hover {
           background:
-            var(--danger);
+            var(--surface-hover);
 
-          box-shadow:
-            0 0 0 5px
-              rgba(
-                239,
-                68,
-                68,
-                0.07
-              );
-
-          animation:
-            recordingPulse
-            1.2s
-            infinite;
-        }
-
-        .recording-indicator.live {
-          background:
-            var(--accent-2);
-
-          box-shadow:
-            0 0 0 5px
-              rgba(
-                124,
-                58,
-                237,
-                0.08
-              );
-        }
-
-        @keyframes recordingPulse {
-          0%,
-          100% {
-            opacity:
-              1;
-          }
-
-          50% {
-            opacity:
-              0.35;
-          }
-        }
-
-        .recording-time {
-          color:
-            var(--text);
-
-          font-variant-numeric:
-            tabular-nums;
-
-          font-weight:
-            850;
-        }
-
-        .composer-main {
-          display:
-            flex;
-
-          align-items:
-            flex-end;
-
-          gap:
-            7px;
+          transform:
+            translateY(-1px);
         }
 
         .composer-textarea {
-          flex:
-            1;
+          flex: 1;
 
-          min-width:
-            0;
+          min-width: 0;
 
-          min-height:
-            44px;
+          min-height: 44px;
+          max-height: 150px;
 
-          max-height:
-            160px;
+          resize: none;
 
-          resize:
-            none;
-
-          border:
-            0;
-
-          outline:
-            none;
+          border: 0;
+          outline: 0;
 
           background:
             transparent;
@@ -5056,263 +4610,202 @@ export default function AntimateAI() {
           color:
             var(--text);
 
-          font-size:
-            14px;
-
-          line-height:
-            1.55;
-
           padding:
-            11px 10px;
+            11px 8px;
 
-          overflow-y:
-            auto;
+          line-height: 1.5;
+
+          font-size: 14px;
+
+          overflow-y: auto;
         }
 
         .composer-textarea::placeholder {
           color:
-            var(--muted);
+            var(--muted-2);
         }
 
         .composer-textarea:disabled {
-          opacity:
-            0.55;
+          opacity: 0.58;
         }
 
-        .composer-button {
-          width:
-            45px;
+        .composer-action {
+          width: 44px;
+          height: 44px;
 
-          height:
-            45px;
+          flex-shrink: 0;
 
-          flex-shrink:
-            0;
+          display: grid;
+          place-items: center;
 
-          display:
-            grid;
+          border: 0;
 
-          place-items:
-            center;
-
-          border:
-            0;
-
-          border-radius:
-            15px;
-
-          color:
-            var(--bg);
+          border-radius: 14px;
 
           background:
-            var(--text);
+            var(--primary);
 
-          cursor:
-            pointer;
+          color:
+            var(--primary-text);
+
+          cursor: pointer;
+
+          touch-action: none;
+          user-select: none;
+          -webkit-user-select: none;
 
           transition:
             transform 0.18s ease,
-            opacity 0.18s ease,
-            box-shadow 0.18s ease;
+            box-shadow 0.18s ease,
+            background 0.18s ease;
         }
 
-        .composer-button:hover {
+        .composer-action:hover {
           transform:
-            translateY(
-              -1px
-            );
+            translateY(-1px);
 
           box-shadow:
             0 8px 24px
-              rgba(
-                15,
-                23,
-                42,
-                0.15
-              );
+              rgba(15,23,42,0.15);
         }
 
-        .composer-button:active {
+        .composer-action:active {
           transform:
-            scale(
-              0.94
-            );
+            scale(0.93);
         }
 
-        .composer-button:disabled {
-          opacity:
-            0.4;
+        .composer-action:disabled {
+          opacity: 0.4;
 
-          cursor:
-            not-allowed;
+          cursor: not-allowed;
 
-          transform:
-            none;
+          transform: none;
 
-          box-shadow:
-            none;
+          box-shadow: none;
         }
 
-        .composer-button.recording {
-          color:
-            white;
-
+        .composer-action.recording {
           background:
             var(--danger);
 
+          color: #fff;
+
           animation:
-            recordingButton
+            recordButtonPulse
             1.5s
             infinite;
         }
 
-        .composer-button.live {
-          color:
-            white;
-
+        .composer-action.live {
           background:
             linear-gradient(
               135deg,
               #7c3aed,
-              #5b21b6
+              #6366f1
             );
 
+          color: #fff;
+
           animation:
-            liveButton
+            liveButtonPulse
             1.5s
             infinite;
         }
 
-        @keyframes recordingButton {
-          0%,
-          100% {
-            box-shadow:
-              0 0 0 0
-                rgba(
-                  239,
-                  68,
-                  68,
-                  0.25
-                );
-          }
-
+        @keyframes recordButtonPulse {
           50% {
             box-shadow:
               0 0 0 9px
-                rgba(
-                  239,
-                  68,
-                  68,
-                  0.05
-                );
+              rgba(239,68,68,0.07);
           }
         }
 
-        @keyframes liveButton {
-          0%,
-          100% {
-            box-shadow:
-              0 0 0 0
-                rgba(
-                  124,
-                  58,
-                  237,
-                  0.3
-                );
-          }
-
+        @keyframes liveButtonPulse {
           50% {
             box-shadow:
               0 0 0 10px
-                rgba(
-                  124,
-                  58,
-                  237,
-                  0.05
-                );
+              rgba(124,58,237,0.07);
           }
         }
 
         .composer-footer {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          justify-content:
-            space-between;
-
-          gap:
-            10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
 
           padding:
-            7px 8px 1px;
-        }
-
-        .composer-hint {
-          color:
-            var(--muted);
-
-          font-size:
-            9px;
-
-          line-height:
-            1.4;
-        }
-
-        .composer-count {
-          color:
-            var(--muted);
-
-          font-size:
-            9px;
-
-          font-variant-numeric:
-            tabular-nums;
-        }
-
-        .live-stop-button {
-          width:
-            100%;
-
-          margin-top:
-            7px;
-
-          padding:
+            0 12px
             8px;
+
+          color:
+            var(--muted-2);
+
+          font-size: 9px;
+          font-weight: 650;
+        }
+
+        .composer-footer-left {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .composer-footer-right {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+
+        .shortcut {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .kbd {
+          padding:
+            2px 5px;
 
           border:
             1px solid
-            rgba(
-              124,
-              58,
-              237,
-              0.15
-            );
+            var(--border);
 
-          border-radius:
-            11px;
-
-          color:
-            var(--text-secondary);
+          border-radius: 5px;
 
           background:
-            rgba(
-              124,
-              58,
-              237,
-              0.07
-            );
+            var(--surface-soft);
 
-          cursor:
-            pointer;
+          font-size: 8px;
+        }
 
-          font-size:
-            10px;
+        .live-stop-button {
+          width: 100%;
 
-          font-weight:
-            800;
+          min-height: 36px;
+
+          margin-top: 7px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+
+          border:
+            1px solid
+            rgba(124,58,237,0.16);
+
+          border-radius: 12px;
+
+          background:
+            rgba(124,58,237,0.055);
+
+          color:
+            var(--accent-2);
+
+          cursor: pointer;
+
+          font-size: 10px;
+          font-weight: 800;
 
           transition:
             background 0.18s ease;
@@ -5320,444 +4813,249 @@ export default function AntimateAI() {
 
         .live-stop-button:hover {
           background:
-            rgba(
-              124,
-              58,
-              237,
-              0.12
-            );
+            rgba(124,58,237,0.10);
         }
 
-        /* =====================================================
-           LIVE VOICE CENTER
-        ===================================================== */
+        /* ======================================================
+           MOBILE
+        ====================================================== */
 
-        .live-status {
-          display:
-            flex;
+        @media (max-width: 700px) {
+          .antimate-topbar {
+            height: 61px;
+            min-height: 61px;
 
-          align-items:
-            center;
-
-          justify-content:
-            center;
-
-          gap:
-            10px;
-
-          margin:
-            14px 0 0;
-
-          color:
-            var(--accent-2);
-
-          font-size:
-            10px;
-
-          font-weight:
-            800;
-        }
-
-        .live-wave {
-          display:
-            flex;
-
-          align-items:
-            center;
-
-          gap:
-            2px;
-
-          height:
-            16px;
-        }
-
-        .live-wave span {
-          width:
-            2px;
-
-          border-radius:
-            4px;
-
-          background:
-            var(--accent-2);
-
-          animation:
-            liveWave
-            0.9s
-            ease-in-out
-            infinite;
-        }
-
-        .live-wave span:nth-child(1) {
-          height:
-            5px;
-        }
-
-        .live-wave span:nth-child(2) {
-          height:
-            10px;
-
-          animation-delay:
-            .1s;
-        }
-
-        .live-wave span:nth-child(3) {
-          height:
-            15px;
-
-          animation-delay:
-            .2s;
-        }
-
-        .live-wave span:nth-child(4) {
-          height:
-            8px;
-
-          animation-delay:
-            .3s;
-        }
-
-        .live-wave span:nth-child(5) {
-          height:
-            12px;
-
-          animation-delay:
-            .4s;
-        }
-
-        @keyframes liveWave {
-          50% {
-            transform:
-              scaleY(
-                .25
-              );
-          }
-        }
-
-        /* =====================================================
-           MOBILE OVERLAY
-        ===================================================== */
-
-        .sidebar-overlay {
-          position:
-            fixed;
-
-          inset:
-            0;
-
-          background:
-            rgba(
-              0,
-              0,
-              0,
-              0.34
-            );
-
-          backdrop-filter:
-            blur(3px);
-
-          z-index:
-            45;
-
-          display:
-            none;
-        }
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        @media (max-width: 900px) {
-          .antimate-sidebar {
-            position:
-              fixed;
-
-            left:
-              0;
-
-            top:
-              0;
-
-            transform:
-              translateX(
-                -105%
-              );
-
-            box-shadow:
-              20px 0 70px
-                rgba(
-                  0,
-                  0,
-                  0,
-                  0.18
-                );
+            padding-left: 13px;
+            padding-right: 13px;
           }
 
-          .antimate-sidebar.open {
-            transform:
-              translateX(
-                0
-              );
+          .antimate-brand-subtitle {
+            display: none;
           }
 
-          .sidebar-overlay {
-            display:
-              block;
+          .connection-pill {
+            min-height: 31px;
 
-            opacity:
-              0;
+            padding:
+              0 8px;
 
-            pointer-events:
-              none;
-
-            transition:
-              opacity 0.25s ease;
+            font-size: 9px;
           }
 
-          .sidebar-overlay.open {
-            opacity:
-              1;
-
-            pointer-events:
-              auto;
-          }
-
-          .mobile-menu {
-            display:
-              grid;
-          }
-
-          .chat-container {
+          .antimate-chat-content {
             width:
-              min(
-                900px,
-                calc(100% - 28px)
+              calc(100% - 20px);
+
+            padding:
+              22px 0 230px;
+          }
+
+          .welcome-shell {
+            min-height:
+              calc(
+                100dvh -
+                61px -
+                200px
               );
+
+            padding:
+              25px 0;
+          }
+
+          .welcome-logo-wrap {
+            width: 65px;
+            height: 65px;
+
+            border-radius: 23px;
+
+            margin-bottom: 19px;
+          }
+
+          .welcome-subtitle {
+            font-size: 13px;
           }
 
           .quick-prompts {
             grid-template-columns:
               1fr;
+
+            margin-top: 24px;
           }
 
-          .quick-card {
-            display:
-              flex;
-
-            align-items:
-              center;
-
-            gap:
-              11px;
-          }
-
-          .quick-card-icon {
-            margin:
-              0;
-          }
-
-          .quick-card-copy {
-            min-width:
-              0;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .antimate-topbar {
-            height:
-              60px;
-
+          .quick-prompt {
             padding:
-              0 12px;
-          }
-
-          .topbar-title-sub {
-            display:
-              none;
-          }
-
-          .connection-pill {
-            height:
-              29px;
-
-            padding:
-              0 8px;
-          }
-
-          .connection-pill
-          .connection-label-text {
-            display:
-              none;
-          }
-
-          .chat-container {
-            width:
-              calc(
-                100% - 20px
-              );
-
-            padding:
-              24px 0 190px;
-          }
-
-          .welcome {
-            min-height:
-              calc(
-                100vh - 240px
-              );
-          }
-
-          .welcome-title {
-            font-size:
-              38px;
-          }
-
-          .welcome-subtitle {
-            font-size:
-              13px;
-          }
-
-          .quick-prompts {
-            margin-top:
-              22px;
+              11px 12px;
           }
 
           .message-list {
-            gap:
-              25px;
-          }
-
-          .message-row.assistant {
-            gap:
-              8px;
+            gap: 24px;
           }
 
           .assistant-avatar {
-            width:
-              29px;
-
-            height:
-              29px;
+            width: 28px;
+            height: 28px;
           }
 
-          .assistant-avatar
-          .antimate-logo {
-            width:
-              28px !important;
-
-            height:
-              28px !important;
+          .assistant-avatar .antimate-logo {
+            width: 27px !important;
+            height: 27px !important;
           }
 
-          .message-content-column {
+          .message-column {
             max-width:
               calc(
-                100% - 37px
+                100% - 39px
               );
           }
 
           .message-bubble {
-            font-size:
-              13.5px;
+            font-size: 13.5px;
           }
 
           .message-bubble.user {
             padding:
               10px 13px;
+
+            border-radius:
+              17px
+              17px
+              5px
+              17px;
           }
 
           .message-actions {
-            opacity:
-              1;
+            opacity: 1;
 
             transform:
               none;
 
-            pointer-events:
-              auto;
+            pointer-events: auto;
+
+            margin-top: 5px;
           }
 
           .message-action {
+            min-height: 27px;
+
             padding:
               0 6px;
+
+            font-size: 9px;
           }
 
-          .message-action-label {
-            display:
-              none;
+          .message-action span {
+            display: none;
           }
 
-          .transcript-card,
-          .thinking-row,
-          .speaking-bar {
-            margin-left:
-              37px;
+          .transcript-card {
+            margin-left: 37px;
+
+            font-size: 11px;
           }
 
-          .composer-inner {
-            width:
-              calc(
-                100% - 12px
-              );
+          .composer-dock {
+            padding-top: 9px;
           }
 
-          .composer-shell {
-            border-radius:
-              19px;
+          .composer-container {
+            width: 100%;
+          }
 
-            padding:
-              7px;
+          .composer-card {
+            border-radius: 18px;
+          }
+
+          .composer-main {
+            padding: 6px;
+          }
+
+          .composer-leading {
+            display: none;
           }
 
           .composer-textarea {
-            font-size:
-              13.5px;
+            min-height: 43px;
 
-            min-height:
-              42px;
+            padding:
+              10px 8px;
           }
 
-          .composer-button {
+          .composer-action {
+            width: 42px;
+            height: 42px;
+
+            border-radius: 13px;
+          }
+
+          .composer-footer {
+            padding:
+              0 10px
+              7px;
+          }
+
+          .composer-footer-right {
+            display: none;
+          }
+
+          .scroll-bottom-button {
+            right: 15px;
+            bottom: 156px;
+
+            width: 36px;
+            height: 36px;
+          }
+
+          .speaking-bar {
             width:
-              43px;
+              calc(100% - 12px);
 
-            height:
-              43px;
-
-            border-radius:
-              14px;
+            padding:
+              9px 10px;
           }
 
-          .composer-hint {
-            max-width:
-              78%;
-
-            white-space:
-              nowrap;
-
-            overflow:
-              hidden;
-
-            text-overflow:
-              ellipsis;
-          }
-
-          .scroll-button {
-            right:
-              18px;
-
-            bottom:
-              122px;
+          .live-caption {
+            width:
+              calc(100% - 12px);
           }
         }
 
+        @media (max-width: 420px) {
+          .antimate-brand-title {
+            font-size: 14px;
+          }
+
+          .antimate-logo {
+            width: 31px !important;
+            height: 31px !important;
+          }
+
+          .connection-pill {
+            gap: 5px;
+          }
+
+          .connection-pill span:last-child {
+            display: none;
+          }
+
+          .welcome-title {
+            font-size: 30px;
+          }
+
+          .welcome-subtitle {
+            font-size: 12px;
+          }
+        }
+
+        /* ======================================================
+           REDUCED MOTION
+        ====================================================== */
+
         @media (prefers-reduced-motion: reduce) {
-          .antimate-app *,
-          .antimate-app *::before,
-          .antimate-app *::after {
+          *,
+          *::before,
+          *::after {
             animation-duration:
-              0.01ms !important;
+              0.001ms !important;
 
             animation-iteration-count:
               1 !important;
@@ -5766,1057 +5064,706 @@ export default function AntimateAI() {
               auto !important;
 
             transition-duration:
-              0.01ms !important;
+              0.001ms !important;
           }
         }
       `}</style>
 
       {/* ======================================================
-          MOBILE SIDEBAR OVERLAY
+          TOP BAR
       ====================================================== */}
 
-      <div
-        className={`sidebar-overlay ${
-          sidebarOpen
-            ? "open"
-            : ""
-        }`}
-        onClick={() =>
-          setSidebarOpen(false)
-        }
-      />
+      <header className="antimate-topbar">
+        <div className="antimate-top-left">
+          <div className="antimate-brand">
+            <LogoMark size={36} />
 
-      <div className="antimate-shell">
-        {/* ====================================================
-            SIDEBAR
-        ==================================================== */}
-
-        <aside
-          className={`antimate-sidebar ${
-            sidebarOpen
-              ? "open"
-              : ""
-          }`}
-        >
-          <div className="sidebar-brand">
-            <LogoMark size={39} />
-
-            <div className="sidebar-brand-copy">
-              <div className="sidebar-brand-name">
+            <div className="antimate-brand-copy">
+              <div className="antimate-brand-title">
                 ANTIMATE
               </div>
 
-              <div className="sidebar-brand-sub">
-                Intelligence
+              <div className="antimate-brand-subtitle">
+                Intelligent AI Assistant
               </div>
             </div>
           </div>
+        </div>
 
-          <button
-            type="button"
-            className="new-chat-button"
-            onClick={() => {
-              setMessages([]);
-              setText("");
-              setTranscript("");
-              setCurrentAnswer("");
-              setErrorMessage("");
-              setSidebarOpen(false);
-              scrollToBottom(false);
-            }}
-          >
-            <Icon
-              name="plus"
-              size={17}
+        <div className="antimate-top-right">
+          <div className="connection-pill">
+            <span
+              className={`connection-dot ${
+                socketConnected
+                  ? "online"
+                  : ""
+              }`}
             />
 
             <span>
-              Ikiganiro gishya
+              {connectionLabel}
             </span>
-          </button>
-
-          <div className="sidebar-section">
-            <div className="sidebar-label">
-              ANTIMATE
-            </div>
-
-            <div className="sidebar-feature">
-              <span className="sidebar-feature-icon">
-                <Icon
-                  name="sparkles"
-                  size={15}
-                />
-              </span>
-
-              <span>
-                AI Assistant
-              </span>
-            </div>
-
-            <div className="sidebar-feature">
-              <span className="sidebar-feature-icon">
-                <Icon
-                  name="activity"
-                  size={15}
-                />
-              </span>
-
-              <span>
-                Smart Brooder AI
-              </span>
-            </div>
-
-            <div className="sidebar-feature">
-              <span className="sidebar-feature-icon">
-                <Icon
-                  name="headphones"
-                  size={15}
-                />
-              </span>
-
-              <span>
-                Live Voice
-              </span>
-            </div>
           </div>
+        </div>
+      </header>
 
-          <div className="sidebar-section">
-            <div className="sidebar-label">
-              Ikiganiro
-            </div>
+      {/* ======================================================
+          CHAT AREA
+      ====================================================== */}
 
-            <div className="sidebar-feature">
-              <span className="sidebar-feature-icon">
-                <Icon
-                  name="clock"
-                  size={14}
-                />
-              </span>
-
-              <span>
-                {messageCount} messages
-              </span>
-            </div>
-
-            <div className="sidebar-feature">
-              <span className="sidebar-feature-icon">
-                <Icon
-                  name="keyboard"
-                  size={14}
-                />
-              </span>
-
-              <span>
-                {wordCount} words
-              </span>
-            </div>
-          </div>
-
-          <div className="sidebar-spacer" />
-
-          <div className="sidebar-status">
-            <div className="sidebar-status-row">
-              <span
-                className={`status-dot ${
-                  socketConnected
-                    ? "online"
-                    : ""
-                }`}
-              />
-
-              <span className="sidebar-status-text">
-                {socketConnected
-                  ? "ANTIMATE Online"
-                  : "Connecting…"}
-              </span>
-            </div>
-          </div>
-
-          <div className="sidebar-footer">
-            ANTIMATE AI • Intelligent assistance
-          </div>
-        </aside>
-
-        {/* ====================================================
-            MAIN
-        ==================================================== */}
-
-        <main className="antimate-main">
-          {/* ==================================================
-              TOP BAR
-          ================================================== */}
-
-          <header className="antimate-topbar">
-            <div className="topbar-left">
-              <button
-                type="button"
-                className="mobile-menu"
-                onClick={() =>
-                  setSidebarOpen(
-                    true
-                  )
-                }
-                aria-label="Open menu"
-              >
-                <Icon
-                  name="menu"
-                  size={18}
-                />
-              </button>
-
-              <div className="topbar-title">
-                <div className="topbar-title-main">
-                  ANTIMATE AI
+      <div
+        ref={chatScrollRef}
+        className="antimate-chat-scroll"
+        onScroll={handleChatScroll}
+      >
+        <main className="antimate-chat-content">
+          {!hasConversation ? (
+            <section className="welcome-shell">
+              <div className="welcome-inner">
+                <div className="welcome-logo-wrap">
+                  <LogoMark size={50} />
                 </div>
 
-                <div className="topbar-title-sub">
-                  Intelligent conversation
-                </div>
-              </div>
-            </div>
+                <h1 className="welcome-title">
+                  Muraho 👋
+                  <br />
 
-            <div className="topbar-actions">
-              <div className="connection-pill">
-                <span
-                  className={`status-dot ${
-                    socketConnected
-                      ? "online"
-                      : ""
-                  }`}
-                />
+                  <span className="welcome-title-gradient">
+                    Tuvugane na ANTIMATE
+                  </span>
+                </h1>
 
-                <span className="connection-label-text">
-                  {socketConnected
-                    ? "Online"
-                    : "Offline"}
-                </span>
-              </div>
+                <p className="welcome-subtitle">
+                  Ndi ANTIMATE — AI assistant
+                  ushobora kubaza, kuvugisha
+                  ijwi, cyangwa gukoresha Live
+                  Voice kugira ngo tuganire mu
+                  buryo busanzwe.
+                </p>
 
-              <button
-                type="button"
-                className="theme-button"
-                onClick={() =>
-                  setDarkMode(
-                    (prev) =>
-                      !prev
-                  )
-                }
-                title={
-                  darkMode
-                    ? "Light theme"
-                    : "Dark theme"
-                }
-                aria-label={
-                  darkMode
-                    ? "Light theme"
-                    : "Dark theme"
-                }
-              >
-                <Icon
-                  name={
-                    darkMode
-                      ? "sun"
-                      : "moon"
-                  }
-                  size={16}
-                />
-              </button>
-            </div>
-          </header>
-
-          {/* ==================================================
-              SCROLL AREA
-          ================================================== */}
-
-          <div
-            ref={scrollRef}
-            className="antimate-scroll"
-            onScroll={
-              handleScroll
-            }
-          >
-            <div className="chat-container">
-              {/* ================================================
-                  EMPTY / WELCOME
-              ================================================= */}
-
-              {messages.length ===
-                0 &&
-              !transcript &&
-              !currentAnswer ? (
-                <section className="welcome">
-                  <div className="welcome-inner">
-                    <div className="welcome-logo-wrap">
-                      <LogoMark
-                        size={58}
-                      />
-                    </div>
-
-                    <div className="welcome-eyebrow">
-                      <Icon
-                        name="sparkles"
-                        size={12}
-                      />
-
-                      ANTIMATE AI
-                    </div>
-
-                    <h1 className="welcome-title">
-                      Muraho.
-                      <br />
-
-                      <span className="welcome-title-gradient">
-                        Tuvugane ubwenge.
-                      </span>
-                    </h1>
-
-                    <p className="welcome-subtitle">
-                      Ndi ANTIMATE — umufasha wawe
-                      w'ubwenge. Andika ikibazo,
-                      vuga ukoresheje ijwi, cyangwa
-                      tangira Live Voice tuganire
-                      mu buryo busanzwe.
-                    </p>
-
-                    <div className="quick-prompts">
-                      {quickPrompts.map(
-                        (prompt) => (
-                          <button
-                            type="button"
-                            key={
-                              prompt.title
-                            }
-                            className="quick-card"
-                            onClick={() => {
-                              setText(
-                                prompt.text
-                              );
-
-                              textareaRef.current?.focus();
-                            }}
-                          >
-                            <span className="quick-card-icon">
-                              <Icon
-                                name={
-                                  prompt.icon
-                                }
-                                size={16}
-                              />
-                            </span>
-
-                            <span className="quick-card-copy">
-                              <span className="quick-card-title">
-                                {
-                                  prompt.title
-                                }
-                              </span>
-
-                              <span className="quick-card-text">
-                                {
-                                  prompt.text
-                                }
-                              </span>
-                            </span>
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </section>
-              ) : (
-                <div className="message-list">
-                  {/* ==============================================
-                      MESSAGES
-                  ============================================== */}
-
-                  {messages.map(
-                    (message) => {
-                      const isEditing =
-                        editingId ===
-                        message.id;
-
-                      const isUser =
-                        message.role ===
-                        "user";
-
-                      return (
-                        <div
+                {showQuickPrompts && (
+                  <div className="quick-prompts">
+                    {QUICK_PROMPTS.map(
+                      (prompt) => (
+                        <button
                           key={
-                            message.id
+                            prompt.text
                           }
-                          className={`message-row ${
+                          type="button"
+                          className="quick-prompt"
+                          onClick={() =>
+                            handleQuickPrompt(
+                              prompt.text
+                            )
+                          }
+                        >
+                          <span className="quick-prompt-icon">
+                            {
+                              prompt.icon
+                            }
+                          </span>
+
+                          <span className="quick-prompt-text">
+                            {
+                              prompt.text
+                            }
+                          </span>
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : (
+            <div className="message-list">
+              {messages.map(
+                (message, index) => {
+                  const isLast =
+                    index ===
+                    messages.length -
+                      1;
+
+                  const isLastAssistant =
+                    message.role ===
+                      "assistant" &&
+                    message.id ===
+                      lastAssistantMessage?.id;
+
+                  if (
+                    editingId ===
+                      message.id &&
+                    message.role ===
+                      "user"
+                  ) {
+                    return (
+                      <div
+                        key={
+                          message.id
+                        }
+                        className="message-row user"
+                      >
+                        <div className="message-column">
+                          <div className="edit-box">
+                            <textarea
+                              data-edit-input={
+                                message.id
+                              }
+                              className="edit-textarea"
+                              value={
+                                editingText
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                setEditingText(
+                                  event
+                                    .target
+                                    .value
+                                )
+                              }
+                              onKeyDown={(
+                                event
+                              ) => {
+                                if (
+                                  event.key ===
+                                    "Enter" &&
+                                  !event.shiftKey
+                                ) {
+                                  event.preventDefault();
+
+                                  submitEdit(
+                                    message
+                                  );
+                                }
+
+                                if (
+                                  event.key ===
+                                  "Escape"
+                                ) {
+                                  cancelEdit();
+                                }
+                              }}
+                            />
+
+                            <div className="edit-footer">
+                              <button
+                                type="button"
+                                className="edit-button edit-cancel"
+                                onClick={
+                                  cancelEdit
+                                }
+                              >
+                                Cancel
+                              </button>
+
+                              <button
+                                type="button"
+                                className="edit-button edit-save"
+                                disabled={
+                                  !editingText.trim() ||
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  submitEdit(
+                                    message
+                                  )
+                                }
+                              >
+                                Save & Send
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={
+                        message.id
+                      }
+                      className={`message-row ${
+                        message.role
+                      }`}
+                    >
+                      {message.role ===
+                        "assistant" && (
+                        <div className="assistant-avatar">
+                          <LogoMark
+                            size={31}
+                          />
+                        </div>
+                      )}
+
+                      <div className="message-column">
+                        <div
+                          className={`message-bubble ${
                             message.role
                           }`}
                         >
-                          {!isUser && (
-                            <div className="assistant-avatar">
-                              <LogoMark
-                                size={31}
-                                mini
-                              />
-                            </div>
-                          )}
+                          {
+                            message.content
+                          }
+                        </div>
 
-                          <div className="message-content-column">
-                            <div className="message-meta">
-                              <span>
-                                {isUser
-                                  ? "Wowe"
-                                  : "ANTIMATE"}
-                              </span>
+                        <div className="message-meta">
+                          <span>
+                            {message.role ===
+                            "assistant"
+                              ? "ANTIMATE"
+                              : "Wowe"}
+                          </span>
 
+                          <span>•</span>
+
+                          <span>
+                            {formatTime(
+                              message.createdAt
+                            )}
+                          </span>
+
+                          {message.edited && (
+                            <>
                               <span>
                                 •
                               </span>
 
                               <span>
-                                {formatTime(
-                                  new Date(
-                                    message.timestamp
-                                  )
-                                )}
+                                edited
                               </span>
-
-                              {message.edited && (
-                                <>
-                                  <span>
-                                    •
-                                  </span>
-
-                                  <span>
-                                    edited
-                                  </span>
-                                </>
-                              )}
-                            </div>
-
-                            {isEditing ? (
-                              <div className="edit-box">
-                                <textarea
-                                  data-edit-input={
-                                    message.id
-                                  }
-                                  className="edit-textarea"
-                                  value={
-                                    editingText
-                                  }
-                                  maxLength={
-                                    MAX_TEXT_LENGTH
-                                  }
-                                  onChange={(
-                                    event
-                                  ) =>
-                                    setEditingText(
-                                      event
-                                        .target
-                                        .value
-                                    )
-                                  }
-                                  onKeyDown={(
-                                    event
-                                  ) => {
-                                    if (
-                                      event.key ===
-                                        "Enter" &&
-                                      !event.shiftKey
-                                    ) {
-                                      event.preventDefault();
-
-                                      submitEdit(
-                                        message
-                                      );
-                                    }
-
-                                    if (
-                                      event.key ===
-                                      "Escape"
-                                    ) {
-                                      cancelEdit();
-                                    }
-                                  }}
-                                />
-
-                                <div className="edit-controls">
-                                  <button
-                                    type="button"
-                                    className="edit-control edit-cancel"
-                                    onClick={
-                                      cancelEdit
-                                    }
-                                  >
-                                    Kureka
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="edit-control edit-save"
-                                    onClick={() =>
-                                      submitEdit(
-                                        message
-                                      )
-                                    }
-                                    disabled={
-                                      !editingText.trim()
-                                    }
-                                  >
-                                    Ohereza
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                className={`message-bubble ${
-                                  message.role
-                                }`}
-                              >
-                                {
-                                  message.content
-                                }
-                              </div>
-                            )}
-
-                            {!isEditing && (
-                              <div className="message-actions">
-                                <button
-                                  type="button"
-                                  className={`message-action ${
-                                    copiedId ===
-                                    message.id
-                                      ? "active"
-                                      : ""
-                                  }`}
-                                  onClick={() =>
-                                    copyMessage(
-                                      message
-                                    )
-                                  }
-                                  title="Copy"
-                                >
-                                  <Icon
-                                    name={
-                                      copiedId ===
-                                      message.id
-                                        ? "check"
-                                        : "copy"
-                                    }
-                                    size={13}
-                                  />
-
-                                  <span className="message-action-label">
-                                    {copiedId ===
-                                    message.id
-                                      ? "Copied"
-                                      : "Copy"}
-                                  </span>
-                                </button>
-
-                                {isUser && (
-                                  <button
-                                    type="button"
-                                    className="message-action"
-                                    onClick={() =>
-                                      beginEdit(
-                                        message
-                                      )
-                                    }
-                                    title="Edit"
-                                  >
-                                    <Icon
-                                      name="edit"
-                                      size={13}
-                                    />
-
-                                    <span className="message-action-label">
-                                      Edit
-                                    </span>
-                                  </button>
-                                )}
-
-                                {!isUser &&
-                                  message.audioUrl && (
-                                    <button
-                                      type="button"
-                                      className={`message-action ${
-                                        replayingId ===
-                                        message.id
-                                          ? "active"
-                                          : ""
-                                      }`}
-                                      onClick={() =>
-                                        replayMessage(
-                                          message
-                                        )
-                                      }
-                                      title="Replay voice"
-                                    >
-                                      <Icon
-                                        name="volume"
-                                        size={13}
-                                      />
-
-                                      <span className="message-action-label">
-                                        {replayingId ===
-                                        message.id
-                                          ? "Playing"
-                                          : "Replay"}
-                                      </span>
-                                    </button>
-                                  )}
-
-                                {!isUser &&
-                                  message ===
-                                    lastAssistantMessage && (
-                                    <button
-                                      type="button"
-                                      className="message-action"
-                                      onClick={
-                                        regenerateLastAnswer
-                                      }
-                                      title="Regenerate"
-                                    >
-                                      <Icon
-                                        name="refresh"
-                                        size={13}
-                                      />
-
-                                      <span className="message-action-label">
-                                        Regenerate
-                                      </span>
-                                    </button>
-                                  )}
-
-                                {!isUser &&
-                                  isPlaying &&
-                                  replayingId ===
-                                    message.id && (
-                                    <button
-                                      type="button"
-                                      className="message-action"
-                                      onClick={
-                                        stopAudio
-                                      }
-                                      title="Stop voice"
-                                    >
-                                      <Icon
-                                        name="stop"
-                                        size={11}
-                                      />
-
-                                      <span className="message-action-label">
-                                        Stop
-                                      </span>
-                                    </button>
-                                  )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-
-                  {/* ============================================
-                      TRANSCRIPT
-                  ============================================ */}
-
-                  {transcript && (
-                    <div className="transcript-card">
-                      <span className="transcript-label">
-                        Wavuze:
-                      </span>
-
-                      <span>
-                        {transcript}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* ============================================
-                      THINKING
-                  ============================================ */}
-
-                  {isProcessing && (
-                    <div className="thinking-row">
-                      <div className="thinking-avatar">
-                        <LogoMark
-                          size={29}
-                          mini
-                        />
-                      </div>
-
-                      <div className="thinking-copy">
-                        <span>
-                          {
-                            displayedThinking
-                          }
-                        </span>
-
-                        <div className="thinking-dots">
-                          <span />
-                          <span />
-                          <span />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ============================================
-                      STREAMING CURRENT ANSWER
-                  ============================================ */}
-
-                  {currentAnswer &&
-                    !messages.some(
-                      (message) =>
-                        message.role ===
-                          "assistant" &&
-                        message.content ===
-                          currentAnswer
-                    ) && (
-                      <div className="message-row assistant">
-                        <div className="assistant-avatar">
-                          <LogoMark
-                            size={31}
-                            mini
-                          />
+                            </>
+                          )}
                         </div>
 
-                        <div className="message-content-column">
-                          <div className="message-meta">
-                            <span>
-                              ANTIMATE
-                            </span>
-
-                            <span>
-                              •
-                            </span>
-
-                            <span>
-                              now
-                            </span>
-                          </div>
-
-                          <div className="message-bubble assistant">
-                            {
-                              currentAnswer
-                            }
-                          </div>
-                        </div>
+                        {renderMessageActions(
+                          message,
+                          isLastAssistant
+                        )}
                       </div>
-                    )}
-
-                  {/* ============================================
-                      SPEAKING
-                  ============================================ */}
-
-                  {isPlaying && (
-                    <div className="speaking-bar">
-                      <Icon
-                        name="volume"
-                        size={14}
-                      />
-
-                      <span>
-                        ANTIMATE iri kuvuga
-                      </span>
-
-                      <div className="speaking-bars">
-                        <span />
-                        <span />
-                        <span />
-                        <span />
-                        <span />
-                      </div>
-
-                      <button
-                        type="button"
-                        className="message-action"
-                        onClick={
-                          stopAudio
-                        }
-                        style={{
-                          height: 24,
-                          padding:
-                            "0 5px",
-                        }}
-                      >
-                        <Icon
-                          name="stop"
-                          size={9}
-                        />
-
-                        <span>
-                          Stop
-                        </span>
-                      </button>
                     </div>
-                  )}
-
-                  {/* ============================================
-                      ERROR
-                  ============================================ */}
-
-                  {errorMessage && (
-                    <div className="error-banner">
-                      <Icon
-                        name="info"
-                        size={15}
-                      />
-
-                      <span>
-                        {errorMessage}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  );
+                }
               )}
 
-              <div ref={bottomRef} />
-            </div>
-          </div>
+              {/* ==================================================
+                  TRANSCRIPT
+              ================================================== */}
 
-          {/* ==================================================
-              SCROLL TO BOTTOM
-          ================================================== */}
-
-          {showScrollButton && (
-            <button
-              type="button"
-              className="scroll-button"
-              onClick={() =>
-                scrollToBottom()
-              }
-              title="Go to latest"
-              aria-label="Go to latest"
-            >
-              <Icon
-                name="arrowDown"
-                size={16}
-              />
-            </button>
-          )}
-
-          {/* ==================================================
-              COMPOSER
-          ================================================== */}
-
-          <div className="composer-layer">
-            <div className="composer-gradient" />
-
-            <div className="composer-inner">
-              {liveVoice && (
-                <div className="live-status">
-                  <div className="live-wave">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-
-                  <span>
-                    LIVE VOICE ACTIVE
-                  </span>
-                </div>
-              )}
-
-              <div className="composer-shell">
-                {/* ============================================
-                    RECORDING INFO
-                ============================================ */}
-
-                {isRecording && (
-                  <div className="composer-recording-info">
-                    <div className="recording-info-left">
-                      <span
-                        className={`recording-indicator ${
-                          liveVoice
-                            ? "live"
-                            : ""
-                        }`}
-                      />
-
-                      <span>
-                        {liveVoice
-                          ? "LIVE VOICE"
-                          : "RECORDING"}
-                      </span>
-                    </div>
-
-                    <span className="recording-time">
-                      {liveVoice
-                        ? "Silence 1.8s"
-                        : `00:${String(
-                            recordingSeconds
-                          ).padStart(
-                            2,
-                            "0"
-                          )}`}
+              {transcript && (
+                <div className="transcript-card">
+                  <div>
+                    <span className="transcript-label">
+                      Wavuze
                     </span>
                   </div>
+
+                  <div>
+                    {transcript}
+                  </div>
+                </div>
+              )}
+
+              {/* ==================================================
+                  THINKING
+              ================================================== */}
+
+              {isProcessing && (
+                <div className="thinking-row">
+                  <div className="assistant-avatar">
+                    <LogoMark size={29} />
+                  </div>
+
+                  <div className="thinking-content">
+                    <span>
+                      {displayedThinking}
+                    </span>
+
+                    <div className="thinking-dots">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ==================================================
+                  STREAMING ANSWER
+              ================================================== */}
+
+              {currentAnswer &&
+                !messages.some(
+                  (message) =>
+                    message.role ===
+                      "assistant" &&
+                    message.content ===
+                      currentAnswer
+                ) && (
+                  <div className="message-row assistant">
+                    <div className="assistant-avatar">
+                      <LogoMark size={31} />
+                    </div>
+
+                    <div className="message-column">
+                      <div className="message-bubble assistant">
+                        {
+                          currentAnswer
+                        }
+                      </div>
+                    </div>
+                  </div>
                 )}
 
-                {/* ============================================
-                    MAIN INPUT
-                ============================================ */}
+              {/* ==================================================
+                  LIVE CAPTION
+              ================================================== */}
 
-                <div className="composer-main">
-                  <textarea
-                    ref={textareaRef}
-                    className="composer-textarea"
-                    value={text}
-                    maxLength={
-                      MAX_TEXT_LENGTH
-                    }
-                    onChange={(
-                      event
-                    ) => {
-                      const value =
-                        event
-                          .target
-                          .value;
+              {liveVoice &&
+                (transcript ||
+                  isRecording ||
+                  isPlaying) && (
+                  <div className="live-caption">
+                    <div className="live-caption-top">
+                      <div className="live-caption-label">
+                        <span className="live-dot" />
+                        LIVE VOICE
+                      </div>
 
-                      setText(
-                        value
-                      );
+                      <div
+                        style={{
+                          color:
+                            "var(--muted-2)",
+                          fontSize: 9,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {isPlaying
+                          ? "ANTIMATE SPEAKING"
+                          : isRecording
+                          ? "LISTENING"
+                          : "PROCESSING"}
+                      </div>
+                    </div>
 
-                      const element =
-                        event.target;
+                    <div className="live-caption-text">
+                      {transcript ||
+                        statusMessage ||
+                        "Ndagutega…"}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
 
-                      element.style.height =
-                        "auto";
+          {/* ====================================================
+              SPEAKING
+          ==================================================== */}
 
-                      element.style.height =
-                        `${Math.min(
-                          element.scrollHeight,
-                          160
-                        )}px`;
-                    }}
-                    onKeyDown={
-                      handleTextareaKeyDown
-                    }
-                    placeholder={
-                      liveVoice
-                        ? "Live Voice irakora…"
-                        : "Andika ubutumwa kuri ANTIMATE…"
-                    }
-                    disabled={
-                      liveVoice
-                    }
-                    rows={1}
+          {isPlaying && (
+            <div className="speaking-bar">
+              <div className="speaking-left">
+                <div className="speaking-icon">
+                  <Icon
+                    name="volume"
+                    size={16}
                   />
-
-                  {!hasText ? (
-                    <button
-                      type="button"
-                      className={`composer-button ${
-                        isRecording
-                          ? liveVoice
-                            ? "live"
-                            : "recording"
-                          : ""
-                      }`}
-                      title={
-                        actionTitle
-                      }
-                      aria-label={
-                        actionTitle
-                      }
-                      disabled={
-                        isProcessing &&
-                        !liveVoice &&
-                        !isRecording
-                      }
-                      onPointerDown={
-                        handleVoicePointerDown
-                      }
-                      onPointerUp={
-                        handleVoicePointerUp
-                      }
-                      onPointerCancel={
-                        handleVoicePointerCancel
-                      }
-                    >
-                      {isRecording ? (
-                        liveVoice ? (
-                          <Icon
-                            name="activity"
-                            size={20}
-                          />
-                        ) : (
-                          <Icon
-                            name="stop"
-                            size={18}
-                          />
-                        )
-                      ) : (
-                        <Icon
-                          name="mic"
-                          size={21}
-                        />
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="composer-button"
-                      title="Ohereza ubutumwa"
-                      aria-label="Ohereza ubutumwa"
-                      disabled={
-                        isProcessing ||
-                        isRecording ||
-                        liveVoice
-                      }
-                      onClick={() =>
-                        sendTextMessage()
-                      }
-                    >
-                      <Icon
-                        name="send"
-                        size={19}
-                      />
-                    </button>
-                  )}
                 </div>
 
-                {/* ============================================
-                    FOOTER
-                ============================================ */}
+                <span>
+                  ANTIMATE iri kuvuga…
+                </span>
 
-                <div className="composer-footer">
-                  <div className="composer-hint">
-                    {liveVoice
-                      ? "Vuga → silence 1.8s → auto send → voice reply"
-                      : isRecording
-                      ? "Kanda mic uhagarike"
-                      : "Mic = voice • Hold 5s = Live Voice • Enter = send"}
-                  </div>
-
-                  <div className="composer-count">
-                    {text.length > 0
-                      ? `${text.length}/${MAX_TEXT_LENGTH}`
-                      : ""}
-                  </div>
+                <div className="speaking-wave">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                  <span />
                 </div>
+              </div>
 
-                {/* ============================================
-                    LIVE STOP
-                ============================================ */}
+              <button
+                type="button"
+                className="stop-speaking"
+                onClick={stopAudio}
+              >
+                <Icon
+                  name="stop"
+                  size={12}
+                />
 
-                {liveVoice && (
-                  <button
-                    type="button"
-                    className="live-stop-button"
-                    onClick={
-                      stopLiveVoice
-                    }
-                  >
-                    Hagarika Live Voice
-                  </button>
-                )}
+                Stop
+              </button>
+            </div>
+          )}
+
+          {/* ====================================================
+              ERROR
+          ==================================================== */}
+
+          {errorMessage && (
+            <div className="error-banner">
+              {errorMessage}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* ======================================================
+          SCROLL TO BOTTOM
+      ====================================================== */}
+
+      {showScrollButton && (
+        <button
+          type="button"
+          className="scroll-bottom-button"
+          title="Scroll to latest"
+          aria-label="Scroll to latest"
+          onClick={() => {
+            setIsNearBottom(true);
+            setShowScrollButton(false);
+            scrollToBottom(true);
+          }}
+        >
+          <Icon
+            name="arrowDown"
+            size={17}
+          />
+        </button>
+      )}
+
+      {/* ======================================================
+          COMPOSER
+      ====================================================== */}
+
+      <div className="composer-dock">
+        <div className="composer-container">
+          {isRecording && (
+            <div className="recording-strip">
+              <div className="recording-left">
+                <span
+                  className={`recording-pulse ${
+                    liveVoice
+                      ? "live"
+                      : ""
+                  }`}
+                />
+
+                <span>
+                  {liveVoice
+                    ? "LIVE VOICE"
+                    : "RECORDING"}
+                </span>
+              </div>
+
+              <div className="recording-right">
+                {liveVoice
+                  ? "Auto silence 1.8s"
+                  : formatRecordingTime(
+                      recordingSeconds
+                    )}
               </div>
             </div>
+          )}
+
+          <div className="composer-card">
+            <div className="composer-main">
+              <button
+                type="button"
+                className="composer-leading"
+                title="Quick prompts"
+                aria-label="Quick prompts"
+                onClick={() =>
+                  setShowQuickPrompts(
+                    (prev) => !prev
+                  )
+                }
+              >
+                <Icon
+                  name="sparkles"
+                  size={18}
+                />
+              </button>
+
+              <textarea
+                ref={textareaRef}
+                className="composer-textarea"
+                value={text}
+                onChange={
+                  handleTextChange
+                }
+                onKeyDown={
+                  handleTextareaKeyDown
+                }
+                placeholder={
+                  liveVoice
+                    ? "Live Voice irakora…"
+                    : "Andika ubutumwa cyangwa ukoreshe ijwi…"
+                }
+                disabled={liveVoice}
+                rows={1}
+              />
+
+              {!hasText ? (
+                <button
+                  type="button"
+                  className={`composer-action ${
+                    isRecording
+                      ? liveVoice
+                        ? "live"
+                        : "recording"
+                      : ""
+                  }`}
+                  title={
+                    isRecording
+                      ? liveVoice
+                        ? "Live Voice irakora"
+                        : "Kanda uhagarike recording"
+                      : "Kanda ufate amajwi • Hold 5s kuri Live Voice"
+                  }
+                  aria-label={
+                    isRecording
+                      ? liveVoice
+                        ? "Live Voice irakora"
+                        : "Kanda uhagarike recording"
+                      : "Kanda ufate amajwi"
+                  }
+                  disabled={
+                    isProcessing &&
+                    !isRecording &&
+                    !liveVoice
+                  }
+                  onPointerDown={
+                    handleVoicePointerDown
+                  }
+                  onPointerUp={
+                    handleVoicePointerUp
+                  }
+                  onPointerCancel={
+                    handleVoicePointerCancel
+                  }
+                >
+                  {isRecording ? (
+                    liveVoice ? (
+                      <div className="speaking-wave">
+                        <span />
+                        <span />
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    ) : (
+                      <Icon
+                        name="stop"
+                        size={18}
+                      />
+                    )
+                  ) : (
+                    <Icon
+                      name="mic"
+                      size={21}
+                    />
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="composer-action"
+                  title="Ohereza ubutumwa"
+                  aria-label="Ohereza ubutumwa"
+                  disabled={
+                    isProcessing ||
+                    isRecording ||
+                    liveVoice
+                  }
+                  onClick={() =>
+                    sendTextMessage()
+                  }
+                >
+                  <Icon
+                    name="send"
+                    size={20}
+                  />
+                </button>
+              )}
+            </div>
+
+            <div className="composer-footer">
+              <div className="composer-footer-left">
+                {liveVoice ? (
+                  <>
+                    <span>
+                      Live Voice
+                    </span>
+
+                    <span>•</span>
+
+                    <span>
+                      silence 1.8s =
+                      auto send
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      ANTIMATE can
+                      listen, think
+                      & speak
+                    </span>
+                  </>
+                )}
+              </div>
+
+              <div className="composer-footer-right">
+                <span className="shortcut">
+                  <Icon
+                    name="keyboard"
+                    size={11}
+                  />
+
+                  <span>
+                    <span className="kbd">
+                      Enter
+                    </span>{" "}
+                    send
+                  </span>
+                </span>
+
+                <span>•</span>
+
+                <span>
+                  <span className="kbd">
+                    Shift
+                  </span>{" "}
+                  +{" "}
+                  <span className="kbd">
+                    Enter
+                  </span>{" "}
+                  new line
+                </span>
+              </div>
+            </div>
+
+            {liveVoice && (
+              <button
+                type="button"
+                className="live-stop-button"
+                onClick={
+                  stopLiveVoice
+                }
+              >
+                <Icon
+                  name="x"
+                  size={14}
+                />
+
+                Hagarika Live Voice
+              </button>
+            )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

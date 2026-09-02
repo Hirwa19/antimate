@@ -1,12 +1,11 @@
 // ============================================================
-// ANTIMATE AI — PROFESSIONAL CHAT UI (TAILWIND EDITION)
+// ANTIMATE AI — PROFESSIONAL CHAT UI (NATIVE CSS EDITION)
 // Socket.IO Voice + HTTP Text
 // ============================================================
 
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -178,7 +177,7 @@ export default function AntimateAI() {
     }
   }, []);
 
-  // Message Helper Functions
+  // Message Helpers
   const addUserMessage = useCallback((value) => {
     const clean = String(value || "").trim();
     if (!clean) return;
@@ -299,7 +298,7 @@ export default function AntimateAI() {
     [releaseWakeLock]
   );
 
-  // Stop Recording Engine
+  // Stop Recording
   const stopRecording = useCallback(() => {
     if (!isRecordingRef.current) return;
 
@@ -327,7 +326,7 @@ export default function AntimateAI() {
     }
   }, [stopMediaTracks]);
 
-  // Start Recording Engine
+  // Start Recording
   const startRecording = useCallback(async () => {
     if (isRecordingRef.current || isProcessing || isPlaying) return;
 
@@ -636,7 +635,7 @@ export default function AntimateAI() {
     }
   };
 
-  // Hold to talk triggers
+  // Hold triggers
   const handleMouseDown = () => {
     isHoldingRef.current = true;
     holdTimerRef.current = setTimeout(() => {
@@ -658,101 +657,94 @@ export default function AntimateAI() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-5xl mx-auto bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-slate-950">
+    <div style={styles.container}>
       {/* HEADER */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 font-black text-slate-950 text-xl shadow-lg shadow-emerald-500/20">
+      <header style={styles.header}>
+        <div style={styles.headerTitleGroup}>
+          <div style={styles.logoBox}>
             A
             <span
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-950 ${
-                socketConnected ? "bg-emerald-400" : "bg-rose-500"
-              }`}
+              style={{
+                ...styles.statusDot,
+                backgroundColor: socketConnected ? "#10b981" : "#f43f5e",
+              }}
             />
           </div>
           <div>
-            <h1 className="font-bold text-lg tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              ANTIMATE AI
-            </h1>
-            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+            <h1 style={styles.brandTitle}>ANTIMATE AI</h1>
+            <p style={styles.brandSubtitle}>
               <span>{statusMessage}</span>
               {processingMode && (
-                <span className="uppercase text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-1.5 py-0.2 rounded font-mono">
-                  {processingMode}
-                </span>
+                <span style={styles.modeBadge}>{processingMode}</span>
               )}
             </p>
           </div>
         </div>
 
-        {/* CONNECTION STATUS BADGE */}
-        <div className="flex items-center gap-2">
+        {/* CONNECTION BADGE */}
+        <div
+          style={{
+            ...styles.connectionBadge,
+            backgroundColor: socketConnected ? "rgba(6, 78, 59, 0.4)" : "rgba(136, 19, 55, 0.4)",
+            borderColor: socketConnected ? "rgba(6, 95, 70, 0.5)" : "rgba(159, 18, 57, 0.5)",
+            color: socketConnected ? "#34d399" : "#fb7185",
+          }}
+        >
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
-              socketConnected
-                ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
-                : "bg-rose-950/40 text-rose-400 border-rose-800/50"
-            }`}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                socketConnected ? "bg-emerald-400 animate-pulse" : "bg-rose-500"
-              }`}
-            />
-            {socketConnected ? "Online" : "Offline"}
-          </span>
+            style={{
+              ...styles.connectionDot,
+              backgroundColor: socketConnected ? "#34d399" : "#f43f5e",
+            }}
+          />
+          {socketConnected ? "Online" : "Offline"}
         </div>
       </header>
 
       {/* ERROR BANNER */}
       {errorMessage && (
-        <div className="bg-rose-950/80 border-b border-rose-800/60 px-6 py-2.5 text-xs text-rose-200 flex items-center justify-between animate-fadeIn">
+        <div style={styles.errorBanner}>
           <span>⚠️ {errorMessage}</span>
           <button
             onClick={() => setErrorMessage("")}
-            className="text-rose-400 hover:text-rose-100 font-bold ml-4"
+            style={styles.errorCloseBtn}
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* CHAT MESSAGES BODY */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6 sm:px-6">
+      {/* MESSAGES CONTAINER */}
+      <main style={styles.mainChat}>
         {messages.length === 0 && !transcript && !thinkingText ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-3xl">
-              🎙️
-            </div>
-            <div className="max-w-sm space-y-1">
-              <h3 className="text-slate-200 font-semibold text-base">
-                Murakaza neza kuri ANTIMATE AI
-              </h3>
-              <p className="text-xs text-slate-400">
-                Kanda ukoreshe bouton y'ijwi cyangwa wandike ikibazo cyawe mu Kinyarwanda.
-              </p>
-            </div>
+          <div style={styles.emptyState}>
+            <div style={styles.emptyIcon}>🎙️</div>
+            <h3 style={styles.emptyTitle}>Murakaza neza kuri ANTIMATE AI</h3>
+            <p style={styles.emptySubtitle}>
+              Kanda ukoreshe bouton y'ijwi cyangwa wandike ikibazo cyawe mu Kinyarwanda.
+            </p>
           </div>
         ) : (
           <>
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                style={{
+                  ...styles.messageRow,
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                }}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm space-y-1 ${
-                    msg.role === "user"
-                      ? "bg-emerald-600 text-white rounded-br-none"
-                      : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none"
-                  }`}
+                  style={{
+                    ...styles.messageBubble,
+                    ...(msg.role === "user" ? styles.userBubble : styles.assistantBubble),
+                  }}
                 >
-                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                  <div className="flex items-center justify-end gap-2 text-[10px] opacity-60">
+                  <p style={styles.messageText}>{msg.text}</p>
+                  <div style={styles.messageMeta}>
                     {msg.mode && msg.role === "assistant" && (
-                      <span className="uppercase font-mono">{msg.mode}</span>
+                      <span style={{ textTransform: "uppercase", fontFamily: "monospace" }}>
+                        {msg.mode}
+                      </span>
                     )}
                     <span>
                       {new Date(msg.createdAt).toLocaleTimeString([], {
@@ -767,11 +759,9 @@ export default function AntimateAI() {
 
             {/* LIVE TRANSCRIPT */}
             {transcript && (
-              <div className="flex justify-end">
-                <div className="max-w-[85%] bg-emerald-950/40 border border-emerald-800/40 text-emerald-200 rounded-2xl rounded-br-none px-4 py-3 text-sm italic">
-                  <span className="text-xs text-emerald-500 block not-italic font-semibold mb-0.5">
-                    Iri kumva...
-                  </span>
+              <div style={{ ...styles.messageRow, justifyContent: "flex-end" }}>
+                <div style={styles.transcriptBubble}>
+                  <span style={styles.transcriptLabel}>Iri kumva...</span>
                   "{transcript}"
                 </div>
               </div>
@@ -779,13 +769,9 @@ export default function AntimateAI() {
 
             {/* THINKING INDICATOR */}
             {thinkingText && (
-              <div className="flex justify-start">
-                <div className="bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl rounded-bl-none px-4 py-3 text-sm flex items-center gap-2">
-                  <span className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </span>
+              <div style={{ ...styles.messageRow, justifyContent: "flex-start" }}>
+                <div style={styles.thinkingBubble}>
+                  <span style={styles.typingDots}>...</span>
                   <span>{thinkingText}</span>
                 </div>
               </div>
@@ -795,29 +781,22 @@ export default function AntimateAI() {
         <div ref={messagesEndRef} />
       </main>
 
-      {/* VOICE RECORDING OVERLAY (ACTIVE) */}
+      {/* VOICE RECORDING BAR */}
       {isRecording && (
-        <div className="bg-emerald-950/60 border-t border-emerald-800/50 px-6 py-3 flex items-center justify-between text-xs text-emerald-300 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500" />
-            </span>
+        <div style={styles.recordingOverlay}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={styles.recordingPulse} />
             <span>Iri gufata ijwi... Komeza ufunge cyangwa ureke bouton igihe urangije.</span>
           </div>
-          <button
-            onClick={stopRecording}
-            className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-md font-medium transition"
-          >
+          <button onClick={stopRecording} style={styles.stopBtn}>
             Hagarika
           </button>
         </div>
       )}
 
-      {/* FOOTER INPUT CONTROLS */}
-      <footer className="p-4 bg-slate-900/80 border-t border-slate-800/80 backdrop-blur-md">
-        <form onSubmit={handleSendText} className="flex items-center gap-2">
-          {/* MIC HOLD/CLICK BUTTON */}
+      {/* FOOTER */}
+      <footer style={styles.footer}>
+        <form onSubmit={handleSendText} style={styles.formGroup}>
           <button
             type="button"
             onMouseDown={handleMouseDown}
@@ -830,33 +809,36 @@ export default function AntimateAI() {
               }
             }}
             disabled={isProcessing || isPlaying}
-            className={`relative flex items-center justify-center w-12 h-12 rounded-xl font-bold transition-all shadow-md shrink-0 ${
-              isRecording
-                ? "bg-rose-600 text-white animate-pulse"
+            style={{
+              ...styles.micBtn,
+              backgroundColor: isRecording
+                ? "#e11d48"
                 : isPlaying
-                ? "bg-amber-600 text-white cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-950"
-            }`}
+                ? "#d97706"
+                : "#059669",
+              opacity: isProcessing || isPlaying ? 0.6 : 1,
+            }}
             title="Kanda cyangwa Ufatishe uburyo bw'ijwi"
           >
             {isRecording ? "⏹" : isPlaying ? "🔊" : "🎙️"}
           </button>
 
-          {/* TEXT INPUT */}
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Bandika ubutumwa hano..."
             disabled={isRecording || isProcessing}
-            className="flex-1 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-600 disabled:opacity-50"
+            style={styles.textInput}
           />
 
-          {/* SUBMIT BUTTON */}
           <button
             type="submit"
             disabled={!text.trim() || isProcessing || isRecording}
-            className="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-800 text-emerald-400 font-bold transition shrink-0"
+            style={{
+              ...styles.sendBtn,
+              opacity: !text.trim() || isProcessing || isRecording ? 0.4 : 1,
+            }}
           >
             ➔
           </button>
@@ -865,3 +847,303 @@ export default function AntimateAI() {
     </div>
   );
 }
+
+// ============================================================
+// NATIVE INLINE STYLES (PURE CSS)
+// ============================================================
+
+const styles = {
+  container: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100vh",
+    maxWidth: "960px",
+    margin: "0 auto",
+    backgroundColor: "#020617",
+    color: "#f8fafc",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "16px 24px",
+    borderBottom: "1px solid #1e293b",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backdropFilter: "blur(8px)",
+    position: "sticky",
+    top: 0,
+    zIndex: 10,
+  },
+  headerTitleGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  logoBox: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "40px",
+    height: "40px",
+    borderRadius: "12px",
+    background: "linear-gradient(135deg, #10b981 0%, #2dd4bf 100%)",
+    fontWeight: "900",
+    color: "#020617",
+    fontSize: "20px",
+  },
+  statusDot: {
+    position: "absolute",
+    bottom: "-2px",
+    right: "-2px",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    border: "2px solid #020617",
+  },
+  brandTitle: {
+    fontWeight: "700",
+    fontSize: "18px",
+    margin: 0,
+    color: "#f1f5f9",
+  },
+  brandSubtitle: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    margin: "2px 0 0 0",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+  },
+  modeBadge: {
+    textTransform: "uppercase",
+    fontSize: "10px",
+    backgroundColor: "rgba(6, 78, 59, 0.8)",
+    color: "#34d399",
+    border: "1px solid rgba(6, 95, 70, 0.5)",
+    padding: "1px 6px",
+    borderRadius: "4px",
+    fontFamily: "monospace",
+  },
+  connectionBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "4px 12px",
+    borderRadius: "9999px",
+    fontSize: "12px",
+    fontWeight: "500",
+    border: "1px solid",
+  },
+  connectionDot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+  },
+  errorBanner: {
+    backgroundColor: "rgba(136, 19, 55, 0.8)",
+    borderBottom: "1px solid rgba(159, 18, 57, 0.6)",
+    padding: "10px 24px",
+    fontSize: "12px",
+    color: "#fecdd3",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  errorCloseBtn: {
+    background: "none",
+    border: "none",
+    color: "#fb7185",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  mainChat: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "24px 16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "24px",
+  },
+  emptyState: {
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    color: "#64748b",
+  },
+  emptyIcon: {
+    width: "64px",
+    height: "64px",
+    borderRadius: "16px",
+    backgroundColor: "#0f172a",
+    border: "1px solid #1e293b",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "28px",
+    marginBottom: "16px",
+  },
+  emptyTitle: {
+    color: "#e2e8f0",
+    fontWeight: "600",
+    fontSize: "16px",
+    margin: "0 0 4px 0",
+  },
+  emptySubtitle: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    margin: 0,
+    maxWidth: "320px",
+  },
+  messageRow: {
+    display: "flex",
+    width: "100%",
+  },
+  messageBubble: {
+    maxWidth: "75%",
+    borderRadius: "16px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+  },
+  userBubble: {
+    backgroundColor: "#059669",
+    color: "#ffffff",
+    borderBottomRightRadius: "2px",
+  },
+  assistantBubble: {
+    backgroundColor: "#0f172a",
+    border: "1px solid #1e293b",
+    color: "#e2e8f0",
+    borderBottomLeftRadius: "2px",
+  },
+  messageText: {
+    whiteSpace: "pre-wrap",
+    lineHeight: "1.5",
+    margin: 0,
+  },
+  messageMeta: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "8px",
+    fontSize: "10px",
+    opacity: 0.6,
+    marginTop: "6px",
+  },
+  transcriptBubble: {
+    maxWidth: "75%",
+    backgroundColor: "rgba(6, 78, 59, 0.4)",
+    border: "1px solid rgba(6, 95, 70, 0.4)",
+    color: "#a7f3d0",
+    borderRadius: "16px",
+    borderBottomRightRadius: "2px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    fontStyle: "italic",
+  },
+  transcriptLabel: {
+    fontSize: "12px",
+    color: "#10b981",
+    display: "block",
+    fontStyle: "normal",
+    fontWeight: "600",
+    marginBottom: "2px",
+  },
+  thinkingBubble: {
+    backgroundColor: "#0f172a",
+    border: "1px solid #1e293b",
+    color: "#94a3b8",
+    borderRadius: "16px",
+    borderBottomLeftRadius: "2px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  typingDots: {
+    color: "#34d399",
+    fontWeight: "bold",
+  },
+  recordingOverlay: {
+    backgroundColor: "rgba(6, 78, 59, 0.6)",
+    borderTop: "1px solid rgba(6, 95, 70, 0.5)",
+    padding: "12px 24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    fontSize: "12px",
+    color: "#6ee7b7",
+  },
+  recordingPulse: {
+    width: "12px",
+    height: "12px",
+    borderRadius: "50%",
+    backgroundColor: "#f43f5e",
+    display: "inline-block",
+  },
+  stopBtn: {
+    padding: "4px 12px",
+    backgroundColor: "#e11d48",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "6px",
+    fontWeight: "500",
+    cursor: "pointer",
+  },
+  footer: {
+    padding: "16px",
+    backgroundColor: "rgba(15, 23, 42, 0.8)",
+    borderTop: "1px solid #1e293b",
+    backdropFilter: "blur(8px)",
+  },
+  formGroup: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  micBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    fontWeight: "bold",
+    color: "#020617",
+    border: "none",
+    fontSize: "18px",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: "#020617",
+    border: "1px solid #1e293b",
+    color: "#f8fafc",
+    borderRadius: "12px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    outline: "none",
+  },
+  sendBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    backgroundColor: "#1e293b",
+    border: "none",
+    color: "#34d399",
+    fontWeight: "bold",
+    fontSize: "18px",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
+};

@@ -22,6 +22,7 @@ import Systems from "./pages/Systems";
 import DeviceManagement from "./pages/DeviceManager";
 import ForgotPassword from "./pages/ForgotPassword";
 import AntimateAI from "./pages/AntimateAI";
+import BroodingGuide from "./pages/BroodingGuide";
 
 
 function App() {
@@ -176,6 +177,8 @@ function App() {
   path="/antimate-ai"
   element={<AntimateAI />}
 />
+
+<Route path="/brooding-guide" element={<BroodingGuide />} />
 
       </Routes>
     </BrowserRouter>

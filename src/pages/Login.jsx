@@ -18,6 +18,8 @@ import {
   Sun,
   Moon,
   HeartHandshake,
+  BookOpen,
+  TrendingUp,
 } from "lucide-react";
 import "./Login.css";
 
@@ -73,13 +75,22 @@ function Login() {
   // ============================================================
   // DEFAULT THEME = LIGHT
   // ============================================================
+
   const [darkMode, setDarkMode] = useState(false);
+
+  // ============================================================
+  // CONTENT
+  // ============================================================
 
   const content = {
     rw: {
       navHome: "Ahabanza",
       navHow: "Uko ikora",
       navVision: "Intego",
+
+      knowledge: "Amakuru y’Ubworozi",
+      trending: "TRENDING",
+
       login: "Injira",
       signup: "Tangira natwe",
 
@@ -148,6 +159,10 @@ function Login() {
       navHome: "Home",
       navHow: "How it works",
       navVision: "Our vision",
+
+      knowledge: "Poultry Knowledge",
+      trending: "TRENDING",
+
       login: "Login",
       signup: "Join us",
 
@@ -215,6 +230,10 @@ function Login() {
 
   const t = content[language];
 
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
   async function handleLogin(e) {
     e.preventDefault();
 
@@ -248,13 +267,27 @@ function Login() {
     }
   }
 
+  // ============================================================
+  // OPEN KNOWLEDGE CENTER
+  // ============================================================
+
+  const openKnowledgeCenter = () => {
+    setMobileMenu(false);
+    navigate("/brooding-guide");
+  };
+
   return (
     <>
       {/* =========================================================
           ANTIMATE AI FLOATING ICON
-          PUBLIC ACCESS — NO LOGIN REQUIRED
       ========================================================= */}
+
       <style>{`
+
+        /* ======================================================
+           ANTIMATE AI COLOR MOVEMENT
+        ====================================================== */
+
         @keyframes antimateAIColorFlow {
           0% {
             transform: rotate(0deg);
@@ -275,6 +308,40 @@ function Login() {
             transform: translateY(-4px);
           }
         }
+
+        /* ======================================================
+           KNOWLEDGE CENTER PULSE
+        ====================================================== */
+
+        @keyframes knowledgePulse {
+          0%,
+          100% {
+            opacity: 0.65;
+            transform: scale(1);
+          }
+
+          50% {
+            opacity: 1;
+            transform: scale(1.06);
+          }
+        }
+
+        @keyframes trendingGlow {
+          0%,
+          100% {
+            box-shadow:
+              0 0 0 rgba(0, 217, 255, 0);
+          }
+
+          50% {
+            box-shadow:
+              0 0 14px rgba(0, 217, 255, 0.18);
+          }
+        }
+
+        /* ======================================================
+           PUBLIC ANTIMATE AI BUTTON
+        ====================================================== */
 
         .antimate-ai-float-login {
           position: fixed;
@@ -310,12 +377,12 @@ function Login() {
           background:
             conic-gradient(
               from 0deg,
-              #00c896,
-              #00e5ff,
+              #00d9ff,
+              #2563eb,
               #6366f1,
               #a855f7,
               #ec4899,
-              #00c896
+              #00d9ff
             );
 
           animation:
@@ -341,7 +408,7 @@ function Login() {
 
           box-shadow:
             0 10px 28px rgba(0, 0, 0, 0.28),
-            0 0 22px rgba(0, 200, 150, 0.20);
+            0 0 22px rgba(0, 217, 255, 0.18);
         }
 
         .antimate-ai-ring-login::before {
@@ -356,12 +423,12 @@ function Login() {
           background:
             conic-gradient(
               from 0deg,
-              #00c896,
-              #00e5ff,
+              #00d9ff,
+              #2563eb,
               #6366f1,
               #a855f7,
               #ec4899,
-              #00c896
+              #00d9ff
             );
 
           animation:
@@ -391,7 +458,7 @@ function Login() {
           background:
             radial-gradient(
               circle at 35% 30%,
-              rgba(0, 200, 150, 0.16),
+              rgba(0, 217, 255, 0.16),
               transparent 45%
             ),
             #0f172a;
@@ -433,9 +500,168 @@ function Login() {
         .antimate-ai-float-login:focus-visible {
           outline:
             3px solid
-            rgba(0, 200, 150, 0.45);
+            rgba(0, 217, 255, 0.45);
 
           outline-offset: 4px;
+        }
+
+        /* ======================================================
+           KNOWLEDGE CENTER NAV BUTTON
+        ====================================================== */
+
+        .knowledge-nav-wrapper {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .knowledge-nav-button {
+          position: relative;
+
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+
+          min-height: 38px;
+          padding: 8px 13px;
+
+          border-radius: 12px;
+
+          border: 1px solid
+            rgba(0, 217, 255, 0.28);
+
+          background:
+            rgba(0, 217, 255, 0.055);
+
+          color: inherit;
+
+          font-family:
+            Inter,
+            Arial,
+            sans-serif;
+
+          font-size: 13px;
+          font-weight: 750;
+
+          cursor: pointer;
+
+          transition:
+            transform 0.22s ease,
+            border-color 0.22s ease,
+            background 0.22s ease,
+            box-shadow 0.22s ease;
+        }
+
+        .knowledge-nav-button svg {
+          flex-shrink: 0;
+          color: #00d9ff;
+        }
+
+        .knowledge-nav-button:hover {
+          transform: translateY(-1px);
+
+          border-color:
+            rgba(0, 217, 255, 0.65);
+
+          background:
+            rgba(0, 217, 255, 0.10);
+
+          box-shadow:
+            0 7px 24px
+            rgba(0, 217, 255, 0.10);
+        }
+
+        .knowledge-nav-button:active {
+          transform: translateY(0) scale(0.98);
+        }
+
+        .knowledge-nav-button:focus-visible {
+          outline:
+            3px solid
+            rgba(0, 217, 255, 0.25);
+
+          outline-offset: 3px;
+        }
+
+        /* ======================================================
+           TRENDING BADGE
+        ====================================================== */
+
+        .knowledge-trending-badge {
+          position: absolute;
+
+          top: -9px;
+          right: -9px;
+
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+
+          padding: 3px 7px;
+
+          border-radius: 999px;
+
+          background:
+            linear-gradient(
+              135deg,
+              #2563eb,
+              #6366f1
+            );
+
+          border:
+            1px solid
+            rgba(255, 255, 255, 0.22);
+
+          color: #ffffff;
+
+          font-size: 8px;
+          font-weight: 900;
+
+          letter-spacing: 0.7px;
+
+          line-height: 1;
+
+          white-space: nowrap;
+
+          animation:
+            trendingGlow
+            2.5s
+            ease-in-out
+            infinite;
+
+          pointer-events: none;
+        }
+
+        .knowledge-trending-badge svg {
+          width: 9px;
+          height: 9px;
+
+          color: #ffffff;
+        }
+
+        /* ======================================================
+           MOBILE KNOWLEDGE BUTTON
+        ====================================================== */
+
+        @media (max-width: 900px) {
+          .knowledge-nav-wrapper {
+            width: 100%;
+          }
+
+          .knowledge-nav-button {
+            width: 100%;
+
+            justify-content: center;
+
+            min-height: 44px;
+
+            padding: 10px 14px;
+          }
+
+          .knowledge-trending-badge {
+            top: 3px;
+            right: 12px;
+          }
         }
 
         @media (max-width: 600px) {
@@ -458,11 +684,16 @@ function Login() {
         @media (prefers-reduced-motion: reduce) {
           .antimate-ai-float-login,
           .antimate-ai-float-login::before,
-          .antimate-ai-ring-login::before {
+          .antimate-ai-ring-login::before,
+          .knowledge-trending-badge {
             animation: none;
           }
         }
       `}</style>
+
+      {/* =========================================================
+          PAGE
+      ========================================================= */}
 
       <div
         className={`login-page ${
@@ -475,6 +706,7 @@ function Login() {
         {/* =====================================================
             FIXED HEADER
         ===================================================== */}
+
         <header className="login-navbar">
           <div className="brand">
             <div className="brand-logo">
@@ -483,11 +715,16 @@ function Login() {
 
             <div>
               <strong>ANTIMATE</strong>
+
               <span>
                 SMART FARMING
               </span>
             </div>
           </div>
+
+          {/* ===================================================
+              NAVIGATION
+          =================================================== */}
 
           <nav
             className={
@@ -498,24 +735,74 @@ function Login() {
           >
             <a
               href="#home"
-              onClick={() => setMobileMenu(false)}
+              onClick={() =>
+                setMobileMenu(false)
+              }
             >
               {t.navHome}
             </a>
 
             <a
               href="#features"
-              onClick={() => setMobileMenu(false)}
+              onClick={() =>
+                setMobileMenu(false)
+              }
             >
               {t.navHow}
             </a>
 
             <a
               href="#vision"
-              onClick={() => setMobileMenu(false)}
+              onClick={() =>
+                setMobileMenu(false)
+              }
             >
               {t.navVision}
             </a>
+
+            {/* ===============================================
+                KNOWLEDGE CENTER BUTTON
+            =============================================== */}
+
+            <div className="knowledge-nav-wrapper">
+              <button
+                type="button"
+                className="knowledge-nav-button"
+                onClick={
+                  openKnowledgeCenter
+                }
+                aria-label={
+                  t.knowledge
+                }
+                title={
+                  t.knowledge
+                }
+              >
+                <BookOpen
+                  size={16}
+                  strokeWidth={2.2}
+                />
+
+                <span>
+                  {t.knowledge}
+                </span>
+              </button>
+
+              {/* TRENDING */}
+
+              <span className="knowledge-trending-badge">
+                <TrendingUp
+                  size={9}
+                  strokeWidth={3}
+                />
+
+                {t.trending}
+              </span>
+            </div>
+
+            {/* ===============================================
+                LOGIN
+            =============================================== */}
 
             <button
               onClick={() => {
@@ -527,15 +814,28 @@ function Login() {
               {t.login}
             </button>
 
+            {/* ===============================================
+                SIGNUP
+            =============================================== */}
+
             <Link
               to="/signup"
               className="nav-signup"
-              onClick={() => setMobileMenu(false)}
+              onClick={() =>
+                setMobileMenu(false)
+              }
             >
               {t.signup}
-              <ArrowRight size={15} />
+
+              <ArrowRight
+                size={15}
+              />
             </Link>
           </nav>
+
+          {/* =================================================
+              NAVBAR TOOLS
+          ================================================= */}
 
           <div className="navbar-tools">
             <button
@@ -557,7 +857,9 @@ function Login() {
             <button
               className="theme-button"
               onClick={() =>
-                setDarkMode(!darkMode)
+                setDarkMode(
+                  !darkMode
+                )
               }
               aria-label="Toggle theme"
               title={
@@ -576,7 +878,9 @@ function Login() {
             <button
               className="mobile-menu-button"
               onClick={() =>
-                setMobileMenu(!mobileMenu)
+                setMobileMenu(
+                  !mobileMenu
+                )
               }
               aria-label="Toggle menu"
             >
@@ -589,10 +893,15 @@ function Login() {
           </div>
         </header>
 
+        {/* =====================================================
+            MAIN
+        ===================================================== */}
+
         <main>
-          {/* =====================================================
+          {/* ===================================================
               HERO
-          ===================================================== */}
+          =================================================== */}
+
           <section
             id="home"
             className="hero-section"
@@ -600,13 +909,18 @@ function Login() {
             <div className="hero-content">
               <div className="hero-badge">
                 <Sparkles size={15} />
+
                 {t.eyebrow}
               </div>
 
               <h1>
                 {t.title1}
+
                 <br />
-                <span>{t.title2}</span>
+
+                <span>
+                  {t.title2}
+                </span>
               </h1>
 
               <div className="animated-words">
@@ -639,7 +953,10 @@ function Login() {
                   }
                 >
                   {t.start}
-                  <ArrowRight size={18} />
+
+                  <ArrowRight
+                    size={18}
+                  />
                 </button>
 
                 <a
@@ -652,7 +969,10 @@ function Login() {
 
               <div className="hero-trust">
                 <div>
-                  <ShieldCheck size={17} />
+                  <ShieldCheck
+                    size={17}
+                  />
+
                   <span>
                     {t.live}
                   </span>
@@ -660,12 +980,17 @@ function Login() {
 
                 <div>
                   <Leaf size={17} />
+
                   <span>
                     {t.smart}
                   </span>
                 </div>
               </div>
             </div>
+
+            {/* =================================================
+                HERO VISUAL
+            ================================================= */}
 
             <div className="hero-visual">
               <div className="visual-glow" />
@@ -710,13 +1035,15 @@ function Login() {
               </div>
 
               <div className="floating-circle circle-one" />
+
               <div className="floating-circle circle-two" />
             </div>
           </section>
 
-          {/* =====================================================
+          {/* ===================================================
               FEATURES
-          ===================================================== */}
+          =================================================== */}
+
           <section
             id="features"
             className="features-section"
@@ -734,27 +1061,40 @@ function Login() {
             <div className="feature-grid">
               <Feature
                 icon={<Wifi />}
-                title={t.feature1Title}
-                text={t.feature1Text}
+                title={
+                  t.feature1Title
+                }
+                text={
+                  t.feature1Text
+                }
               />
 
               <Feature
                 icon={<Brain />}
-                title={t.feature2Title}
-                text={t.feature2Text}
+                title={
+                  t.feature2Title
+                }
+                text={
+                  t.feature2Text
+                }
               />
 
               <Feature
                 icon={<LineChart />}
-                title={t.feature3Title}
-                text={t.feature3Text}
+                title={
+                  t.feature3Title
+                }
+                text={
+                  t.feature3Text
+                }
               />
             </div>
           </section>
 
-          {/* =====================================================
+          {/* ===================================================
               VISION
-          ===================================================== */}
+          =================================================== */}
+
           <section
             id="vision"
             className="vision-section"
@@ -768,7 +1108,10 @@ function Login() {
 
             <div className="vision-content">
               <div className="small-heading">
-                <HeartHandshake size={17} />
+                <HeartHandshake
+                  size={17}
+                />
+
                 OUR PURPOSE
               </div>
 
@@ -783,13 +1126,17 @@ function Login() {
               <div className="vision-points">
                 <div>
                   <Cloud size={18} />
+
                   <span>
                     Simple technology
                   </span>
                 </div>
 
                 <div>
-                  <ShieldCheck size={18} />
+                  <ShieldCheck
+                    size={18}
+                  />
+
                   <span>
                     Reliable information
                   </span>
@@ -797,6 +1144,7 @@ function Login() {
 
                 <div>
                   <Lock size={18} />
+
                   <span>
                     Secure platform
                   </span>
@@ -805,9 +1153,10 @@ function Login() {
             </div>
           </section>
 
-          {/* =====================================================
+          {/* ===================================================
               JOIN
-          ===================================================== */}
+          =================================================== */}
+
           <section className="join-section">
             <div className="join-content">
               <Sparkles size={28} />
@@ -825,15 +1174,19 @@ function Login() {
                 className="primary-button"
               >
                 {t.signup}
-                <ArrowRight size={18} />
+
+                <ArrowRight
+                  size={18}
+                />
               </Link>
             </div>
           </section>
         </main>
 
-        {/* =========================================================
+        {/* =====================================================
             PUBLIC ANTIMATE AI
-        ========================================================= */}
+        ===================================================== */}
+
         <Link
           to="/antimate-ai"
           className="antimate-ai-float-login"
@@ -849,21 +1202,28 @@ function Login() {
           </div>
         </Link>
 
-        {/* =========================================================
+        {/* =====================================================
             FOOTER
-        ========================================================= */}
+        ===================================================== */}
+
         <footer className="login-footer">
           <div className="footer-brand">
             <AntimateLogo size={30} />
-            <strong>ANTIMATE</strong>
+
+            <strong>
+              ANTIMATE
+            </strong>
           </div>
 
-          <p>{t.footer}</p>
+          <p>
+            {t.footer}
+          </p>
         </footer>
 
-        {/* =========================================================
+        {/* =====================================================
             LOGIN MODAL
-        ========================================================= */}
+        ===================================================== */}
+
         {showLogin && (
           <div
             className="modal-overlay"
@@ -888,7 +1248,9 @@ function Login() {
               </button>
 
               <div className="modal-logo">
-                <AntimateLogo size={42} />
+                <AntimateLogo
+                  size={42}
+                />
               </div>
 
               <h2>
@@ -900,8 +1262,14 @@ function Login() {
               </p>
 
               <form
-                onSubmit={handleLogin}
+                onSubmit={
+                  handleLogin
+                }
               >
+                {/* =========================================
+                    IDENTIFIER
+                ========================================= */}
+
                 <div className="input-group">
                   <label>
                     {t.identifier}
@@ -912,7 +1280,9 @@ function Login() {
                     placeholder={
                       t.identifierPlaceholder
                     }
-                    value={identifier}
+                    value={
+                      identifier
+                    }
                     onChange={(e) =>
                       setIdentifier(
                         e.target.value
@@ -921,6 +1291,10 @@ function Login() {
                     required
                   />
                 </div>
+
+                {/* =========================================
+                    PASSWORD
+                ========================================= */}
 
                 <div className="input-group">
                   <label>
@@ -937,7 +1311,9 @@ function Login() {
                       placeholder={
                         t.passwordPlaceholder
                       }
-                      value={password}
+                      value={
+                        password
+                      }
                       onChange={(e) =>
                         setPassword(
                           e.target.value
@@ -960,19 +1336,31 @@ function Login() {
                       }
                     >
                       {showPassword ? (
-                        <EyeOff size={18} />
+                        <EyeOff
+                          size={18}
+                        />
                       ) : (
-                        <Eye size={18} />
+                        <Eye
+                          size={18}
+                        />
                       )}
                     </button>
                   </div>
                 </div>
+
+                {/* =========================================
+                    ERROR
+                ========================================= */}
 
                 {message && (
                   <div className="login-error">
                     {message}
                   </div>
                 )}
+
+                {/* =========================================
+                    LOGIN BUTTON
+                ========================================= */}
 
                 <button
                   type="submit"
@@ -984,6 +1372,7 @@ function Login() {
                   ) : (
                     <>
                       {t.signIn}
+
                       <ArrowRight
                         size={17}
                       />
@@ -992,11 +1381,17 @@ function Login() {
                 </button>
               </form>
 
+              {/* =========================================
+                  MODAL FOOTER
+              ========================================= */}
+
               <div className="modal-bottom">
                 <Link
                   to="/forgot-password"
                   onClick={() =>
-                    setShowLogin(false)
+                    setShowLogin(
+                      false
+                    )
                   }
                 >
                   {t.forgot}
@@ -1004,10 +1399,13 @@ function Login() {
 
                 <span>
                   {t.noAccount}{" "}
+
                   <Link
                     to="/signup"
                     onClick={() =>
-                      setShowLogin(false)
+                      setShowLogin(
+                        false
+                      )
                     }
                   >
                     {t.create}
@@ -1022,6 +1420,10 @@ function Login() {
   );
 }
 
+// ============================================================
+// FEATURE COMPONENT
+// ============================================================
+
 function Feature({
   icon,
   title,
@@ -1033,9 +1435,13 @@ function Feature({
         {icon}
       </div>
 
-      <h3>{title}</h3>
+      <h3>
+        {title}
+      </h3>
 
-      <p>{text}</p>
+      <p>
+        {text}
+      </p>
 
       <div className="feature-line" />
     </div>

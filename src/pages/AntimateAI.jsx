@@ -1,12 +1,3 @@
-// ============================================================
-// ANTIMATE AI — AntimateAI.jsx
-// Modern Chat UI
-// Native CSS inside JSX — NO .css FILE
-// Socket.IO Voice + Text Chat
-// Light / Dark Mode
-// Record + Live Voice
-// ============================================================
-
 import React, {
   useCallback,
   useEffect,
@@ -14,10 +5,12 @@ import React, {
   useState,
 } from "react";
 import { io } from "socket.io-client";
+import "./AntimateAI.css";
 
-// ------------------------------------------------------------
-// CONFIG
-// ------------------------------------------------------------
+/* ============================================================
+   ANTIMATE AI
+   Clean Glass / Voice-first Chat UI
+   ============================================================ */
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
@@ -29,332 +22,116 @@ const SOCKET_URL = (
   API_URL
 ).replace(/\/$/, "");
 
-// 👉 Keep your existing logo path here.
-const LOGO_SRC = "/antimate-logo.png";
-
-// ------------------------------------------------------------
-// HELPERS
-// ------------------------------------------------------------
-
-const makeAbsoluteUrl = (value) => {
-  if (!value) return null;
-
-  if (
-    value.startsWith("http://") ||
-    value.startsWith("https://") ||
-    value.startsWith("blob:")
-  ) {
-    return value;
-  }
-
-  if (value.startsWith("/")) {
-    return `${API_URL}${value}`;
-  }
-
-  return `${API_URL}/${value}`;
-};
-
-// ------------------------------------------------------------
-// ICONS
-// ------------------------------------------------------------
-
-function MicIcon({ size = 22 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 10a7 7 0 0 0 14 0" />
-      <path d="M12 19v3" />
-      <path d="M8 22h8" />
-    </svg>
-  );
-}
-
-function SendIcon({ size = 21 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 2 11 13" />
-      <path d="m22 2-7 20-4-9-9-4Z" />
-    </svg>
-  );
-}
-
-function StopIcon({ size = 20 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
-      <rect x="6" y="6" width="12" height="12" rx="2" />
-    </svg>
-  );
-}
-
-function SunIcon({ size = 19 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" />
-      <path d="M12 20v2" />
-      <path d="m4.93 4.93 1.41 1.41" />
-      <path d="m17.66 17.66 1.41 1.41" />
-      <path d="M2 12h2" />
-      <path d="M20 12h2" />
-      <path d="m6.34 17.66-1.41 1.41" />
-      <path d="m19.07 4.93-1.41 1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon({ size = 19 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.7 6.7 0 0 0 21 12.8Z" />
-    </svg>
-  );
-}
-
-function VolumeIcon({ size = 20 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
-    </svg>
-  );
-}
-
-function LiveIcon({ size = 18 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M5.6 5.6a9 9 0 0 0 0 12.8" />
-      <path d="M18.4 5.6a9 9 0 0 1 0 12.8" />
-    </svg>
-  );
-}
-
-// ------------------------------------------------------------
-// COMPONENT
-// ------------------------------------------------------------
+const MAX_RECORD_SECONDS = 30;
+const SILENCE_LIMIT = 1800;
 
 export default function AntimateAI() {
-  // ----------------------------------------------------------
-  // STATE
-  // ----------------------------------------------------------
+  /* ============================================================
+     STATE
+     ============================================================ */
 
   const [messages, setMessages] = useState([]);
-
   const [text, setText] = useState("");
 
+  const [socketConnected, setSocketConnected] = useState(false);
+
   const [isRecording, setIsRecording] = useState(false);
-  const [isLiveMode, setIsLiveMode] = useState(false);
+  const [isLiveVoice, setIsLiveVoice] = useState(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const [connectionState, setConnectionState] =
-    useState("connecting");
+  const [recordSeconds, setRecordSeconds] = useState(0);
+
+  const [transcript, setTranscript] = useState("");
+  const [currentAnswer, setCurrentAnswer] = useState("");
 
   const [error, setError] = useState("");
 
-  const [currentAnswer, setCurrentAnswer] =
-    useState("");
-
-  const [transcript, setTranscript] = useState("");
-
-  const [theme, setTheme] = useState(() => {
-    try {
-      const saved = localStorage.getItem("antimate-theme");
-
-      if (saved === "dark" || saved === "light") {
-        return saved;
-      }
-
-      return window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    } catch {
-      return "light";
-    }
-  });
-
-  // ----------------------------------------------------------
-  // REFS
-  // ----------------------------------------------------------
+  /* ============================================================
+     REFS
+     ============================================================ */
 
   const socketRef = useRef(null);
 
-  const recorderRef = useRef(null);
-  const streamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
-  const chunksRef = useRef([]);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
+  const recordTimerRef = useRef(null);
   const holdTimerRef = useRef(null);
-  const shortRecordingTimerRef = useRef(null);
 
-  const recordingStartedRef = useRef(false);
-  const pointerDownRef = useRef(false);
-
-  const isLiveModeRef = useRef(false);
-
-  const currentAnswerRef = useRef("");
+  const isRecordingRef = useRef(false);
+  const isLiveVoiceRef = useRef(false);
   const isPlayingRef = useRef(false);
 
-  const audioRef = useRef(null);
+  const currentAnswerRef = useRef("");
 
   const textareaRef = useRef(null);
 
-  const messagesEndRef = useRef(null);
+  const shortRecordingRef = useRef(false);
 
-  // ----------------------------------------------------------
-  // THEME
-  // ----------------------------------------------------------
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("antimate-theme", theme);
-    } catch {}
-
-    document.documentElement.style.colorScheme = theme;
-  }, [theme]);
-
-  // ----------------------------------------------------------
-  // COLORS
-  // ----------------------------------------------------------
-
-  const dark = theme === "dark";
-
-  const colors = {
-    bg: dark ? "#070b12" : "#f7f9fc",
-
-    surface: dark
-      ? "rgba(18, 24, 35, 0.82)"
-      : "rgba(255,255,255,0.88)",
-
-    surfaceSolid: dark ? "#111722" : "#ffffff",
-
-    border: dark
-      ? "rgba(255,255,255,0.08)"
-      : "rgba(15,23,42,0.08)",
-
-    text: dark ? "#f5f7fb" : "#172033",
-
-    muted: dark ? "#8d98aa" : "#6b7280",
-
-    soft: dark
-      ? "rgba(255,255,255,0.045)"
-      : "rgba(15,23,42,0.035)",
-
-    userBubble: dark ? "#182337" : "#eef3fa",
-
-    input: dark
-      ? "rgba(14,19,29,0.94)"
-      : "rgba(255,255,255,0.96)",
-
-    accent: "#5b6cff",
-
-    accentSoft: dark
-      ? "rgba(91,108,255,0.15)"
-      : "rgba(91,108,255,0.09)",
-
-    danger: "#ef4444",
-
-    success: "#22c55e",
-
-    shadow: dark
-      ? "0 20px 60px rgba(0,0,0,.35)"
-      : "0 20px 60px rgba(15,23,42,.10)",
-  };
-
-  // ----------------------------------------------------------
-  // SCROLL TO BOTTOM
-  // ----------------------------------------------------------
+  /* ============================================================
+     KEEP REFS IN SYNC
+     ============================================================ */
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    isLiveVoiceRef.current = isLiveVoice;
+  }, [isLiveVoice]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    currentAnswerRef.current = currentAnswer;
+  }, [currentAnswer]);
+
+  /* ============================================================
+     HELPERS
+     ============================================================ */
+
+  const makeAbsoluteUrl = useCallback((url) => {
+    if (!url) return "";
+
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("blob:")
+    ) {
+      return url;
+    }
+
+    if (url.startsWith("/")) {
+      return `${API_URL}${url}`;
+    }
+
+    return `${API_URL}/${url}`;
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
     });
-  }, [messages, currentAnswer, isProcessing]);
+  }, []);
 
-  // ----------------------------------------------------------
-  // TEXTAREA AUTO RESIZE
-  // ----------------------------------------------------------
+  /* ============================================================
+     ADD MESSAGE
+     ============================================================ */
 
-  useEffect(() => {
-    const el = textareaRef.current;
+  const addMessage = useCallback((role, content) => {
+    if (!content) return;
 
-    if (!el) return;
-
-    el.style.height = "auto";
-
-    el.style.height = `${Math.min(
-      Math.max(el.scrollHeight, 24),
-      150
-    )}px`;
-  }, [text]);
-
-  // ----------------------------------------------------------
-  // ADD MESSAGE
-  // ----------------------------------------------------------
-
-  const addMessage = useCallback((message) => {
     setMessages((prev) => [
       ...prev,
       {
@@ -363,105 +140,117 @@ export default function AntimateAI() {
           Math.random()
             .toString(36)
             .slice(2),
-
-        ...message,
+        role,
+        content,
+        time: new Date(),
       },
     ]);
   }, []);
 
-  // ----------------------------------------------------------
-  // UPDATE LAST ASSISTANT MESSAGE
-  // ----------------------------------------------------------
+  /* ============================================================
+     UPDATE LAST ASSISTANT MESSAGE
+     ============================================================ */
 
-  const updateAssistantMessage = useCallback(
-    (answer) => {
-      setMessages((prev) => {
-        const copy = [...prev];
+  const updateAssistantMessage = useCallback((content) => {
+    if (!content) return;
 
-        const lastIndex = copy.length - 1;
+    setMessages((prev) => {
+      const copy = [...prev];
 
-        if (
-          lastIndex >= 0 &&
-          copy[lastIndex].role === "assistant"
-        ) {
-          copy[lastIndex] = {
-            ...copy[lastIndex],
-            content: answer,
-          };
+      const lastIndex = copy.length - 1;
 
-          return copy;
-        }
+      if (
+        lastIndex >= 0 &&
+        copy[lastIndex].role === "assistant"
+      ) {
+        copy[lastIndex] = {
+          ...copy[lastIndex],
+          content,
+        };
+      } else {
+        copy.push({
+          id:
+            Date.now() +
+            Math.random()
+              .toString(36)
+              .slice(2),
+          role: "assistant",
+          content,
+          time: new Date(),
+        });
+      }
 
-        return [
-          ...copy,
-          {
-            id:
-              Date.now() +
-              Math.random()
-                .toString(36)
-                .slice(2),
+      return copy;
+    });
 
-            role: "assistant",
+    scrollToBottom();
+  }, [scrollToBottom]);
 
-            content: answer,
-          },
-        ];
-      });
-    },
-    []
-  );
-
-  // ----------------------------------------------------------
-  // AUDIO PLAYBACK
-  // ----------------------------------------------------------
+  /* ============================================================
+     AUDIO PLAYBACK
+     ============================================================ */
 
   const playAudio = useCallback(
     async (audioUrl) => {
       if (!audioUrl) return;
 
-      const absoluteUrl = makeAbsoluteUrl(audioUrl);
-
-      if (!absoluteUrl) return;
-
       try {
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = "";
-        }
-
-        const audio = new Audio(absoluteUrl);
-
-        audioRef.current = audio;
-
-        isPlayingRef.current = true;
         setIsPlaying(true);
+        isPlayingRef.current = true;
+
+        const audio = new Audio(
+          makeAbsoluteUrl(audioUrl)
+        );
+
+        audio.preload = "auto";
 
         audio.onended = () => {
-          isPlayingRef.current = false;
           setIsPlaying(false);
-          audioRef.current = null;
+          isPlayingRef.current = false;
+
+          /*
+           * LIVE VOICE:
+           * after AI finishes speaking,
+           * microphone becomes active again.
+           */
+          if (isLiveVoiceRef.current) {
+            setTimeout(() => {
+              startLiveVoice();
+            }, 250);
+          }
         };
 
         audio.onerror = () => {
-          isPlayingRef.current = false;
           setIsPlaying(false);
-          audioRef.current = null;
+          isPlayingRef.current = false;
+
+          if (isLiveVoiceRef.current) {
+            setTimeout(() => {
+              startLiveVoice();
+            }, 250);
+          }
         };
 
         await audio.play();
       } catch (err) {
         console.error("Audio playback error:", err);
 
-        isPlayingRef.current = false;
         setIsPlaying(false);
+        isPlayingRef.current = false;
+
+        if (isLiveVoiceRef.current) {
+          setTimeout(() => {
+            startLiveVoice();
+          }, 250);
+        }
       }
     },
-    []
+    [makeAbsoluteUrl]
   );
 
-  // ----------------------------------------------------------
-  // SOCKET.IO
-  // ----------------------------------------------------------
+  /* ============================================================
+     SOCKET CONNECTION
+     ============================================================ */
 
   useEffect(() => {
     const socket = io(SOCKET_URL, {
@@ -469,64 +258,52 @@ export default function AntimateAI() {
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
+      timeout: 20000,
     });
 
     socketRef.current = socket;
 
     socket.on("connect", () => {
       console.log(
-        "✅ ANTIMATE Socket connected:",
+        "🟢 ANTIMATE Socket connected:",
         socket.id
       );
 
-      setConnectionState("connected");
-      setError("");
+      setSocketConnected(true);
     });
 
     socket.on("disconnect", (reason) => {
       console.log(
-        "⚠️ ANTIMATE Socket disconnected:",
+        "🔴 ANTIMATE Socket disconnected:",
         reason
       );
 
-      setConnectionState("disconnected");
+      setSocketConnected(false);
     });
 
     socket.on("connect_error", (err) => {
       console.error(
-        "❌ Socket connection error:",
+        "Socket connection error:",
         err
       );
 
-      setConnectionState("error");
+      setSocketConnected(false);
     });
 
-    // --------------------------------------------------------
-    // STATUS
-    // --------------------------------------------------------
+    /* ==========================================================
+       STATUS
+       ========================================================== */
 
     socket.on("antimate:status", (data) => {
-      console.log("ANTIMATE STATUS:", data);
-
-      const status =
-        typeof data === "string"
-          ? data
-          : data?.status || data?.message || "";
-
-      const normalized = String(status).toLowerCase();
-
-      if (
-        normalized.includes("thinking") ||
-        normalized.includes("processing")
-      ) {
-        setIsProcessing(true);
-      }
+      console.log(
+        "ANTIMATE STATUS:",
+        data
+      );
     });
 
-    // --------------------------------------------------------
-    // TRANSCRIPT
-    // --------------------------------------------------------
+    /* ==========================================================
+       TRANSCRIPT
+       ========================================================== */
 
     socket.on("antimate:transcript", (data) => {
       const value =
@@ -541,35 +318,17 @@ export default function AntimateAI() {
       }
     });
 
-    // --------------------------------------------------------
-    // THINKING
-    // --------------------------------------------------------
+    /* ==========================================================
+       THINKING
+       ========================================================== */
 
     socket.on("antimate:thinking", () => {
       setIsProcessing(true);
     });
 
-    // --------------------------------------------------------
-    // COMPLETE
-    // --------------------------------------------------------
-
-    socket.on("antimate:complete", () => {
-      setIsProcessing(false);
-
-      const answer =
-        currentAnswerRef.current;
-
-      if (answer) {
-        updateAssistantMessage(answer);
-      }
-
-      currentAnswerRef.current = "";
-      setCurrentAnswer("");
-    });
-
-    // --------------------------------------------------------
-    // ANSWER
-    // --------------------------------------------------------
+    /* ==========================================================
+       ANSWER
+       ========================================================== */
 
     socket.on("antimate:answer", (data) => {
       const answer =
@@ -577,7 +336,6 @@ export default function AntimateAI() {
           ? data
           : data?.answer ||
             data?.text ||
-            data?.content ||
             "";
 
       if (!answer) return;
@@ -591,9 +349,9 @@ export default function AntimateAI() {
       setIsProcessing(false);
     });
 
-    // --------------------------------------------------------
-    // ANSWER CHUNK
-    // --------------------------------------------------------
+    /* ==========================================================
+       STREAMING ANSWER CHUNKS
+       ========================================================== */
 
     socket.on(
       "antimate:answer:chunk",
@@ -616,48 +374,70 @@ export default function AntimateAI() {
         setCurrentAnswer(next);
 
         updateAssistantMessage(next);
+
+        setIsProcessing(false);
       }
     );
 
-    // --------------------------------------------------------
-    // AUDIO
-    // --------------------------------------------------------
+    /* ==========================================================
+       AUDIO
+       ========================================================== */
 
-    socket.on("antimate:audio", (data) => {
-      const audio =
+    socket.on("antimate:audio", async (data) => {
+      const audioUrl =
         typeof data === "string"
           ? data
-          : data?.audio ||
-            data?.url ||
+          : data?.url ||
             data?.audioUrl ||
-            data?.path;
+            data?.audio ||
+            "";
 
-      if (audio) {
-        playAudio(audio);
-      }
+      if (!audioUrl) return;
+
+      await playAudio(audioUrl);
     });
 
-    // --------------------------------------------------------
-    // ERROR
-    // --------------------------------------------------------
+    /* ==========================================================
+       COMPLETE
+       ========================================================== */
+
+    socket.on("antimate:complete", () => {
+      setIsProcessing(false);
+
+      /*
+       * Don't immediately reopen microphone here.
+       * We wait for audio.onended().
+       */
+      setTranscript("");
+      setCurrentAnswer("");
+      currentAnswerRef.current = "";
+    });
+
+    /* ==========================================================
+       ERROR
+       ========================================================== */
 
     socket.on("antimate:error", (data) => {
-      console.error("ANTIMATE SOCKET ERROR:", data);
+      console.error(
+        "ANTIMATE SOCKET ERROR:",
+        data
+      );
 
       const message =
         typeof data === "string"
           ? data
           : data?.message ||
             data?.error ||
-            "Something went wrong.";
+            "Habaye ikibazo mu gutunganya request.";
 
       setError(message);
+
       setIsProcessing(false);
       setIsRecording(false);
-      setIsLiveMode(false);
 
-      currentAnswerRef.current = "";
-      setCurrentAnswer("");
+      isRecordingRef.current = false;
+
+      stopMediaTracks();
     });
 
     return () => {
@@ -668,410 +448,60 @@ export default function AntimateAI() {
     };
   }, [playAudio, updateAssistantMessage]);
 
-  // ----------------------------------------------------------
-  // CLEAN MEDIA
-  // ----------------------------------------------------------
+  /* ============================================================
+     STOP MEDIA
+     ============================================================ */
 
   const stopMediaTracks = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current
         .getTracks()
         .forEach((track) => track.stop());
 
-      streamRef.current = null;
+      mediaStreamRef.current = null;
     }
+
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch {
+        // ignore
+      }
+
+      audioContextRef.current = null;
+    }
+
+    analyserRef.current = null;
+
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+
+    setRecordSeconds(0);
   }, []);
 
-  // ----------------------------------------------------------
-  // STOP RECORDING
-  // ----------------------------------------------------------
-
-  const stopRecording = useCallback(
-    (cancel = false) => {
-      clearTimeout(
-        shortRecordingTimerRef.current
-      );
-
-      clearTimeout(holdTimerRef.current);
-
-      const recorder = recorderRef.current;
-
-      if (!recorder) {
-        setIsRecording(false);
-        setIsLiveMode(false);
-        stopMediaTracks();
-        return;
-      }
-
-      try {
-        if (
-          recorder.state !== "inactive"
-        ) {
-          recorder.stop();
-        }
-      } catch (err) {
-        console.error(
-          "Recorder stop error:",
-          err
-        );
-      }
-
-      if (cancel) {
-        const socket =
-          socketRef.current;
-
-        socket?.emit(
-          "antimate:voice:cancel"
-        );
-
-        chunksRef.current = [];
-
-        setIsRecording(false);
-        setIsLiveMode(false);
-
-        recorderRef.current = null;
-
-        stopMediaTracks();
-      }
-    },
-    [stopMediaTracks]
-  );
-
-  // ----------------------------------------------------------
-  // START RECORDING
-  // ----------------------------------------------------------
-
-  const startRecording = useCallback(
-    async (live = false) => {
-      if (isProcessing || isPlaying) return;
-
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setError(
-          "Microphone is not supported by this browser."
-        );
-
-        return;
-      }
-
-      const socket = socketRef.current;
-
-      if (!socket?.connected) {
-        setError(
-          "ANTIMATE AI is not connected. Please wait a moment."
-        );
-
-        return;
-      }
-
-      setError("");
-
-      try {
-        const stream =
-          await navigator.mediaDevices.getUserMedia({
-            audio: {
-              channelCount: 1,
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            },
-          });
-
-        streamRef.current = stream;
-
-        chunksRef.current = [];
-
-        isLiveModeRef.current = live;
-
-        setIsLiveMode(live);
-        setIsRecording(true);
-        setTranscript("");
-
-        currentAnswerRef.current = "";
-        setCurrentAnswer("");
-
-        socket.emit(
-          "antimate:voice:start",
-          {
-            live,
-            mode: live
-              ? "live"
-              : "record",
-          }
-        );
-
-        let mimeType = "";
-
-        if (
-          MediaRecorder.isTypeSupported(
-            "audio/webm;codecs=opus"
-          )
-        ) {
-          mimeType =
-            "audio/webm;codecs=opus";
-        } else if (
-          MediaRecorder.isTypeSupported(
-            "audio/webm"
-          )
-        ) {
-          mimeType = "audio/webm";
-        } else if (
-          MediaRecorder.isTypeSupported(
-            "audio/mp4"
-          )
-        ) {
-          mimeType = "audio/mp4";
-        }
-
-        const recorder = mimeType
-          ? new MediaRecorder(stream, {
-              mimeType,
-              audioBitsPerSecond: 64000,
-            })
-          : new MediaRecorder(stream);
-
-        recorderRef.current = recorder;
-
-        recorder.ondataavailable = (
-          event
-        ) => {
-          if (!event.data || event.data.size === 0) {
-            return;
-          }
-
-          chunksRef.current.push(
-            event.data
-          );
-
-          socket.emit(
-            "antimate:voice:chunk",
-            event.data
-          );
-        };
-
-        recorder.onstop = () => {
-          stopMediaTracks();
-
-          const wasLive =
-            isLiveModeRef.current;
-
-          setIsRecording(false);
-
-          recorderRef.current = null;
-
-          if (cancel) {
-            return;
-          }
-
-          if (socket?.connected) {
-            socket.emit(
-              "antimate:voice:end",
-              {
-                live: wasLive,
-              }
-            );
-          }
-
-          chunksRef.current = [];
-
-          isLiveModeRef.current = false;
-
-          setIsLiveMode(false);
-
-          setIsProcessing(true);
-        };
-
-        recorder.onerror = (event) => {
-          console.error(
-            "MediaRecorder error:",
-            event
-          );
-
-          setError(
-            "Microphone recording failed."
-          );
-
-          setIsRecording(false);
-          setIsLiveMode(false);
-
-          stopMediaTracks();
-        };
-
-        // Send chunks continuously.
-        recorder.start(250);
-
-        // ----------------------------------------------------
-        // NORMAL RECORDING
-        // ----------------------------------------------------
-
-        if (!live) {
-          shortRecordingTimerRef.current =
-            setTimeout(() => {
-              if (
-                recorderRef.current &&
-                recorderRef.current.state !==
-                  "inactive"
-              ) {
-                recorderRef.current.stop();
-              }
-            }, 1800);
-        }
-      } catch (err) {
-        console.error(
-          "Microphone permission error:",
-          err
-        );
-
-        setError(
-          "Microphone permission is required to use voice."
-        );
-
-        setIsRecording(false);
-        setIsLiveMode(false);
-
-        stopMediaTracks();
-      }
-    },
-    [
-      isProcessing,
-      isPlaying,
-      stopMediaTracks,
-    ]
-  );
-
-  // ----------------------------------------------------------
-  // RECORD BUTTON POINTER DOWN
-  // ----------------------------------------------------------
-
-  const handleVoicePointerDown =
-    useCallback(
-      (event) => {
-        event.preventDefault();
-
-        if (
-          isProcessing ||
-          isPlaying ||
-          isRecording
-        ) {
-          return;
-        }
-
-        if (text.trim()) return;
-
-        pointerDownRef.current = true;
-
-        recordingStartedRef.current = false;
-
-        // ----------------------------------------------------
-        // HOLD -> LIVE VOICE
-        // ----------------------------------------------------
-
-        holdTimerRef.current =
-          setTimeout(() => {
-            if (
-              pointerDownRef.current &&
-              !recordingStartedRef.current
-            ) {
-              recordingStartedRef.current = true;
-
-              startRecording(true);
-            }
-          }, 500);
-      },
-      [
-        isProcessing,
-        isPlaying,
-        isRecording,
-        text,
-        startRecording,
-      ]
-    );
-
-  // ----------------------------------------------------------
-  // RECORD BUTTON POINTER UP
-  // ----------------------------------------------------------
-
-  const handleVoicePointerUp =
-    useCallback(
-      (event) => {
-        event.preventDefault();
-
-        pointerDownRef.current = false;
-
-        clearTimeout(
-          holdTimerRef.current
-        );
-
-        // ----------------------------------------------------
-        // LIVE RECORDING WAS STARTED
-        // ----------------------------------------------------
-
-        if (recordingStartedRef.current) {
-          recordingStartedRef.current = false;
-
-          stopRecording(false);
-
-          return;
-        }
-
-        // ----------------------------------------------------
-        // SHORT TAP -> NORMAL RECORDING
-        // ----------------------------------------------------
-
-        if (
-          !isRecording &&
-          !isProcessing &&
-          !isPlaying
-        ) {
-          startRecording(false);
-        }
-      },
-      [
-        isRecording,
-        isProcessing,
-        isPlaying,
-        startRecording,
-        stopRecording,
-      ]
-    );
-
-  // ----------------------------------------------------------
-  // STOP BUTTON
-  // ----------------------------------------------------------
-
-  const handleStop = useCallback(
-    (event) => {
-      event?.preventDefault();
-
-      pointerDownRef.current = false;
-
-      clearTimeout(
-        holdTimerRef.current
-      );
-
-      stopRecording(false);
-    },
-    [stopRecording]
-  );
-
-  // ----------------------------------------------------------
-  // SEND TEXT
-  // ----------------------------------------------------------
+  /* ============================================================
+     SEND TEXT
+     ============================================================ */
 
   const sendText = useCallback(async () => {
-    const message = text.trim();
+    const value = text.trim();
 
-    if (!message || isProcessing || isPlaying) {
+    if (!value || isProcessing || isPlaying) {
       return;
     }
 
     setError("");
 
-    setText("");
+    addMessage("user", value);
 
-    addMessage({
-      role: "user",
-      content: message,
-    });
+    setText("");
 
     setIsProcessing(true);
 
@@ -1083,15 +513,12 @@ export default function AntimateAI() {
         `${API_URL}/api/antimate/chat`,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           credentials: "include",
-
           body: JSON.stringify({
-            message,
+            message: value,
           }),
         }
       );
@@ -1106,48 +533,22 @@ export default function AntimateAI() {
 
       const answer =
         data?.answer ||
-        data?.text ||
         data?.response ||
         data?.message ||
         "";
 
       if (!answer) {
         throw new Error(
-          "ANTIMATE returned an empty response."
+          "ANTIMATE ntiyagaruye igisubizo."
         );
       }
 
-      addMessage({
-        role: "assistant",
-        content: answer,
-      });
-
-      currentAnswerRef.current = answer;
-
-      setCurrentAnswer(answer);
-
-      if (
-        data?.audio ||
-        data?.audioUrl ||
-        data?.audio_url ||
-        data?.url
-      ) {
-        await playAudio(
-          data.audio ||
-            data.audioUrl ||
-            data.audio_url ||
-            data.url
-        );
-      }
+      addMessage("assistant", answer);
     } catch (err) {
-      console.error(
-        "ANTIMATE text error:",
-        err
-      );
+      console.error("Text chat error:", err);
 
       setError(
-        err?.message ||
-          "Unable to connect to ANTIMATE AI."
+        "Ntabwo nashoboye kohereza ubutumwa. Ongera ugerageze."
       );
     } finally {
       setIsProcessing(false);
@@ -1157,1516 +558,907 @@ export default function AntimateAI() {
     isProcessing,
     isPlaying,
     addMessage,
-    playAudio,
   ]);
 
-  // ----------------------------------------------------------
-  // ENTER TO SEND
-  // ----------------------------------------------------------
+  /* ============================================================
+     STOP RECORDING
+     ============================================================ */
 
-  const handleKeyDown = useCallback(
-    (event) => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
+  const stopRecording = useCallback(
+    (send = true) => {
+      const recorder =
+        mediaRecorderRef.current;
 
-        sendText();
+      if (!recorder) {
+        setIsRecording(false);
+        isRecordingRef.current = false;
+        stopMediaTracks();
+        return;
+      }
+
+      if (
+        recorder.state === "recording"
+      ) {
+        recorder.stop();
+      }
+
+      setIsRecording(false);
+      isRecordingRef.current = false;
+
+      if (send) {
+        setIsProcessing(true);
+      }
+
+      if (recordTimerRef.current) {
+        clearInterval(
+          recordTimerRef.current
+        );
+
+        recordTimerRef.current = null;
       }
     },
-    [sendText]
+    [stopMediaTracks]
   );
 
-  // ----------------------------------------------------------
-  // MAIN ACTION
-  // ----------------------------------------------------------
+  /* ============================================================
+     START NORMAL RECORDING
+     ============================================================ */
 
-  const handleMainAction = useCallback(
-    (event) => {
-      event?.preventDefault();
-
-      if (isProcessing || isPlaying) {
+  const startRecording = useCallback(
+    async ({
+      live = false,
+      shortTap = false,
+    } = {}) => {
+      if (
+        isProcessing ||
+        isPlaying ||
+        isRecordingRef.current
+      ) {
         return;
       }
 
-      if (isRecording) {
-        handleStop(event);
+      if (!socketRef.current?.connected) {
+        setError(
+          "ANTIMATE voice connection ntabwo iraboneka."
+        );
 
         return;
       }
 
-      if (text.trim()) {
-        sendText();
+      setError("");
 
-        return;
+      try {
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+              },
+            }
+          );
+
+        mediaStreamRef.current = stream;
+
+        let mimeType =
+          "audio/webm;codecs=opus";
+
+        if (
+          !MediaRecorder.isTypeSupported(
+            mimeType
+          )
+        ) {
+          mimeType = "audio/webm";
+        }
+
+        const recorder =
+          new MediaRecorder(stream, {
+            mimeType,
+          });
+
+        mediaRecorderRef.current =
+          recorder;
+
+        isRecordingRef.current = true;
+
+        setIsRecording(true);
+        setIsLiveVoice(live);
+
+        isLiveVoiceRef.current = live;
+
+        setRecordSeconds(0);
+
+        shortRecordingRef.current =
+          shortTap;
+
+        /* ======================================================
+           START SOCKET SESSION
+           ====================================================== */
+
+        socketRef.current.emit(
+          "antimate:voice:start",
+          {
+            mode: live
+              ? "live"
+              : "record",
+          }
+        );
+
+        recorder.ondataavailable = (
+          event
+        ) => {
+          if (
+            event.data &&
+            event.data.size > 0 &&
+            socketRef.current?.connected
+          ) {
+            socketRef.current.emit(
+              "antimate:voice:chunk",
+              event.data
+            );
+          }
+        };
+
+        recorder.onstop = () => {
+          stopMediaTracks();
+
+          if (
+            socketRef.current?.connected
+          ) {
+            socketRef.current.emit(
+              "antimate:voice:end"
+            );
+          }
+
+          mediaRecorderRef.current =
+            null;
+
+          setIsRecording(false);
+          isRecordingRef.current =
+            false;
+
+          if (
+            !live &&
+            shortRecordingRef.current
+          ) {
+            setIsProcessing(true);
+          }
+        };
+
+        /*
+         * 250ms timeslice gives the backend
+         * frequent chunks instead of waiting
+         * until recording finishes.
+         */
+        recorder.start(250);
+
+        /* ======================================================
+           MAX 30 SECOND RECORDING
+           ====================================================== */
+
+        recordTimerRef.current =
+          setInterval(() => {
+            setRecordSeconds(
+              (previous) => {
+                const next =
+                  previous + 1;
+
+                if (
+                  next >=
+                  MAX_RECORD_SECONDS
+                ) {
+                  setTimeout(() => {
+                    stopRecording(true);
+                  }, 0);
+                }
+
+                return next;
+              }
+            );
+          }, 1000);
+
+        /*
+         * SHORT TAP:
+         *
+         * record automatically for about
+         * 1.8 seconds.
+         */
+        if (shortTap) {
+          setTimeout(() => {
+            if (
+              isRecordingRef.current
+            ) {
+              stopRecording(true);
+            }
+          }, 1800);
+        }
+
+        /*
+         * LIVE:
+         * start silence detector.
+         */
+        if (live) {
+          startSilenceDetection(
+            stream,
+            () => {
+              if (
+                isRecordingRef.current &&
+                isLiveVoiceRef.current
+              ) {
+                stopRecording(true);
+              }
+            }
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Microphone error:",
+          err
+        );
+
+        setError(
+          "Ntabwo nashoboye gufungura microphone. Reba microphone permission."
+        );
+
+        setIsRecording(false);
+        isRecordingRef.current =
+          false;
+
+        stopMediaTracks();
       }
     },
     [
       isProcessing,
       isPlaying,
-      isRecording,
-      text,
-      handleStop,
-      sendText,
+      stopRecording,
+      stopMediaTracks,
     ]
   );
 
-  // ----------------------------------------------------------
-  // CLEAR ERROR WHEN USER TYPES
-  // ----------------------------------------------------------
+  /* ============================================================
+     SILENCE DETECTOR
+     ============================================================ */
+
+  const startSilenceDetection = useCallback(
+    (stream, onSilence) => {
+      try {
+        const AudioContext =
+          window.AudioContext ||
+          window.webkitAudioContext;
+
+        if (!AudioContext) {
+          return;
+        }
+
+        const audioContext =
+          new AudioContext();
+
+        audioContextRef.current =
+          audioContext;
+
+        const analyser =
+          audioContext.createAnalyser();
+
+        analyser.fftSize = 2048;
+
+        analyser.smoothingTimeConstant =
+          0.8;
+
+        analyserRef.current =
+          analyser;
+
+        const source =
+          audioContext.createMediaStreamSource(
+            stream
+          );
+
+        source.connect(analyser);
+
+        const dataArray =
+          new Uint8Array(
+            analyser.fftSize
+          );
+
+        let silentSince = null;
+
+        const check = () => {
+          if (
+            !isRecordingRef.current ||
+            !isLiveVoiceRef.current
+          ) {
+            return;
+          }
+
+          analyser.getByteTimeDomainData(
+            dataArray
+          );
+
+          let sum = 0;
+
+          for (
+            let i = 0;
+            i < dataArray.length;
+            i++
+          ) {
+            const normalized =
+              (dataArray[i] - 128) /
+              128;
+
+            sum +=
+              normalized *
+              normalized;
+          }
+
+          const rms = Math.sqrt(
+            sum / dataArray.length
+          );
+
+          /*
+           * Voice threshold.
+           * Lower = more sensitive.
+           */
+          const isSilent =
+            rms < 0.018;
+
+          if (isSilent) {
+            if (silentSince === null) {
+              silentSince = Date.now();
+            }
+
+            if (
+              Date.now() -
+                silentSince >=
+              SILENCE_LIMIT
+            ) {
+              onSilence();
+
+              return;
+            }
+          } else {
+            silentSince = null;
+          }
+
+          silenceTimerRef.current =
+            requestAnimationFrame(
+              check
+            );
+        };
+
+        check();
+      } catch (err) {
+        console.error(
+          "Silence detection error:",
+          err
+        );
+      }
+    },
+    []
+  );
+
+  /* ============================================================
+     LIVE VOICE
+     ============================================================ */
+
+  const startLiveVoice =
+    useCallback(async () => {
+      if (
+        isPlayingRef.current ||
+        isProcessing ||
+        isRecordingRef.current
+      ) {
+        return;
+      }
+
+      await startRecording({
+        live: true,
+        shortTap: false,
+      });
+    }, [isProcessing, startRecording]);
+
+  /* ============================================================
+     RECORD BUTTON CLICK
+     ============================================================ */
+
+  const handleRecordClick = useCallback(
+    async () => {
+      if (
+        isProcessing ||
+        isPlaying
+      ) {
+        return;
+      }
+
+      /*
+       * If currently recording,
+       * stop.
+       */
+      if (isRecordingRef.current) {
+        stopRecording(true);
+        return;
+      }
+
+      /*
+       * Empty input = short record.
+       */
+      await startRecording({
+        live: false,
+        shortTap: true,
+      });
+    },
+    [
+      isProcessing,
+      isPlaying,
+      startRecording,
+      stopRecording,
+    ]
+  );
+
+  /* ============================================================
+     LIVE BUTTON
+     ============================================================ */
+
+  const handleLiveClick =
+    useCallback(async () => {
+      if (
+        isProcessing ||
+        isPlaying
+      ) {
+        return;
+      }
+
+      if (isRecordingRef.current) {
+        stopRecording(true);
+        return;
+      }
+
+      await startLiveVoice();
+    }, [
+      isProcessing,
+      isPlaying,
+      startLiveVoice,
+      stopRecording,
+    ]);
+
+  /* ============================================================
+     KEYBOARD
+     ============================================================ */
+
+  const handleKeyDown = (event) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      if (text.trim()) {
+        sendText();
+      }
+    }
+  };
+
+  /* ============================================================
+     AUTO RESIZE TEXTAREA
+     ============================================================ */
 
   useEffect(() => {
-    if (text.trim()) {
-      setError("");
-    }
+    const textarea =
+      textareaRef.current;
+
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+
+    textarea.style.height = `${Math.min(
+      textarea.scrollHeight,
+      150
+    )}px`;
   }, [text]);
 
-  // ----------------------------------------------------------
-  // CLEANUP
-  // ----------------------------------------------------------
+  /* ============================================================
+     CLEANUP
+     ============================================================ */
 
   useEffect(() => {
     return () => {
-      clearTimeout(
-        holdTimerRef.current
-      );
-
-      clearTimeout(
-        shortRecordingTimerRef.current
-      );
-
-      try {
-        if (
-          recorderRef.current &&
-          recorderRef.current.state !==
-            "inactive"
-        ) {
-          recorderRef.current.stop();
-        }
-      } catch {}
-
       stopMediaTracks();
 
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current
+          .state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+
+      if (holdTimerRef.current) {
+        clearTimeout(
+          holdTimerRef.current
+        );
       }
     };
   }, [stopMediaTracks]);
 
-  // ----------------------------------------------------------
-  // UI STATES
-  // ----------------------------------------------------------
+  /* ============================================================
+     UI STATE
+     ============================================================ */
 
-  const hasText = Boolean(text.trim());
+  const hasText = text.trim().length > 0;
 
-  const showVoiceOptions =
-    !hasText &&
-    !isRecording &&
+  const showWelcome =
+    messages.length === 0 &&
     !isProcessing &&
-    !isPlaying;
+    !isRecording;
 
-  const connectionLabel =
-    connectionState === "connected"
-      ? "Connected"
-      : connectionState === "connecting"
-      ? "Connecting..."
-      : "Offline";
-
-  // ----------------------------------------------------------
-  // RENDER
-  // ----------------------------------------------------------
+  /* ============================================================
+     RENDER
+     ============================================================ */
 
   return (
-    <div
-      style={{
-        ...styles.page,
+    <div className="antimate-page">
 
-        background: colors.bg,
-
-        color: colors.text,
-      }}
-    >
-      {/* ====================================================
-          GLOBAL STYLE
-      ==================================================== */}
-
-      <style>
-        {`
-          * {
-            box-sizing: border-box;
-          }
-
-          html, body, #root {
-            margin: 0;
-            padding: 0;
-            min-height: 100%;
-          }
-
-          body {
-            font-family:
-              Inter,
-              ui-sans-serif,
-              system-ui,
-              -apple-system,
-              BlinkMacSystemFont,
-              "Segoe UI",
-              sans-serif;
-          }
-
-          button,
-          textarea {
-            font: inherit;
-          }
-
-          button {
-            -webkit-tap-highlight-color: transparent;
-          }
-
-          textarea::placeholder {
-            color: ${
-              dark
-                ? "#707b8e"
-                : "#9aa3b2"
-            };
-          }
-
-          ::-webkit-scrollbar {
-            width: 7px;
-          }
-
-          ::-webkit-scrollbar-track {
-            background: transparent;
-          }
-
-          ::-webkit-scrollbar-thumb {
-            background: ${
-              dark
-                ? "rgba(255,255,255,.12)"
-                : "rgba(15,23,42,.12)"
-            };
-            border-radius: 20px;
-          }
-
-          @keyframes antimatePulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: .75;
-            }
-
-            50% {
-              transform: scale(1.08);
-              opacity: 1;
-            }
-          }
-
-          @keyframes antimateThinking {
-            0%, 80%, 100% {
-              transform: translateY(0);
-              opacity: .35;
-            }
-
-            40% {
-              transform: translateY(-4px);
-              opacity: 1;
-            }
-          }
-
-          @keyframes antimateSpin {
-            from {
-              transform: rotate(0deg);
-            }
-
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          @keyframes antimateWave {
-            0%, 100% {
-              height: 5px;
-            }
-
-            50% {
-              height: 17px;
-            }
-          }
-
-          .antimate-theme-button:hover {
-            transform: translateY(-1px);
-            background: ${
-              dark
-                ? "rgba(255,255,255,.08)"
-                : "rgba(15,23,42,.055)"
-            } !important;
-          }
-
-          .antimate-send-button:hover {
-            transform: translateY(-2px);
-            box-shadow:
-              0 10px 28px rgba(91,108,255,.28);
-          }
-
-          .antimate-voice-option:hover {
-            transform: translateY(-1px);
-            background: ${
-              dark
-                ? "rgba(255,255,255,.075)"
-                : "rgba(15,23,42,.05)"
-            } !important;
-          }
-
-          .antimate-composer:focus-within {
-            border-color: ${
-              dark
-                ? "rgba(91,108,255,.55)"
-                : "rgba(91,108,255,.38)"
-            } !important;
-
-            box-shadow:
-              0 0 0 4px ${
-                dark
-                  ? "rgba(91,108,255,.08)"
-                  : "rgba(91,108,255,.055)"
-              };
-          }
-        `}
-      </style>
-
-      {/* ====================================================
+      {/* ======================================================
           HEADER
-      ==================================================== */}
+          ====================================================== */}
 
-      <header
-        style={{
-          ...styles.header,
+      <header className="antimate-header">
 
-          borderBottom:
-            `1px solid ${colors.border}`,
+        <div className="antimate-brand">
 
-          background:
-            dark
-              ? "rgba(7,11,18,.78)"
-              : "rgba(247,249,252,.78)",
+          {/* KEEP YOUR ORIGINAL LOGO */}
+          <div className="antimate-logo">
+            <span className="logo-orbit orbit-1" />
+            <span className="logo-orbit orbit-2" />
+            <span className="logo-orbit orbit-3" />
+            <span className="logo-core" />
+          </div>
 
-          backdropFilter: "blur(18px)",
-
-          WebkitBackdropFilter:
-            "blur(18px)",
-        }}
-      >
-        <div style={styles.headerInner}>
-          {/* LOGO */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-            }}
-          >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 13,
-                overflow: "hidden",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: colors.surfaceSolid,
-                border:
-                  `1px solid ${colors.border}`,
-                boxShadow:
-                  dark
-                    ? "0 8px 25px rgba(0,0,0,.2)"
-                    : "0 8px 25px rgba(15,23,42,.08)",
-              }}
-            >
-              <img
-                src={LOGO_SRC}
-                alt="ANTIMATE"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-                onError={(e) => {
-                  e.currentTarget.style.display =
-                    "none";
-                }}
-              />
+          <div className="brand-text">
+            <div className="brand-name">
+              ANTIMATE
             </div>
 
-            <div>
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 750,
-                  letterSpacing: "-.02em",
-                }}
-              >
-                ANTIMATE AI
-              </div>
-
-              <div
-                style={{
-                  fontSize: 11,
-                  color: colors.muted,
-                  marginTop: 1,
-                }}
-              >
-                Intelligent farming assistant
-              </div>
+            <div className="brand-ai">
+              AI Assistant
             </div>
           </div>
 
-          {/* RIGHT SIDE */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 9,
-            }}
-          >
-            {/* CONNECTION */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-
-                padding:
-                  "7px 10px",
-
-                borderRadius: 999,
-
-                background: colors.soft,
-
-                border:
-                  `1px solid ${colors.border}`,
-
-                fontSize: 11,
-
-                color: colors.muted,
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-
-                  background:
-                    connectionState ===
-                    "connected"
-                      ? colors.success
-                      : connectionState ===
-                        "connecting"
-                      ? "#f59e0b"
-                      : colors.danger,
-
-                  boxShadow:
-                    connectionState ===
-                    "connected"
-                      ? `0 0 0 4px ${
-                          dark
-                            ? "rgba(34,197,94,.09)"
-                            : "rgba(34,197,94,.12)"
-                        }`
-                      : "none",
-                }}
-              />
-
-              <span>
-                {connectionLabel}
-              </span>
-            </div>
-
-            {/* THEME BUTTON */}
-            <button
-              className="antimate-theme-button"
-              type="button"
-              onClick={() =>
-                setTheme(
-                  dark ? "light" : "dark"
-                )
-              }
-              title={
-                dark
-                  ? "Switch to light mode"
-                  : "Switch to dark mode"
-              }
-              style={{
-                ...styles.iconButton,
-
-                background: colors.soft,
-
-                border:
-                  `1px solid ${colors.border}`,
-
-                color: colors.text,
-              }}
-            >
-              {dark ? (
-                <SunIcon />
-              ) : (
-                <MoonIcon />
-              )}
-            </button>
-          </div>
         </div>
+
+        <div className="connection-status">
+          <span
+            className={
+              socketConnected
+                ? "status-dot online"
+                : "status-dot offline"
+            }
+          />
+
+          <span>
+            {socketConnected
+              ? "Online"
+              : "Connecting..."}
+          </span>
+        </div>
+
       </header>
 
-      {/* ====================================================
-          MAIN CHAT
-      ==================================================== */}
+      {/* ======================================================
+          MAIN
+          ====================================================== */}
 
-      <main style={styles.main}>
-        <div style={styles.chatContainer}>
-          {/* ==================================================
-              EMPTY CHAT
-          ================================================== */}
+      <main className="antimate-main">
 
-          {messages.length === 0 ? (
-            <div
-              style={{
-                ...styles.emptyState,
+        {/* ====================================================
+            WELCOME
+            ==================================================== */}
 
-                minHeight:
-                  "calc(100vh - 220px)",
-              }}
-            >
-              <div
-                style={{
-                  ...styles.emptyLogo,
+        {showWelcome && (
+          <section className="welcome">
 
-                  background:
-                    colors.surfaceSolid,
+            <div className="welcome-logo-wrap">
 
-                  border:
-                    `1px solid ${colors.border}`,
-
-                  boxShadow:
-                    colors.shadow,
-                }}
-              >
-                <img
-                  src={LOGO_SRC}
-                  alt="ANTIMATE AI"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
-                  onError={(e) => {
-                    e.currentTarget.style.display =
-                      "none";
-                  }}
-                />
+              <div className="antimate-logo large">
+                <span className="logo-orbit orbit-1" />
+                <span className="logo-orbit orbit-2" />
+                <span className="logo-orbit orbit-3" />
+                <span className="logo-core" />
               </div>
 
-              <h1
-                style={{
-                  ...styles.emptyTitle,
-
-                  color: colors.text,
-                }}
-              >
-                Muraho 👋
-              </h1>
-
-              <p
-                style={{
-                  ...styles.emptyText,
-
-                  color: colors.muted,
-                }}
-              >
-                Ndi ANTIMATE AI. Mbwira icyo
-                ushaka kumenya ku bworozi
-                cyangwa ku system yawe.
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  justifyContent: "center",
-                  marginTop: 20,
-                  maxWidth: 620,
-                }}
-              >
-                {[
-                  "Ubushyuhe bwiza ku nkoko ni ubuhe?",
-                  "Ngenzura brooder yanjye nte?",
-                  "Ni iki nakora iyo humidity iri hasi?",
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() =>
-                      setText(suggestion)
-                    }
-                    style={{
-                      border:
-                        `1px solid ${colors.border}`,
-
-                      background:
-                        colors.surface,
-
-                      color: colors.muted,
-
-                      borderRadius: 999,
-
-                      padding:
-                        "9px 13px",
-
-                      cursor: "pointer",
-
-                      fontSize: 12,
-
-                      transition:
-                        "all .2s ease",
-                    }}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
             </div>
-          ) : (
-            /* =================================================
-               MESSAGE LIST
-            ================================================= */
 
-            <div style={styles.messageList}>
-              {messages.map((message) => {
-                const isUser =
-                  message.role === "user";
+            <h1>
+              Muraho, ndi{" "}
+              <span>ANTIMATE</span>
+            </h1>
 
-                return (
-                  <div
-                    key={message.id}
-                    style={{
-                      display: "flex",
+            <p>
+              Umufasha wawe w'ubwenge.
+              Mbwira icyo ushaka kumenya
+              cyangwa ukoreshe ijwi.
+            </p>
 
-                      justifyContent:
-                        isUser
-                          ? "flex-end"
-                          : "flex-start",
+          </section>
+        )}
 
-                      marginBottom: 20,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
+        {/* ====================================================
+            MESSAGES
+            ==================================================== */}
 
-                        flexDirection:
-                          isUser
-                            ? "row-reverse"
-                            : "row",
+        <section className="messages">
 
-                        alignItems:
-                          "flex-start",
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`message-row ${
+                message.role
+              }`}
+            >
 
-                        gap: 10,
-
-                        maxWidth:
-                          "min(760px, 88%)",
-                      }}
-                    >
-                      {/* AVATAR */}
-                      {!isUser && (
-                        <div
-                          style={{
-                            flexShrink: 0,
-
-                            width: 31,
-                            height: 31,
-
-                            borderRadius: 10,
-
-                            overflow: "hidden",
-
-                            background:
-                              colors.surfaceSolid,
-
-                            border:
-                              `1px solid ${colors.border}`,
-
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent:
-                              "center",
-                          }}
-                        >
-                          <img
-                            src={LOGO_SRC}
-                            alt="AI"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit:
-                                "contain",
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* MESSAGE */}
-                      <div
-                        style={{
-                          padding:
-                            isUser
-                              ? "12px 15px"
-                              : "4px 0",
-
-                          borderRadius:
-                            isUser
-                              ? "17px 17px 5px 17px"
-                              : 0,
-
-                          background:
-                            isUser
-                              ? colors.userBubble
-                              : "transparent",
-
-                          color:
-                            colors.text,
-
-                          fontSize: 14,
-
-                          lineHeight: 1.7,
-
-                          whiteSpace:
-                            "pre-wrap",
-
-                          overflowWrap:
-                            "anywhere",
-                        }}
-                      >
-                        {message.content}
-                      </div>
-                    </div>
+              {message.role ===
+                "assistant" && (
+                <div className="message-avatar">
+                  <div className="antimate-logo mini">
+                    <span className="logo-orbit orbit-1" />
+                    <span className="logo-orbit orbit-2" />
+                    <span className="logo-orbit orbit-3" />
+                    <span className="logo-core" />
                   </div>
-                );
-              })}
-
-              {/* THINKING */}
-              {isProcessing &&
-                !currentAnswer && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems:
-                        "flex-start",
-                      gap: 10,
-                      marginBottom: 20,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 31,
-                        height: 31,
-                        borderRadius: 10,
-                        overflow: "hidden",
-                        background:
-                          colors.surfaceSolid,
-                        border:
-                          `1px solid ${colors.border}`,
-                        display: "flex",
-                        alignItems:
-                          "center",
-                        justifyContent:
-                          "center",
-                      }}
-                    >
-                      <img
-                        src={LOGO_SRC}
-                        alt="AI"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit:
-                            "contain",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems:
-                          "center",
-                        gap: 5,
-                        height: 31,
-                      }}
-                    >
-                      {[0, 1, 2].map(
-                        (index) => (
-                          <span
-                            key={index}
-                            style={{
-                              width: 5,
-                              height: 5,
-                              borderRadius:
-                                "50%",
-                              background:
-                                colors.muted,
-
-                              animation:
-                                `antimateThinking 1.2s ${index *
-                                  0.15}s infinite`,
-                            }}
-                          />
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              <div
-                ref={messagesEndRef}
-                style={{
-                  height: 10,
-                }}
-              />
-            </div>
-          )}
-
-          {/* ==================================================
-              TRANSCRIPT
-          ================================================== */}
-
-          {transcript && (
-            <div
-              style={{
-                marginBottom: 9,
-
-                padding:
-                  "9px 12px",
-
-                borderRadius: 12,
-
-                background:
-                  colors.accentSoft,
-
-                border:
-                  `1px solid ${
-                    dark
-                      ? "rgba(91,108,255,.16)"
-                      : "rgba(91,108,255,.12)"
-                  }`,
-
-                color: colors.muted,
-
-                fontSize: 12,
-              }}
-            >
-              <span
-                style={{
-                  color: colors.accent,
-                  fontWeight: 700,
-                  marginRight: 5,
-                }}
-              >
-                Wavuze:
-              </span>
-
-              {transcript}
-            </div>
-          )}
-
-          {/* ==================================================
-              ERROR
-          ================================================== */}
-
-          {error && (
-            <div
-              style={{
-                marginBottom: 9,
-
-                padding:
-                  "9px 12px",
-
-                borderRadius: 12,
-
-                background: dark
-                  ? "rgba(239,68,68,.09)"
-                  : "rgba(239,68,68,.06)",
-
-                border:
-                  "1px solid rgba(239,68,68,.16)",
-
-                color: colors.danger,
-
-                fontSize: 12,
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          {/* ==================================================
-              COMPOSER
-          ================================================== */}
-
-          <div
-            style={{
-              ...styles.composerWrapper,
-            }}
-          >
-            <div
-              className="antimate-composer"
-              style={{
-                ...styles.composer,
-
-                background: colors.input,
-
-                border:
-                  `1px solid ${colors.border}`,
-
-                boxShadow: colors.shadow,
-              }}
-            >
-              {/* TEXTAREA */}
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={(event) =>
-                  setText(
-                    event.target.value
-                  )
-                }
-                onKeyDown={handleKeyDown}
-                disabled={
-                  isRecording ||
-                  isProcessing ||
-                  isPlaying
-                }
-                placeholder={
-                  isRecording
-                    ? isLiveMode
-                      ? "Listening live..."
-                      : "Listening..."
-                    : isPlaying
-                    ? "ANTIMATE is speaking..."
-                    : "Ask ANTIMATE anything..."
-                }
-                rows={1}
-                style={{
-                  ...styles.textarea,
-
-                  color: colors.text,
-
-                  background:
-                    "transparent",
-
-                  cursor:
-                    isRecording ||
-                    isProcessing ||
-                    isPlaying
-                      ? "not-allowed"
-                      : "text",
-                }}
-              />
-
-              {/* =================================================
-                  EMPTY STATE: RECORD + LIVE
-              ================================================= */}
-
-              {showVoiceOptions && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems:
-                      "center",
-                    gap: 6,
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* RECORD */}
-                  <button
-                    className="antimate-voice-option"
-                    type="button"
-                    onPointerDown={
-                      handleVoicePointerDown
-                    }
-                    onPointerUp={
-                      handleVoicePointerUp
-                    }
-                    onPointerCancel={
-                      handleVoicePointerUp
-                    }
-                    style={{
-                      ...styles.voiceButton,
-
-                      background:
-                        colors.soft,
-
-                      border:
-                        `1px solid ${colors.border}`,
-
-                      color:
-                        colors.text,
-                    }}
-                    title="Record voice"
-                  >
-                    <MicIcon size={19} />
-
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 650,
-                      }}
-                    >
-                      Record
-                    </span>
-                  </button>
-
-                  {/* LIVE */}
-                  <button
-                    className="antimate-voice-option"
-                    type="button"
-                    onClick={() => {
-                      startRecording(true);
-                    }}
-                    style={{
-                      ...styles.voiceButton,
-
-                      background:
-                        colors.soft,
-
-                      border:
-                        `1px solid ${colors.border}`,
-
-                      color:
-                        colors.text,
-                    }}
-                    title="Start live voice"
-                  >
-                    <LiveIcon size={18} />
-
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 650,
-                      }}
-                    >
-                      Live
-                    </span>
-                  </button>
                 </div>
               )}
 
-              {/* =================================================
-                  RECORDING / PROCESSING / SPEAKING / SEND
-              ================================================= */}
+              <div className="message-bubble">
+                {message.content}
+              </div>
 
-              {!showVoiceOptions && (
-                <>
-                  {/* RECORDING */}
-                  {isRecording && (
-                    <button
-                      type="button"
-                      onClick={
-                        handleStop
-                      }
-                      style={{
-                        ...styles.actionButton,
-
-                        background:
-                          colors.danger,
-
-                        color: "#fff",
-
-                        boxShadow:
-                          "0 8px 22px rgba(239,68,68,.25)",
-                      }}
-                      title="Stop recording"
-                    >
-                      <StopIcon />
-
-                      {isLiveMode && (
-                        <span
-                          style={{
-                            position:
-                              "absolute",
-
-                            top: -2,
-                            right: -2,
-
-                            width: 7,
-                            height: 7,
-
-                            borderRadius:
-                              "50%",
-
-                            background:
-                              "#fff",
-
-                            animation:
-                              "antimatePulse 1s infinite",
-                          }}
-                        />
-                      )}
-                    </button>
-                  )}
-
-                  {/* PROCESSING */}
-                  {!isRecording &&
-                    isProcessing && (
-                      <button
-                        type="button"
-                        disabled
-                        style={{
-                          ...styles.actionButton,
-
-                          background:
-                            colors.accentSoft,
-
-                          color:
-                            colors.accent,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 19,
-                            height: 19,
-
-                            borderRadius:
-                              "50%",
-
-                            border:
-                              `2px solid ${
-                                dark
-                                  ? "rgba(91,108,255,.25)"
-                                  : "rgba(91,108,255,.22)"
-                              }`,
-
-                            borderTopColor:
-                              colors.accent,
-
-                            animation:
-                              "antimateSpin .8s linear infinite",
-                          }}
-                        />
-                      </button>
-                    )}
-
-                  {/* SPEAKING */}
-                  {!isRecording &&
-                    !isProcessing &&
-                    isPlaying && (
-                      <button
-                        type="button"
-                        disabled
-                        style={{
-                          ...styles.actionButton,
-
-                          background:
-                            colors.accentSoft,
-
-                          color:
-                            colors.accent,
-                        }}
-                      >
-                        <VolumeIcon />
-
-                        <span
-                          style={{
-                            position:
-                              "absolute",
-
-                            display:
-                              "flex",
-
-                            alignItems:
-                              "center",
-
-                            gap: 2,
-
-                            bottom: -2,
-                            right: -2,
-                          }}
-                        >
-                          {[0, 1, 2].map(
-                            (i) => (
-                              <span
-                                key={i}
-                                style={{
-                                  width: 2,
-                                  height:
-                                    6 +
-                                    i *
-                                      3,
-
-                                  borderRadius:
-                                    3,
-
-                                  background:
-                                    colors.accent,
-
-                                  animation:
-                                    `antimateWave .8s ${i *
-                                      0.12}s infinite`,
-                                }}
-                              />
-                            )
-                          )}
-                        </span>
-                      </button>
-                    )}
-
-                  {/* SEND */}
-                  {!isRecording &&
-                    !isProcessing &&
-                    !isPlaying &&
-                    hasText && (
-                      <button
-                        className="antimate-send-button"
-                        type="button"
-                        onClick={
-                          handleMainAction
-                        }
-                        disabled={
-                          !hasText
-                        }
-                        style={{
-                          ...styles.actionButton,
-
-                          background:
-                            colors.accent,
-
-                          color: "#fff",
-
-                          boxShadow:
-                            "0 8px 22px rgba(91,108,255,.22)",
-                        }}
-                        title="Send"
-                      >
-                        <SendIcon />
-                      </button>
-                    )}
-                </>
-              )}
             </div>
+          ))}
 
-            {/* FOOTER NOTE */}
-            <div
-              style={{
-                textAlign: "center",
+          {/* ==================================================
+              TRANSCRIPT
+              ================================================== */}
 
-                marginTop: 8,
+          {transcript && (
+            <div className="voice-transcript">
+              <span className="transcript-label">
+                Wavuze
+              </span>
 
-                color: colors.muted,
-
-                fontSize: 10,
-
-                opacity: 0.75,
-              }}
-            >
-              ANTIMATE can make mistakes. Verify
-              important farming decisions.
+              <span>
+                {transcript}
+              </span>
             </div>
-          </div>
-        </div>
+          )}
+
+          {/* ==================================================
+              THINKING
+              ================================================== */}
+
+          {isProcessing && (
+            <div className="message-row assistant">
+
+              <div className="message-avatar">
+                <div className="antimate-logo mini">
+                  <span className="logo-orbit orbit-1" />
+                  <span className="logo-orbit orbit-2" />
+                  <span className="logo-orbit orbit-3" />
+                  <span className="logo-core" />
+                </div>
+              </div>
+
+              <div className="thinking-bubble">
+                <span />
+                <span />
+                <span />
+              </div>
+
+            </div>
+          )}
+
+        </section>
+
       </main>
+
+      {/* ======================================================
+          COMPOSER
+          ====================================================== */}
+
+      <div className="composer-area">
+
+        {/* ====================================================
+            ERROR
+            ==================================================== */}
+
+        {error && (
+          <div className="composer-error">
+            {error}
+          </div>
+        )}
+
+        {/* ====================================================
+            RECORDING PANEL
+            ==================================================== */}
+
+        {isRecording && (
+          <div className="recording-panel">
+
+            <div className="recording-left">
+
+              <span className="recording-pulse" />
+
+              <span>
+                {isLiveVoice
+                  ? "ANTIMATE iragutega..."
+                  : "Recording..."}
+              </span>
+
+            </div>
+
+            <div className="recording-time">
+              {String(
+                MAX_RECORD_SECONDS -
+                  recordSeconds
+              ).padStart(2, "0")}
+              s
+            </div>
+
+          </div>
+        )}
+
+        {/* ====================================================
+            INPUT
+            ==================================================== */}
+
+        <div className="composer">
+
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(event) =>
+              setText(event.target.value)
+            }
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isRecording
+                ? "Vuga..."
+                : "Andika ubutumwa..."
+            }
+            disabled={
+              isRecording ||
+              isProcessing ||
+              isPlaying
+            }
+            rows={1}
+          />
+
+          {/* ==================================================
+              EMPTY STATE:
+              TWO VOICE BUTTONS
+              ================================================== */}
+
+          {!hasText &&
+            !isRecording &&
+            !isProcessing &&
+            !isPlaying && (
+              <div className="voice-actions">
+
+                <button
+                  className="voice-button record-button"
+                  onClick={
+                    handleRecordClick
+                  }
+                  type="button"
+                  aria-label="Record voice"
+                >
+                  <span className="mic-icon">
+                    🎙
+                  </span>
+
+                  <span className="button-label">
+                    Record
+                  </span>
+                </button>
+
+                <button
+                  className="voice-button live-button"
+                  onClick={
+                    handleLiveClick
+                  }
+                  type="button"
+                  aria-label="Live voice"
+                >
+                  <span className="live-mic">
+                    🎤
+                  </span>
+
+                  <span className="button-label">
+                    Live
+                  </span>
+                </button>
+
+              </div>
+            )}
+
+          {/* ==================================================
+              RECORDING STOP BUTTON
+              ================================================== */}
+
+          {isRecording && (
+            <button
+              className="main-action stop-action"
+              onClick={() =>
+                stopRecording(true)
+              }
+              type="button"
+              aria-label="Stop recording"
+            >
+              <span className="stop-square" />
+            </button>
+          )}
+
+          {/* ==================================================
+              PROCESSING
+              ================================================== */}
+
+          {isProcessing && (
+            <button
+              className="main-action processing-action"
+              disabled
+              type="button"
+            >
+              <span className="spinner" />
+            </button>
+          )}
+
+          {/* ==================================================
+              SPEAKING
+              ================================================== */}
+
+          {isPlaying && (
+            <button
+              className="main-action speaking-action"
+              disabled
+              type="button"
+            >
+              <span className="speaker-icon">
+                🔊
+              </span>
+            </button>
+          )}
+
+          {/* ==================================================
+              TEXT SEND
+              ================================================== */}
+
+          {hasText &&
+            !isRecording &&
+            !isProcessing &&
+            !isPlaying && (
+              <button
+                className="main-action send-action"
+                onClick={sendText}
+                disabled={
+                  !text.trim()
+                }
+                type="button"
+                aria-label="Send message"
+              >
+                <span className="send-arrow">
+                  ↑
+                </span>
+              </button>
+            )}
+
+        </div>
+
+        <div className="composer-hint">
+          {hasText
+            ? "Enter kugira wohereze • Shift + Enter gukora umurongo mushya"
+            : "Record cyangwa Live Voice"}
+        </div>
+
+      </div>
+
     </div>
   );
 }
-
-// ============================================================
-// INLINE STYLES
-// ============================================================
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-
-    width: "100%",
-
-    display: "flex",
-
-    flexDirection: "column",
-
-    overflow: "hidden",
-
-    transition:
-      "background .25s ease, color .25s ease",
-  },
-
-  header: {
-    position: "sticky",
-
-    top: 0,
-
-    zIndex: 50,
-
-    width: "100%",
-  },
-
-  headerInner: {
-    width: "100%",
-
-    maxWidth: 1100,
-
-    margin: "0 auto",
-
-    padding:
-      "12px 18px",
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent:
-      "space-between",
-
-    gap: 15,
-  },
-
-  iconButton: {
-    width: 38,
-
-    height: 38,
-
-    borderRadius: 12,
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    cursor: "pointer",
-
-    transition:
-      "all .2s ease",
-  },
-
-  main: {
-    flex: 1,
-
-    minHeight: 0,
-
-    width: "100%",
-
-    display: "flex",
-
-    justifyContent: "center",
-  },
-
-  chatContainer: {
-    width: "100%",
-
-    maxWidth: 900,
-
-    minHeight:
-      "calc(100vh - 65px)",
-
-    padding:
-      "0 18px 20px",
-
-    display: "flex",
-
-    flexDirection: "column",
-  },
-
-  emptyState: {
-    flex: 1,
-
-    display: "flex",
-
-    flexDirection: "column",
-
-    alignItems: "center",
-
-    justifyContent:
-      "center",
-
-    textAlign: "center",
-
-    padding:
-      "30px 0 160px",
-  },
-
-  emptyLogo: {
-    width: 76,
-
-    height: 76,
-
-    borderRadius: 24,
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent:
-      "center",
-
-    overflow: "hidden",
-
-    marginBottom: 20,
-
-    padding: 7,
-  },
-
-  emptyTitle: {
-    margin: 0,
-
-    fontSize: 31,
-
-    lineHeight: 1.15,
-
-    fontWeight: 800,
-
-    letterSpacing:
-      "-.04em",
-  },
-
-  emptyText: {
-    margin:
-      "10px auto 0",
-
-    maxWidth: 520,
-
-    fontSize: 14,
-
-    lineHeight: 1.65,
-  },
-
-  messageList: {
-    flex: 1,
-
-    minHeight: 0,
-
-    overflowY: "auto",
-
-    padding:
-      "30px 4px 150px",
-  },
-
-  composerWrapper: {
-    position: "sticky",
-
-    bottom: 0,
-
-    zIndex: 20,
-
-    width: "100%",
-
-    paddingTop: 8,
-
-    paddingBottom: 4,
-
-    background:
-      "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0) 10%)",
-  },
-
-  composer: {
-    width: "100%",
-
-    minHeight: 62,
-
-    borderRadius: 19,
-
-    display: "flex",
-
-    alignItems: "flex-end",
-
-    gap: 8,
-
-    padding:
-      "10px 10px 10px 15px",
-
-    transition:
-      "all .2s ease",
-
-    backdropFilter:
-      "blur(20px)",
-
-    WebkitBackdropFilter:
-      "blur(20px)",
-  },
-
-  textarea: {
-    flex: 1,
-
-    width: "100%",
-
-    minWidth: 0,
-
-    maxHeight: 150,
-
-    resize: "none",
-
-    outline: "none",
-
-    border: "none",
-
-    padding:
-      "9px 0",
-
-    fontSize: 14,
-
-    lineHeight: 1.55,
-
-    overflowY: "auto",
-
-  },
-
-  voiceButton: {
-    height: 40,
-
-    minWidth: 40,
-
-    padding:
-      "0 11px",
-
-    borderRadius: 12,
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent:
-      "center",
-
-    gap: 6,
-
-    cursor: "pointer",
-
-    transition:
-      "all .2s ease",
-
-    touchAction: "none",
-
-    userSelect: "none",
-  },
-
-  actionButton: {
-    position: "relative",
-
-    flexShrink: 0,
-
-    width: 42,
-
-    height: 42,
-
-    border: "none",
-
-    borderRadius: 14,
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent:
-      "center",
-
-    cursor: "pointer",
-
-    transition:
-      "all .2s ease",
-  },
-};

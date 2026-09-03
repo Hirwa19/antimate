@@ -20,6 +20,20 @@ import {
   HeartHandshake,
   BookOpen,
   TrendingUp,
+  Phone,
+  Mail,
+  MessageCircle,
+  Globe,
+  MapPin,
+  CalendarDays,
+  Check,
+  Building2,
+  Users,
+  Headphones,
+  Bot,
+  Smartphone,
+  ChevronDown,
+  Star,
 } from "lucide-react";
 import "./Login.css";
 
@@ -71,12 +85,9 @@ function Login() {
   const [message, setMessage] = useState("");
 
   const [language, setLanguage] = useState("rw");
-
-  // ============================================================
-  // DEFAULT THEME = LIGHT
-  // ============================================================
-
   const [darkMode, setDarkMode] = useState(false);
+
+  const [openPlan, setOpenPlan] = useState(null);
 
   // ============================================================
   // CONTENT
@@ -86,6 +97,10 @@ function Login() {
     rw: {
       navHome: "Ahabanza",
       navHow: "Uko ikora",
+      navSystems: "Systems",
+      navPlans: "Plans",
+      navSupport: "Support",
+      navTeam: "Ikipe",
       navVision: "Intego",
 
       knowledge: "Amakuru y’Ubworozi",
@@ -100,7 +115,7 @@ function Login() {
       title2: "butangirira ku makuru meza.",
 
       description:
-        "ANTIMATE igufasha gukurikirana ubworozi bwawe, kumenya uko amatungo yawe ameze no gufata ibyemezo byiza ukoresheje ikoranabuhanga ryoroheje kandi ryizewe.",
+        "ANTIMATE ihuza ubworozi n’ikoranabuhanga kugira ngo ubashe kumenya uko ubworozi bwawe buhagaze, kubona amakuru y’ingenzi no gufata ibyemezo byiza ku gihe.",
 
       start: "Tangira natwe",
       learn: "Menya byinshi",
@@ -113,25 +128,137 @@ function Login() {
 
       feature1Title: "Kurikira ubworozi",
       feature1Text:
-        "Reba uko ubushyuhe, ubuhehere n'ibindi bipimo bihinduka igihe cyose.",
+        "Reba uko ubushyuhe, ubuhehere n’ibindi bipimo by’ingenzi bihinduka mu gihe nyacyo.",
 
       feature2Title: "Menya ibibazo hakiri kare",
       feature2Text:
-        "ANTIMATE igufasha kubona impinduka zishobora kugira ingaruka ku matungo yawe.",
+        "ANTIMATE igufasha kubona impinduka zishobora kugira ingaruka ku matungo yawe mbere y’uko ikibazo gikomera.",
 
       feature3Title: "Fata ibyemezo neza",
       feature3Text:
-        "Amakuru yoroheje kandi asobanutse agufasha gukora ibikwiye ku gihe.",
+        "Amakuru asobanutse hamwe n’ubwenge buhangano bigufasha gukora igikwiye ku gihe.",
+
+      systemsEyebrow: "ANTIMATE SYSTEMS",
+      systemsTitle:
+        "Ibikoresho na serivisi bigize ANTIMATE",
+
+      systemsText:
+        "ANTIMATE yubatswe kugira ngo igufashe kuva ku makuru y’ubworozi kugeza ku gufata ibyemezo, mu buryo bworoshye kandi bwumvikana.",
+
+      system1Title: "ANTIMATE Smart Farm",
+      system1Text:
+        "Igufasha gukurikirana imikorere n’imiterere y’ubworozi bwawe ahantu hamwe.",
+
+      system2Title: "ANTIMATE Connect",
+      system2Text:
+        "Ihuza ibikoresho byo mu bworozi n’urubuga rwa ANTIMATE kugira ngo amakuru agere aho uyakeneye.",
+
+      system3Title: "ANTIMATE Cloud",
+      system3Text:
+        "Aho amakuru y’ubworozi abikwa kandi agatunganywa kugira ngo uyabone igihe uyakeneye.",
+
+      system4Title: "ANTIMATE AI",
+      system4Text:
+        "Umufasha w’ubwenge ugufasha gusobanukirwa amakuru, kubaza ibibazo no kubona inama zijyanye n’ubworozi.",
+
+      plansEyebrow: "ANTIMATE PLANS",
+      plansTitle:
+        "Hitamo gahunda ijyanye n’ubworozi bwawe",
+
+      plansText:
+        "Tangira ku buntu cyangwa uhitemo gahunda iguha ubushobozi bwisumbuyeho uko ubworozi bwawe bugenda bwaguka.",
+
+      free: "Free",
+      basic: "Basic",
+      pro: "Pro",
+      premium: "Premium",
+
+      perMonth: "/ ukwezi",
+
+      freeDescription:
+        "Ku muntu ushaka gutangira kumenya ANTIMATE.",
+
+      basicDescription:
+        "Ku bworozi buto cyangwa butangiye gukoresha ikoranabuhanga.",
+
+      proDescription:
+        "Ku mworozi ushaka gukurikirana ubworozi bwe ku rwego rwo hejuru.",
+
+      premiumDescription:
+        "Ku bworozi bunini n’abakoresha bakeneye ubushobozi bwagutse.",
+
+      mostPopular: "IKUNZWE CYANE",
+      choosePlan: "Hitamo iyi gahunda",
+      contactUs: "Twandikire",
+
+      supportEyebrow: "ANTIMATE SUPPORT",
+      supportTitle:
+        "Turi hano igihe cyose ukeneye ubufasha",
+
+      supportText:
+        "Niba ufite ikibazo, ushaka ibisobanuro cyangwa ushaka kumenya gahunda ikubereye, ushobora kutugeraho ukoresheje uburyo ubwo ari bwo bwose bugukwiriye.",
+
+      aiSupport: "ANTIMATE AI",
+      aiSupportText:
+        "Baza ANTIMATE AI ibibazo byawe kandi ubone ubufasha ako kanya.",
+
+      phoneSupport: "Telefone",
+      phoneSupportText:
+        "Tuvugishe kuri telefone ku bufasha cyangwa amakuru.",
+
+      whatsappSupport: "WhatsApp",
+      whatsappSupportText:
+        "Twandikire kuri WhatsApp kandi tugufashe.",
+
+      emailSupport: "Email",
+      emailSupportText:
+        "Ohereza ikibazo cyangwa ubutumwa kuri email yacu.",
+
+      webChatSupport: "Web Chat Room",
+      webChatSupportText:
+        "Ganira n’ikipe ya ANTIMATE ukoresheje urubuga.",
+
+      supportButton: "Vugana natwe",
+
+      companyEyebrow: "ABOUT ANTIMATE",
+      companyTitle:
+        "Ikigo cyubaka ejo hazaza h’ubworozi",
+
+      companyText:
+        "ANTIMATE ni ikigo cy’ikoranabuhanga cyibanda ku gufasha aborozi kubona amakuru meza, gukoresha ikoranabuhanga mu buryo bworoshye no guteza imbere umusaruro w’ubworozi.",
+
+      location: "Kigali, Rwanda",
+      openDays: "Dufunguye iminsi yose",
+      since: "Kuva ku wa 14 Mata 2026",
+
+      teamEyebrow: "OUR TEAM",
+      teamTitle:
+        "Abantu bari inyuma ya ANTIMATE",
+
+      teamText:
+        "ANTIMATE yubatswe n’ikipe ifite inshingano zitandukanye, ihuriza hamwe ubuyobozi, ubwenge buhangano, ikoranabuhanga, amakuru, itumanaho n’iterambere ry’ubucuruzi.",
+
+      ceo: "CEO — Chief Executive Officer",
+      aiOfficer: "Chief AI Officer",
+      dataOfficer: "Chief Data Officer",
+      cio: "Chief Information Officer",
+      cto: "Chief Technology Officer",
+      cmo: "Chief Marketing Officer",
+      cbo: "Chief Business Officer",
 
       visionTitle:
         "Duharanira ubworozi bwiza kandi bwunguka",
 
       visionText:
-        "Duhuza ubworozi n'ikoranabuhanga kugira ngo umuhinzi cyangwa umworozi abashe gukora byinshi, mu buryo bworoshye kandi bwizewe.",
+        "Duhuza ubworozi n’ikoranabuhanga kugira ngo umuhinzi cyangwa umworozi abashe gukora byinshi, mu buryo bworoshye, bwizewe kandi bushingiye ku makuru.",
+
+      simpleTech: "Ikoranabuhanga ryoroshye",
+      reliableInfo: "Amakuru yizewe",
+      securePlatform: "Urubuga rufite umutekano",
 
       joinTitle: "Witeguye gutangira?",
       joinText:
-        "Injira muri ANTIMATE maze uhindure uburyo ukurikiranamo ubworozi bwawe.",
+        "Injira muri ANTIMATE maze utangire gukoresha ikoranabuhanga mu micungire y’ubworozi bwawe.",
 
       loginTitle: "Murakaza neza",
       loginSubtitle:
@@ -158,6 +285,10 @@ function Login() {
     en: {
       navHome: "Home",
       navHow: "How it works",
+      navSystems: "Systems",
+      navPlans: "Plans",
+      navSupport: "Support",
+      navTeam: "Team",
       navVision: "Our vision",
 
       knowledge: "Poultry Knowledge",
@@ -172,7 +303,7 @@ function Login() {
       title2: "starts with better information.",
 
       description:
-        "ANTIMATE helps you monitor your farm, understand your animals and make better decisions using simple, reliable technology.",
+        "ANTIMATE connects farming with technology so you can understand your farm, access important information and make better decisions at the right time.",
 
       start: "Get started",
       learn: "Learn more",
@@ -189,21 +320,133 @@ function Login() {
 
       feature2Title: "Detect problems early",
       feature2Text:
-        "ANTIMATE helps you notice changes that may affect your animals.",
+        "ANTIMATE helps you notice changes that may affect your animals before problems become serious.",
 
       feature3Title: "Make better decisions",
       feature3Text:
-        "Clear information helps you take the right action at the right time.",
+        "Clear information and intelligent assistance help you take the right action at the right time.",
+
+      systemsEyebrow: "ANTIMATE SYSTEMS",
+      systemsTitle:
+        "The systems and services behind ANTIMATE",
+
+      systemsText:
+        "ANTIMATE brings together the tools you need to move from farm information to better decisions in one simple experience.",
+
+      system1Title: "ANTIMATE Smart Farm",
+      system1Text:
+        "A simple way to monitor your farm and understand what is happening.",
+
+      system2Title: "ANTIMATE Connect",
+      system2Text:
+        "Connects your farm equipment with the ANTIMATE platform so information reaches you when you need it.",
+
+      system3Title: "ANTIMATE Cloud",
+      system3Text:
+        "A secure place where your farm information is stored and organized for access when you need it.",
+
+      system4Title: "ANTIMATE AI",
+      system4Text:
+        "An intelligent assistant that helps you understand information, ask questions and get farming guidance.",
+
+      plansEyebrow: "ANTIMATE PLANS",
+      plansTitle:
+        "Choose a plan that fits your farm",
+
+      plansText:
+        "Start for free or choose a plan with more capabilities as your farming operation grows.",
+
+      free: "Free",
+      basic: "Basic",
+      pro: "Pro",
+      premium: "Premium",
+
+      perMonth: "/ month",
+
+      freeDescription:
+        "For anyone who wants to start exploring ANTIMATE.",
+
+      basicDescription:
+        "For small farms beginning their digital journey.",
+
+      proDescription:
+        "For farmers who want advanced farm monitoring and support.",
+
+      premiumDescription:
+        "For larger operations that need broader capabilities.",
+
+      mostPopular: "MOST POPULAR",
+      choosePlan: "Choose this plan",
+      contactUs: "Contact us",
+
+      supportEyebrow: "ANTIMATE SUPPORT",
+      supportTitle:
+        "We are here whenever you need help",
+
+      supportText:
+        "Whether you have a question, need assistance or want help choosing a plan, you can reach ANTIMATE through the channel that works best for you.",
+
+      aiSupport: "ANTIMATE AI",
+      aiSupportText:
+        "Ask ANTIMATE AI questions and get intelligent assistance instantly.",
+
+      phoneSupport: "Phone",
+      phoneSupportText:
+        "Call us directly for assistance or information.",
+
+      whatsappSupport: "WhatsApp",
+      whatsappSupportText:
+        "Message us on WhatsApp and get support.",
+
+      emailSupport: "Email",
+      emailSupportText:
+        "Send us your questions or requests by email.",
+
+      webChatSupport: "Web Chat Room",
+      webChatSupportText:
+        "Talk to the ANTIMATE team directly through the web.",
+
+      supportButton: "Talk to us",
+
+      companyEyebrow: "ABOUT ANTIMATE",
+      companyTitle:
+        "Building the future of farming",
+
+      companyText:
+        "ANTIMATE is a technology company focused on helping farmers access better information, use technology more easily and improve farming productivity.",
+
+      location: "Kigali, Rwanda",
+      openDays: "Open all days",
+      since: "Since 14 April 2026",
+
+      teamEyebrow: "OUR TEAM",
+      teamTitle:
+        "The people behind ANTIMATE",
+
+      teamText:
+        "ANTIMATE is powered by a multidisciplinary team bringing together leadership, artificial intelligence, technology, data, communication, marketing and business development.",
+
+      ceo: "CEO — Chief Executive Officer",
+      aiOfficer: "Chief AI Officer",
+      dataOfficer: "Chief Data Officer",
+      cio: "Chief Information Officer",
+      cto: "Chief Technology Officer",
+      cmo: "Chief Marketing Officer",
+      cbo: "Chief Business Officer",
 
       visionTitle:
         "Building better and more productive farms",
 
       visionText:
-        "We connect farming with technology so farmers can do more with less complexity and greater confidence.",
+        "We connect farming with technology so farmers can do more with less complexity, greater confidence and better information.",
+
+      simpleTech: "Simple technology",
+      reliableInfo: "Reliable information",
+      securePlatform: "Secure platform",
 
       joinTitle: "Ready to get started?",
       joinText:
-        "Join ANTIMATE and transform the way you manage your farm.",
+        "Join ANTIMATE and start using technology to manage your farming operation.",
 
       loginTitle: "Welcome back",
       loginSubtitle:
@@ -268,20 +511,174 @@ function Login() {
   }
 
   // ============================================================
-  // OPEN KNOWLEDGE CENTER
+  // NAV HELPERS
   // ============================================================
 
-  const openKnowledgeCenter = () => {
+  const closeMobileMenu = () => {
     setMobileMenu(false);
+  };
+
+  const openKnowledgeCenter = () => {
+    closeMobileMenu();
     navigate("/brooding-guide");
   };
 
+  const openAI = () => {
+    closeMobileMenu();
+    navigate("/antimate-ai");
+  };
+
+  const scrollToSection = (id) => {
+    closeMobileMenu();
+
+    setTimeout(() => {
+      document
+        .getElementById(id)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    }, 50);
+  };
+
+  // ============================================================
+  // PLAN DATA
+  // ============================================================
+
+  const plans = [
+    {
+      name: t.free,
+      price: "0",
+      description: t.freeDescription,
+      icon: <Sparkles size={22} />,
+      features:
+        language === "rw"
+          ? [
+              "Gutangira gukoresha ANTIMATE",
+              "Amakuru y’ibanze",
+              "Kugera kuri ANTIMATE AI",
+              "Support y’ibanze",
+            ]
+          : [
+              "Start using ANTIMATE",
+              "Basic information",
+              "Access to ANTIMATE AI",
+              "Basic support",
+            ],
+    },
+    {
+      name: t.basic,
+      price: "3,000",
+      description: t.basicDescription,
+      icon: <Leaf size={22} />,
+      features:
+        language === "rw"
+          ? [
+              "Kugenzura ubworozi",
+              "Amakuru arambuye",
+              "AI assistance",
+              "Notifications",
+              "Customer support",
+            ]
+          : [
+              "Farm monitoring",
+              "Detailed insights",
+              "AI assistance",
+              "Notifications",
+              "Customer support",
+            ],
+    },
+    {
+      name: t.pro,
+      price: "7,000",
+      description: t.proDescription,
+      popular: true,
+      icon: <TrendingUp size={22} />,
+      features:
+        language === "rw"
+          ? [
+              "Ibintu byose bya Basic",
+              "Advanced insights",
+              "AI farming assistance",
+              "Advanced notifications",
+              "Priority support",
+            ]
+          : [
+              "Everything in Basic",
+              "Advanced insights",
+              "AI farming assistance",
+              "Advanced notifications",
+              "Priority support",
+            ],
+    },
+    {
+      name: t.premium,
+      price: "15,000",
+      description: t.premiumDescription,
+      icon: <Star size={22} />,
+      features:
+        language === "rw"
+          ? [
+              "Ibintu byose bya Pro",
+              "Advanced farm capabilities",
+              "Extended AI assistance",
+              "Premium support",
+              "Growing operation support",
+            ]
+          : [
+              "Everything in Pro",
+              "Advanced farm capabilities",
+              "Extended AI assistance",
+              "Premium support",
+              "Growing operation support",
+            ],
+    },
+  ];
+
+  // ============================================================
+  // TEAM DATA
+  // ============================================================
+
+  const team = [
+    {
+      name: "HIRWA Salem",
+      role: t.ceo,
+      icon: <Building2 size={22} />,
+    },
+    {
+      name: "CYUSA Chrispin",
+      role: t.aiOfficer,
+      icon: <Brain size={22} />,
+    },
+    {
+      name: "DJUMA David",
+      role: t.dataOfficer,
+      icon: <Cloud size={22} />,
+    },
+    {
+      name: "Network & Communication",
+      role: t.cio,
+      icon: <Wifi size={22} />,
+    },
+    {
+      name: "MUGISHA Prince",
+      role: t.cto,
+      icon: <LineChart size={22} />,
+    },
+    {
+      name: "KWIZERA J. Bosco",
+      role: t.cmo,
+      icon: <TrendingUp size={22} />,
+    },
+    {
+      name: "MUGISHA Steven",
+      role: t.cbo,
+      icon: <Users size={22} />,
+    },
+  ];
+
   return (
     <>
-      {/* =========================================================
-          ANTIMATE AI FLOATING ICON
-      ========================================================= */}
-
       <style>{`
 
         /* ======================================================
@@ -309,10 +706,6 @@ function Login() {
           }
         }
 
-        /* ======================================================
-           KNOWLEDGE CENTER PULSE
-        ====================================================== */
-
         @keyframes knowledgePulse {
           0%,
           100% {
@@ -336,6 +729,29 @@ function Login() {
           50% {
             box-shadow:
               0 0 14px rgba(0, 217, 255, 0.18);
+          }
+        }
+
+        @keyframes antimateShine {
+          0% {
+            transform: translateX(-120%);
+          }
+
+          100% {
+            transform: translateX(120%);
+          }
+        }
+
+        @keyframes antimatePulse {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.8;
+          }
+
+          50% {
+            transform: scale(1.08);
+            opacity: 1;
           }
         }
 
@@ -506,7 +922,7 @@ function Login() {
         }
 
         /* ======================================================
-           KNOWLEDGE CENTER NAV BUTTON
+           KNOWLEDGE CENTER
         ====================================================== */
 
         .knowledge-nav-wrapper {
@@ -575,18 +991,6 @@ function Login() {
           transform: translateY(0) scale(0.98);
         }
 
-        .knowledge-nav-button:focus-visible {
-          outline:
-            3px solid
-            rgba(0, 217, 255, 0.25);
-
-          outline-offset: 3px;
-        }
-
-        /* ======================================================
-           TRENDING BADGE
-        ====================================================== */
-
         .knowledge-trending-badge {
           position: absolute;
 
@@ -632,16 +1036,745 @@ function Login() {
           pointer-events: none;
         }
 
-        .knowledge-trending-badge svg {
-          width: 9px;
-          height: 9px;
+        /* ======================================================
+           COMPANY INFO
+        ====================================================== */
 
-          color: #ffffff;
+        .company-section {
+          padding:
+            110px
+            clamp(20px, 6vw, 90px);
+
+          position: relative;
+        }
+
+        .company-grid {
+          max-width: 1180px;
+          margin: auto;
+
+          display: grid;
+          grid-template-columns:
+            minmax(0, 1.15fr)
+            minmax(320px, 0.85fr);
+
+          gap: 60px;
+          align-items: center;
+        }
+
+        .company-content h2 {
+          font-size:
+            clamp(32px, 4vw, 56px);
+
+          line-height: 1.05;
+          margin: 14px 0 20px;
+        }
+
+        .company-content p {
+          max-width: 720px;
+          font-size: 17px;
+          line-height: 1.8;
+          opacity: 0.78;
+        }
+
+        .company-meta {
+          margin-top: 30px;
+
+          display: grid;
+          grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+
+          gap: 14px;
+        }
+
+        .company-meta-card {
+          padding: 20px;
+
+          border-radius: 18px;
+
+          border: 1px solid
+            rgba(128, 128, 128, 0.16);
+
+          background:
+            rgba(128, 128, 128, 0.055);
+
+          transition:
+            transform 0.25s ease,
+            border-color 0.25s ease;
+        }
+
+        .company-meta-card:hover {
+          transform: translateY(-4px);
+          border-color:
+            rgba(0, 217, 255, 0.35);
+        }
+
+        .company-meta-card svg {
+          color: #00bfe8;
+          margin-bottom: 12px;
+        }
+
+        .company-meta-card strong {
+          display: block;
+          font-size: 14px;
+        }
+
+        .company-meta-card span {
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          opacity: 0.62;
+        }
+
+        .company-symbol {
+          min-height: 390px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 32px;
+
+          background:
+            radial-gradient(
+              circle at 30% 25%,
+              rgba(0, 217, 255, 0.18),
+              transparent 35%
+            ),
+            radial-gradient(
+              circle at 75% 75%,
+              rgba(99, 102, 241, 0.20),
+              transparent 38%
+            ),
+            rgba(128, 128, 128, 0.055);
+
+          border:
+            1px solid
+            rgba(0, 217, 255, 0.15);
+
+          position: relative;
+          overflow: hidden;
+        }
+
+        .company-symbol::before {
+          content: "";
+          position: absolute;
+          width: 260px;
+          height: 260px;
+
+          border-radius: 50%;
+
+          border:
+            1px solid
+            rgba(0, 217, 255, 0.22);
+
+          animation:
+            antimateAIColorFlow
+            14s
+            linear
+            infinite;
+        }
+
+        .company-symbol-inner {
+          width: 170px;
+          height: 170px;
+
+          border-radius: 50%;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background:
+            rgba(7, 17, 31, 0.92);
+
+          box-shadow:
+            0 20px 70px
+            rgba(0, 0, 0, 0.25);
+
+          position: relative;
+          z-index: 2;
         }
 
         /* ======================================================
-           MOBILE KNOWLEDGE BUTTON
+           SYSTEMS
         ====================================================== */
+
+        .systems-section {
+          padding:
+            100px
+            clamp(20px, 6vw, 90px);
+        }
+
+        .systems-container {
+          max-width: 1180px;
+          margin: auto;
+        }
+
+        .systems-intro {
+          max-width: 750px;
+          margin-bottom: 50px;
+        }
+
+        .systems-intro h2 {
+          font-size:
+            clamp(32px, 4vw, 54px);
+
+          line-height: 1.08;
+          margin: 12px 0 18px;
+        }
+
+        .systems-intro p {
+          font-size: 16px;
+          line-height: 1.75;
+          opacity: 0.72;
+        }
+
+        .systems-grid {
+          display: grid;
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 18px;
+        }
+
+        .system-card {
+          position: relative;
+          overflow: hidden;
+
+          padding: 28px 24px;
+
+          min-height: 270px;
+
+          border-radius: 24px;
+
+          border:
+            1px solid
+            rgba(128, 128, 128, 0.15);
+
+          background:
+            rgba(128, 128, 128, 0.055);
+
+          transition:
+            transform 0.28s ease,
+            border-color 0.28s ease,
+            box-shadow 0.28s ease;
+        }
+
+        .system-card::after {
+          content: "";
+
+          position: absolute;
+          top: 0;
+          left: -100%;
+
+          width: 80%;
+          height: 100%;
+
+          background:
+            linear-gradient(
+              90deg,
+              transparent,
+              rgba(255,255,255,0.08),
+              transparent
+            );
+
+          transform: skewX(-18deg);
+          transition: left 0.7s ease;
+        }
+
+        .system-card:hover::after {
+          left: 140%;
+        }
+
+        .system-card:hover {
+          transform: translateY(-7px);
+
+          border-color:
+            rgba(0, 217, 255, 0.32);
+
+          box-shadow:
+            0 20px 45px
+            rgba(0, 0, 0, 0.12);
+        }
+
+        .system-icon {
+          width: 52px;
+          height: 52px;
+
+          border-radius: 16px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          color: #00c7ed;
+
+          background:
+            rgba(0, 217, 255, 0.08);
+
+          margin-bottom: 22px;
+        }
+
+        .system-card h3 {
+          font-size: 20px;
+          margin-bottom: 12px;
+        }
+
+        .system-card p {
+          font-size: 14px;
+          line-height: 1.7;
+          opacity: 0.68;
+        }
+
+        /* ======================================================
+           PLANS
+        ====================================================== */
+
+        .plans-section {
+          padding:
+            100px
+            clamp(20px, 6vw, 90px);
+
+          background:
+            rgba(128, 128, 128, 0.025);
+        }
+
+        .plans-container {
+          max-width: 1180px;
+          margin: auto;
+        }
+
+        .plans-heading {
+          text-align: center;
+          max-width: 720px;
+          margin: 0 auto 50px;
+        }
+
+        .plans-heading h2 {
+          font-size:
+            clamp(32px, 4vw, 52px);
+
+          line-height: 1.08;
+          margin: 12px 0 18px;
+        }
+
+        .plans-heading p {
+          line-height: 1.7;
+          opacity: 0.7;
+        }
+
+        .plans-grid {
+          display: grid;
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 18px;
+        }
+
+        .plan-card {
+          position: relative;
+
+          padding: 30px 25px;
+
+          border-radius: 25px;
+
+          border:
+            1px solid
+            rgba(128, 128, 128, 0.16);
+
+          background:
+            rgba(128, 128, 128, 0.055);
+
+          transition:
+            transform 0.28s ease,
+            border-color 0.28s ease,
+            box-shadow 0.28s ease;
+        }
+
+        .plan-card:hover {
+          transform: translateY(-7px);
+          border-color:
+            rgba(0, 217, 255, 0.3);
+        }
+
+        .plan-card.popular {
+          border-color:
+            rgba(0, 217, 255, 0.5);
+
+          box-shadow:
+            0 20px 55px
+            rgba(0, 217, 255, 0.09);
+        }
+
+        .popular-badge {
+          position: absolute;
+
+          top: 14px;
+          right: 14px;
+
+          padding: 5px 9px;
+
+          border-radius: 999px;
+
+          font-size: 8px;
+          font-weight: 900;
+          letter-spacing: 0.6px;
+
+          color: #ffffff;
+
+          background:
+            linear-gradient(
+              135deg,
+              #00a9d1,
+              #2563eb
+            );
+        }
+
+        .plan-icon {
+          width: 48px;
+          height: 48px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 15px;
+
+          color: #00c7ed;
+
+          background:
+            rgba(0, 217, 255, 0.08);
+
+          margin-bottom: 18px;
+        }
+
+        .plan-card h3 {
+          font-size: 23px;
+          margin: 0 0 12px;
+        }
+
+        .plan-price {
+          display: flex;
+          align-items: baseline;
+          gap: 5px;
+          margin-bottom: 15px;
+        }
+
+        .plan-price strong {
+          font-size: 31px;
+        }
+
+        .plan-price span {
+          font-size: 12px;
+          opacity: 0.55;
+        }
+
+        .plan-description {
+          min-height: 65px;
+
+          font-size: 13px;
+          line-height: 1.65;
+          opacity: 0.68;
+        }
+
+        .plan-features {
+          margin:
+            20px
+            0
+            24px;
+
+          padding: 0;
+          list-style: none;
+        }
+
+        .plan-features li {
+          display: flex;
+          gap: 9px;
+          align-items: flex-start;
+
+          font-size: 13px;
+          line-height: 1.5;
+
+          margin-bottom: 11px;
+
+          opacity: 0.8;
+        }
+
+        .plan-features svg {
+          flex-shrink: 0;
+          color: #00c7ed;
+          margin-top: 2px;
+        }
+
+        .plan-button {
+          width: 100%;
+
+          padding: 12px 15px;
+
+          border-radius: 13px;
+
+          border:
+            1px solid
+            rgba(0, 217, 255, 0.25);
+
+          background:
+            rgba(0, 217, 255, 0.06);
+
+          color: inherit;
+
+          cursor: pointer;
+
+          font-weight: 750;
+
+          transition:
+            background 0.2s ease,
+            transform 0.2s ease;
+        }
+
+        .plan-button:hover {
+          background:
+            rgba(0, 217, 255, 0.13);
+
+          transform: translateY(-1px);
+        }
+
+        /* ======================================================
+           SUPPORT
+        ====================================================== */
+
+        .support-section {
+          padding:
+            105px
+            clamp(20px, 6vw, 90px);
+        }
+
+        .support-container {
+          max-width: 1180px;
+          margin: auto;
+        }
+
+        .support-heading {
+          max-width: 700px;
+          margin-bottom: 48px;
+        }
+
+        .support-heading h2 {
+          font-size:
+            clamp(32px, 4vw, 52px);
+
+          line-height: 1.08;
+          margin: 12px 0 18px;
+        }
+
+        .support-heading p {
+          line-height: 1.75;
+          opacity: 0.7;
+        }
+
+        .support-grid {
+          display: grid;
+          grid-template-columns:
+            repeat(5, minmax(0, 1fr));
+
+          gap: 14px;
+        }
+
+        .support-card {
+          padding: 24px 20px;
+
+          min-height: 215px;
+
+          border-radius: 21px;
+
+          border:
+            1px solid
+            rgba(128, 128, 128, 0.15);
+
+          background:
+            rgba(128, 128, 128, 0.05);
+
+          text-decoration: none;
+          color: inherit;
+
+          transition:
+            transform 0.25s ease,
+            border-color 0.25s ease,
+            background 0.25s ease;
+        }
+
+        .support-card:hover {
+          transform: translateY(-6px);
+
+          border-color:
+            rgba(0, 217, 255, 0.35);
+
+          background:
+            rgba(0, 217, 255, 0.055);
+        }
+
+        .support-card-icon {
+          width: 45px;
+          height: 45px;
+
+          border-radius: 14px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          color: #00c7ed;
+
+          background:
+            rgba(0, 217, 255, 0.08);
+
+          margin-bottom: 18px;
+        }
+
+        .support-card h3 {
+          font-size: 17px;
+          margin-bottom: 9px;
+        }
+
+        .support-card p {
+          font-size: 12px;
+          line-height: 1.65;
+          opacity: 0.64;
+        }
+
+        .support-card strong {
+          display: block;
+          margin-top: 12px;
+
+          font-size: 12px;
+
+          word-break: break-word;
+        }
+
+        /* ======================================================
+           TEAM
+        ====================================================== */
+
+        .team-section {
+          padding:
+            100px
+            clamp(20px, 6vw, 90px);
+
+          background:
+            rgba(128, 128, 128, 0.025);
+        }
+
+        .team-container {
+          max-width: 1180px;
+          margin: auto;
+        }
+
+        .team-heading {
+          max-width: 730px;
+          margin-bottom: 45px;
+        }
+
+        .team-heading h2 {
+          font-size:
+            clamp(32px, 4vw, 52px);
+
+          line-height: 1.08;
+          margin: 12px 0 18px;
+        }
+
+        .team-heading p {
+          line-height: 1.7;
+          opacity: 0.7;
+        }
+
+        .team-grid {
+          display: grid;
+
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 16px;
+        }
+
+        .team-card {
+          padding: 24px;
+
+          min-height: 160px;
+
+          border-radius: 20px;
+
+          border:
+            1px solid
+            rgba(128, 128, 128, 0.15);
+
+          background:
+            rgba(128, 128, 128, 0.05);
+
+          transition:
+            transform 0.25s ease,
+            border-color 0.25s ease;
+        }
+
+        .team-card:hover {
+          transform: translateY(-5px);
+
+          border-color:
+            rgba(0, 217, 255, 0.3);
+        }
+
+        .team-icon {
+          width: 43px;
+          height: 43px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          border-radius: 13px;
+
+          color: #00c7ed;
+
+          background:
+            rgba(0, 217, 255, 0.08);
+
+          margin-bottom: 18px;
+        }
+
+        .team-card h3 {
+          font-size: 16px;
+          margin-bottom: 8px;
+        }
+
+        .team-card p {
+          font-size: 11px;
+          line-height: 1.5;
+          opacity: 0.58;
+        }
+
+        /* ======================================================
+           RESPONSIVE
+        ====================================================== */
+
+        @media (max-width: 1100px) {
+          .systems-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .plans-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .support-grid {
+            grid-template-columns:
+              repeat(3, minmax(0, 1fr));
+          }
+
+          .team-grid {
+            grid-template-columns:
+              repeat(3, minmax(0, 1fr));
+          }
+        }
 
         @media (max-width: 900px) {
           .knowledge-nav-wrapper {
@@ -650,17 +1783,35 @@ function Login() {
 
           .knowledge-nav-button {
             width: 100%;
-
             justify-content: center;
-
             min-height: 44px;
-
-            padding: 10px 14px;
           }
 
           .knowledge-trending-badge {
             top: 3px;
             right: 12px;
+          }
+
+          .company-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .company-symbol {
+            min-height: 300px;
+          }
+
+          .support-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .team-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+          }
+
+          .company-meta {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -679,13 +1830,34 @@ function Login() {
           .antimate-ai-text-login {
             font-size: 16px;
           }
+
+          .systems-grid,
+          .plans-grid,
+          .support-grid,
+          .team-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .company-section,
+          .systems-section,
+          .plans-section,
+          .support-section,
+          .team-section {
+            padding-top: 75px;
+            padding-bottom: 75px;
+          }
+
+          .plan-description {
+            min-height: auto;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
           .antimate-ai-float-login,
           .antimate-ai-float-login::before,
           .antimate-ai-ring-login::before,
-          .knowledge-trending-badge {
+          .knowledge-trending-badge,
+          .company-symbol::before {
             animation: none;
           }
         }
@@ -704,7 +1876,7 @@ function Login() {
         <div className="background-orb orb-two" />
 
         {/* =====================================================
-            FIXED HEADER
+            HEADER
         ===================================================== */}
 
         <header className="login-navbar">
@@ -715,16 +1887,9 @@ function Login() {
 
             <div>
               <strong>ANTIMATE</strong>
-
-              <span>
-                SMART FARMING
-              </span>
+              <span>SMART FARMING</span>
             </div>
           </div>
-
-          {/* ===================================================
-              NAVIGATION
-          =================================================== */}
 
           <nav
             className={
@@ -733,109 +1898,114 @@ function Login() {
                 : "navigation"
             }
           >
-            <a
-              href="#home"
+            <button
+              type="button"
+              className="nav-scroll-button"
               onClick={() =>
-                setMobileMenu(false)
+                scrollToSection("home")
               }
             >
               {t.navHome}
-            </a>
+            </button>
 
-            <a
-              href="#features"
+            <button
+              type="button"
+              className="nav-scroll-button"
               onClick={() =>
-                setMobileMenu(false)
+                scrollToSection("features")
               }
             >
               {t.navHow}
-            </a>
+            </button>
 
-            <a
-              href="#vision"
+            <button
+              type="button"
+              className="nav-scroll-button"
               onClick={() =>
-                setMobileMenu(false)
+                scrollToSection("systems")
+              }
+            >
+              {t.navSystems}
+            </button>
+
+            <button
+              type="button"
+              className="nav-scroll-button"
+              onClick={() =>
+                scrollToSection("plans")
+              }
+            >
+              {t.navPlans}
+            </button>
+
+            <button
+              type="button"
+              className="nav-scroll-button"
+              onClick={() =>
+                scrollToSection("support")
+              }
+            >
+              {t.navSupport}
+            </button>
+
+            <button
+              type="button"
+              className="nav-scroll-button"
+              onClick={() =>
+                scrollToSection("team")
+              }
+            >
+              {t.navTeam}
+            </button>
+
+            <button
+              type="button"
+              className="nav-scroll-button"
+              onClick={() =>
+                scrollToSection("vision")
               }
             >
               {t.navVision}
-            </a>
-
-            {/* ===============================================
-                KNOWLEDGE CENTER BUTTON
-            =============================================== */}
+            </button>
 
             <div className="knowledge-nav-wrapper">
               <button
                 type="button"
                 className="knowledge-nav-button"
-                onClick={
-                  openKnowledgeCenter
-                }
-                aria-label={
-                  t.knowledge
-                }
-                title={
-                  t.knowledge
-                }
+                onClick={openKnowledgeCenter}
               >
-                <BookOpen
-                  size={16}
-                  strokeWidth={2.2}
-                />
-
-                <span>
-                  {t.knowledge}
-                </span>
+                <BookOpen size={16} />
+                <span>{t.knowledge}</span>
               </button>
-
-              {/* TRENDING */}
 
               <span className="knowledge-trending-badge">
                 <TrendingUp
                   size={9}
                   strokeWidth={3}
                 />
-
                 {t.trending}
               </span>
             </div>
 
-            {/* ===============================================
-                LOGIN
-            =============================================== */}
-
             <button
               onClick={() => {
                 setShowLogin(true);
-                setMobileMenu(false);
+                closeMobileMenu();
               }}
               className="nav-login"
             >
               {t.login}
             </button>
 
-            {/* ===============================================
-                SIGNUP
-            =============================================== */}
-
             <Link
               to="/signup"
               className="nav-signup"
-              onClick={() =>
-                setMobileMenu(false)
-              }
+              onClick={closeMobileMenu}
             >
               {t.signup}
-
-              <ArrowRight
-                size={15}
-              />
+              <ArrowRight size={15} />
             </Link>
           </nav>
-
-          {/* =================================================
-              NAVBAR TOOLS
-          ================================================= */}
 
           <div className="navbar-tools">
             <button
@@ -857,16 +2027,9 @@ function Login() {
             <button
               className="theme-button"
               onClick={() =>
-                setDarkMode(
-                  !darkMode
-                )
+                setDarkMode(!darkMode)
               }
               aria-label="Toggle theme"
-              title={
-                darkMode
-                  ? "Switch to light mode"
-                  : "Switch to dark mode"
-              }
             >
               {darkMode ? (
                 <Sun size={17} />
@@ -878,9 +2041,7 @@ function Login() {
             <button
               className="mobile-menu-button"
               onClick={() =>
-                setMobileMenu(
-                  !mobileMenu
-                )
+                setMobileMenu(!mobileMenu)
               }
               aria-label="Toggle menu"
             >
@@ -909,36 +2070,20 @@ function Login() {
             <div className="hero-content">
               <div className="hero-badge">
                 <Sparkles size={15} />
-
                 {t.eyebrow}
               </div>
 
               <h1>
                 {t.title1}
-
                 <br />
-
-                <span>
-                  {t.title2}
-                </span>
+                <span>{t.title2}</span>
               </h1>
 
               <div className="animated-words">
-                <span>
-                  Ubworozi bwiza.
-                </span>
-
-                <span>
-                  Ikoranabuhanga ryoroshye.
-                </span>
-
-                <span>
-                  Umusaruro mwiza.
-                </span>
-
-                <span>
-                  Ejo hazaza heza.
-                </span>
+                <span>Ubworozi bwiza.</span>
+                <span>Ikoranabuhanga ryoroshye.</span>
+                <span>Umusaruro mwiza.</span>
+                <span>Ejo hazaza heza.</span>
               </div>
 
               <p className="hero-description">
@@ -953,44 +2098,32 @@ function Login() {
                   }
                 >
                   {t.start}
-
-                  <ArrowRight
-                    size={18}
-                  />
+                  <ArrowRight size={18} />
                 </button>
 
-                <a
-                  href="#features"
+                <button
+                  type="button"
                   className="secondary-button"
+                  onClick={() =>
+                    scrollToSection("systems")
+                  }
                 >
                   {t.learn}
-                </a>
+                </button>
               </div>
 
               <div className="hero-trust">
                 <div>
-                  <ShieldCheck
-                    size={17}
-                  />
-
-                  <span>
-                    {t.live}
-                  </span>
+                  <ShieldCheck size={17} />
+                  <span>{t.live}</span>
                 </div>
 
                 <div>
                   <Leaf size={17} />
-
-                  <span>
-                    {t.smart}
-                  </span>
+                  <span>{t.smart}</span>
                 </div>
               </div>
             </div>
-
-            {/* =================================================
-                HERO VISUAL
-            ================================================= */}
 
             <div className="hero-visual">
               <div className="visual-glow" />
@@ -1008,13 +2141,8 @@ function Login() {
                 </div>
 
                 <div>
-                  <span>
-                    Farm conditions
-                  </span>
-
-                  <strong>
-                    Healthy
-                  </strong>
+                  <span>Farm conditions</span>
+                  <strong>Healthy</strong>
                 </div>
               </div>
 
@@ -1024,18 +2152,12 @@ function Login() {
                 </div>
 
                 <div>
-                  <span>
-                    ANTIMATE
-                  </span>
-
-                  <strong>
-                    Smart insights
-                  </strong>
+                  <span>ANTIMATE</span>
+                  <strong>Smart insights</strong>
                 </div>
               </div>
 
               <div className="floating-circle circle-one" />
-
               <div className="floating-circle circle-two" />
             </div>
           </section>
@@ -1049,45 +2171,403 @@ function Login() {
             className="features-section"
           >
             <div className="section-heading">
-              <span>
-                ANTIMATE
-              </span>
+              <span>ANTIMATE</span>
 
-              <h2>
-                {t.featuresTitle}
-              </h2>
+              <h2>{t.featuresTitle}</h2>
             </div>
 
             <div className="feature-grid">
               <Feature
                 icon={<Wifi />}
-                title={
-                  t.feature1Title
-                }
-                text={
-                  t.feature1Text
-                }
+                title={t.feature1Title}
+                text={t.feature1Text}
               />
 
               <Feature
                 icon={<Brain />}
-                title={
-                  t.feature2Title
-                }
-                text={
-                  t.feature2Text
-                }
+                title={t.feature2Title}
+                text={t.feature2Text}
               />
 
               <Feature
                 icon={<LineChart />}
-                title={
-                  t.feature3Title
-                }
-                text={
-                  t.feature3Text
-                }
+                title={t.feature3Title}
+                text={t.feature3Text}
               />
+            </div>
+          </section>
+
+          {/* ===================================================
+              SYSTEMS
+          =================================================== */}
+
+          <section
+            id="systems"
+            className="systems-section"
+          >
+            <div className="systems-container">
+              <div className="systems-intro">
+                <div className="small-heading">
+                  <Sparkles size={17} />
+                  {t.systemsEyebrow}
+                </div>
+
+                <h2>{t.systemsTitle}</h2>
+
+                <p>{t.systemsText}</p>
+              </div>
+
+              <div className="systems-grid">
+                <SystemCard
+                  icon={<Leaf />}
+                  title={t.system1Title}
+                  text={t.system1Text}
+                />
+
+                <SystemCard
+                  icon={<Wifi />}
+                  title={t.system2Title}
+                  text={t.system2Text}
+                />
+
+                <SystemCard
+                  icon={<Cloud />}
+                  title={t.system3Title}
+                  text={t.system3Text}
+                />
+
+                <SystemCard
+                  icon={<Bot />}
+                  title={t.system4Title}
+                  text={t.system4Text}
+                  onClick={openAI}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================
+              PLANS
+          =================================================== */}
+
+          <section
+            id="plans"
+            className="plans-section"
+          >
+            <div className="plans-container">
+              <div className="plans-heading">
+                <div className="small-heading">
+                  <TrendingUp size={17} />
+                  {t.plansEyebrow}
+                </div>
+
+                <h2>{t.plansTitle}</h2>
+
+                <p>{t.plansText}</p>
+              </div>
+
+              <div className="plans-grid">
+                {plans.map((plan, index) => (
+                  <div
+                    key={plan.name}
+                    className={`plan-card ${
+                      plan.popular
+                        ? "popular"
+                        : ""
+                    }`}
+                  >
+                    {plan.popular && (
+                      <div className="popular-badge">
+                        {t.mostPopular}
+                      </div>
+                    )}
+
+                    <div className="plan-icon">
+                      {plan.icon}
+                    </div>
+
+                    <h3>{plan.name}</h3>
+
+                    <div className="plan-price">
+                      <strong>
+                        {plan.price}
+                      </strong>
+
+                      <span>
+                        FRW {t.perMonth}
+                      </span>
+                    </div>
+
+                    <p className="plan-description">
+                      {plan.description}
+                    </p>
+
+                    <ul className="plan-features">
+                      {plan.features.map(
+                        (feature) => (
+                          <li key={feature}>
+                            <Check
+                              size={15}
+                              strokeWidth={2.5}
+                            />
+                            <span>
+                              {feature}
+                            </span>
+                          </li>
+                        )
+                      )}
+                    </ul>
+
+                    <button
+                      type="button"
+                      className="plan-button"
+                      onClick={() => {
+                        setOpenPlan(index);
+
+                        if (
+                          plan.name ===
+                          t.free
+                        ) {
+                          setShowLogin(true);
+                        }
+                      }}
+                    >
+                      {plan.name === t.free
+                        ? t.start
+                        : t.choosePlan}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================
+              SUPPORT
+          =================================================== */}
+
+          <section
+            id="support"
+            className="support-section"
+          >
+            <div className="support-container">
+              <div className="support-heading">
+                <div className="small-heading">
+                  <Headphones size={17} />
+                  {t.supportEyebrow}
+                </div>
+
+                <h2>{t.supportTitle}</h2>
+
+                <p>{t.supportText}</p>
+              </div>
+
+              <div className="support-grid">
+                <button
+                  type="button"
+                  className="support-card"
+                  onClick={openAI}
+                >
+                  <div className="support-card-icon">
+                    <Bot />
+                  </div>
+
+                  <h3>{t.aiSupport}</h3>
+
+                  <p>
+                    {t.aiSupportText}
+                  </p>
+
+                  <strong>
+                    ANTIMATE AI
+                  </strong>
+                </button>
+
+                <a
+                  className="support-card"
+                  href="tel:+250798698431"
+                >
+                  <div className="support-card-icon">
+                    <Phone />
+                  </div>
+
+                  <h3>
+                    {t.phoneSupport}
+                  </h3>
+
+                  <p>
+                    {t.phoneSupportText}
+                  </p>
+
+                  <strong>
+                    +250 798 698 431
+                  </strong>
+                </a>
+
+                <a
+                  className="support-card"
+                  href="https://wa.me/250798698431"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div className="support-card-icon">
+                    <MessageCircle />
+                  </div>
+
+                  <h3>
+                    {t.whatsappSupport}
+                  </h3>
+
+                  <p>
+                    {t.whatsappSupportText}
+                  </p>
+
+                  <strong>
+                    +250 798 698 431
+                  </strong>
+                </a>
+
+                <a
+                  className="support-card"
+                  href="mailto:antimate.inc@gmai.com"
+                >
+                  <div className="support-card-icon">
+                    <Mail />
+                  </div>
+
+                  <h3>{t.emailSupport}</h3>
+
+                  <p>
+                    {t.emailSupportText}
+                  </p>
+
+                  <strong>
+                    antimate.inc@gmai.com
+                  </strong>
+                </a>
+
+                <button
+                  type="button"
+                  className="support-card"
+                  onClick={() =>
+                    navigate("/chat-room")
+                  }
+                >
+                  <div className="support-card-icon">
+                    <Globe />
+                  </div>
+
+                  <h3>
+                    {t.webChatSupport}
+                  </h3>
+
+                  <p>
+                    {t.webChatSupportText}
+                  </p>
+
+                  <strong>
+                    {t.supportButton}
+                  </strong>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================
+              ABOUT ANTIMATE
+          =================================================== */}
+
+          <section className="company-section">
+            <div className="company-grid">
+              <div className="company-content">
+                <div className="small-heading">
+                  <Building2 size={17} />
+                  {t.companyEyebrow}
+                </div>
+
+                <h2>{t.companyTitle}</h2>
+
+                <p>{t.companyText}</p>
+
+                <div className="company-meta">
+                  <div className="company-meta-card">
+                    <MapPin size={20} />
+                    <strong>
+                      {t.location}
+                    </strong>
+                    <span>Rwanda</span>
+                  </div>
+
+                  <div className="company-meta-card">
+                    <CalendarDays size={20} />
+                    <strong>
+                      {t.since}
+                    </strong>
+                    <span>
+                      ANTIMATE
+                    </span>
+                  </div>
+
+                  <div className="company-meta-card">
+                    <Headphones size={20} />
+                    <strong>
+                      {t.openDays}
+                    </strong>
+                    <span>
+                      Support available
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="company-symbol">
+                <div className="company-symbol-inner">
+                  <AntimateLogo size={95} />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===================================================
+              TEAM
+          =================================================== */}
+
+          <section
+            id="team"
+            className="team-section"
+          >
+            <div className="team-container">
+              <div className="team-heading">
+                <div className="small-heading">
+                  <Users size={17} />
+                  {t.teamEyebrow}
+                </div>
+
+                <h2>{t.teamTitle}</h2>
+
+                <p>{t.teamText}</p>
+              </div>
+
+              <div className="team-grid">
+                {team.map((member) => (
+                  <div
+                    className="team-card"
+                    key={member.name}
+                  >
+                    <div className="team-icon">
+                      {member.icon}
+                    </div>
+
+                    <h3>
+                      {member.name}
+                    </h3>
+
+                    <p>
+                      {member.role}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -1108,45 +2588,33 @@ function Login() {
 
             <div className="vision-content">
               <div className="small-heading">
-                <HeartHandshake
-                  size={17}
-                />
-
+                <HeartHandshake size={17} />
                 OUR PURPOSE
               </div>
 
-              <h2>
-                {t.visionTitle}
-              </h2>
+              <h2>{t.visionTitle}</h2>
 
-              <p>
-                {t.visionText}
-              </p>
+              <p>{t.visionText}</p>
 
               <div className="vision-points">
                 <div>
                   <Cloud size={18} />
-
                   <span>
-                    Simple technology
+                    {t.simpleTech}
                   </span>
                 </div>
 
                 <div>
-                  <ShieldCheck
-                    size={18}
-                  />
-
+                  <ShieldCheck size={18} />
                   <span>
-                    Reliable information
+                    {t.reliableInfo}
                   </span>
                 </div>
 
                 <div>
                   <Lock size={18} />
-
                   <span>
-                    Secure platform
+                    {t.securePlatform}
                   </span>
                 </div>
               </div>
@@ -1161,23 +2629,16 @@ function Login() {
             <div className="join-content">
               <Sparkles size={28} />
 
-              <h2>
-                {t.joinTitle}
-              </h2>
+              <h2>{t.joinTitle}</h2>
 
-              <p>
-                {t.joinText}
-              </p>
+              <p>{t.joinText}</p>
 
               <Link
                 to="/signup"
                 className="primary-button"
               >
                 {t.signup}
-
-                <ArrowRight
-                  size={18}
-                />
+                <ArrowRight size={18} />
               </Link>
             </div>
           </section>
@@ -1187,9 +2648,10 @@ function Login() {
             PUBLIC ANTIMATE AI
         ===================================================== */}
 
-        <Link
-          to="/antimate-ai"
+        <button
+          type="button"
           className="antimate-ai-float-login"
+          onClick={openAI}
           aria-label="Open ANTIMATE AI"
           title="ANTIMATE AI"
         >
@@ -1200,7 +2662,7 @@ function Login() {
               </span>
             </div>
           </div>
-        </Link>
+        </button>
 
         {/* =====================================================
             FOOTER
@@ -1209,15 +2671,27 @@ function Login() {
         <footer className="login-footer">
           <div className="footer-brand">
             <AntimateLogo size={30} />
-
-            <strong>
-              ANTIMATE
-            </strong>
+            <strong>ANTIMATE</strong>
           </div>
 
-          <p>
-            {t.footer}
-          </p>
+          <p>{t.footer}</p>
+
+          <div className="footer-contact">
+            <span>
+              <MapPin size={13} />
+              Kigali, Rwanda
+            </span>
+
+            <span>
+              <Phone size={13} />
+              +250 798 698 431
+            </span>
+
+            <span>
+              <Mail size={13} />
+              antimate.inc@gmai.com
+            </span>
+          </div>
         </footer>
 
         {/* =====================================================
@@ -1248,28 +2722,16 @@ function Login() {
               </button>
 
               <div className="modal-logo">
-                <AntimateLogo
-                  size={42}
-                />
+                <AntimateLogo size={42} />
               </div>
 
-              <h2>
-                {t.loginTitle}
-              </h2>
+              <h2>{t.loginTitle}</h2>
 
               <p className="modal-subtitle">
                 {t.loginSubtitle}
               </p>
 
-              <form
-                onSubmit={
-                  handleLogin
-                }
-              >
-                {/* =========================================
-                    IDENTIFIER
-                ========================================= */}
-
+              <form onSubmit={handleLogin}>
                 <div className="input-group">
                   <label>
                     {t.identifier}
@@ -1280,9 +2742,7 @@ function Login() {
                     placeholder={
                       t.identifierPlaceholder
                     }
-                    value={
-                      identifier
-                    }
+                    value={identifier}
                     onChange={(e) =>
                       setIdentifier(
                         e.target.value
@@ -1291,10 +2751,6 @@ function Login() {
                     required
                   />
                 </div>
-
-                {/* =========================================
-                    PASSWORD
-                ========================================= */}
 
                 <div className="input-group">
                   <label>
@@ -1311,9 +2767,7 @@ function Login() {
                       placeholder={
                         t.passwordPlaceholder
                       }
-                      value={
-                        password
-                      }
+                      value={password}
                       onChange={(e) =>
                         setPassword(
                           e.target.value
@@ -1336,31 +2790,19 @@ function Login() {
                       }
                     >
                       {showPassword ? (
-                        <EyeOff
-                          size={18}
-                        />
+                        <EyeOff size={18} />
                       ) : (
-                        <Eye
-                          size={18}
-                        />
+                        <Eye size={18} />
                       )}
                     </button>
                   </div>
                 </div>
-
-                {/* =========================================
-                    ERROR
-                ========================================= */}
 
                 {message && (
                   <div className="login-error">
                     {message}
                   </div>
                 )}
-
-                {/* =========================================
-                    LOGIN BUTTON
-                ========================================= */}
 
                 <button
                   type="submit"
@@ -1372,26 +2814,17 @@ function Login() {
                   ) : (
                     <>
                       {t.signIn}
-
-                      <ArrowRight
-                        size={17}
-                      />
+                      <ArrowRight size={17} />
                     </>
                   )}
                 </button>
               </form>
 
-              {/* =========================================
-                  MODAL FOOTER
-              ========================================= */}
-
               <div className="modal-bottom">
                 <Link
                   to="/forgot-password"
                   onClick={() =>
-                    setShowLogin(
-                      false
-                    )
+                    setShowLogin(false)
                   }
                 >
                   {t.forgot}
@@ -1399,13 +2832,10 @@ function Login() {
 
                 <span>
                   {t.noAccount}{" "}
-
                   <Link
                     to="/signup"
                     onClick={() =>
-                      setShowLogin(
-                        false
-                      )
+                      setShowLogin(false)
                     }
                   >
                     {t.create}
@@ -1421,7 +2851,7 @@ function Login() {
 }
 
 // ============================================================
-// FEATURE COMPONENT
+// FEATURE
 // ============================================================
 
 function Feature({
@@ -1435,15 +2865,48 @@ function Feature({
         {icon}
       </div>
 
-      <h3>
-        {title}
-      </h3>
+      <h3>{title}</h3>
 
-      <p>
-        {text}
-      </p>
+      <p>{text}</p>
 
       <div className="feature-line" />
+    </div>
+  );
+}
+
+// ============================================================
+// SYSTEM CARD
+// ============================================================
+
+function SystemCard({
+  icon,
+  title,
+  text,
+  onClick,
+}) {
+  return (
+    <div
+      className="system-card"
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (
+          onClick &&
+          (e.key === "Enter" ||
+            e.key === " ")
+        ) {
+          onClick();
+        }
+      }}
+    >
+      <div className="system-icon">
+        {icon}
+      </div>
+
+      <h3>{title}</h3>
+
+      <p>{text}</p>
     </div>
   );
 }

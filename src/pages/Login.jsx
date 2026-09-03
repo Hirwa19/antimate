@@ -2299,8 +2299,8 @@ function Login() {
 
               <div className="farm-image">
                 <img
-                  src="https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=900&q=85"
-                  alt="Chickens on a farm"
+                  src="https://stock.adobe.com/images/the-scene-shows-cell-towers-in-a-rural-setting-at-sunset-signals-from-the-towers-connect-various-locations-across-the-hills-the-sky-has-warm-colors-and-the-landscape-is-green-and-lush/1977706818"
+                  alt="Stay Connected Any where"
                 />
               </div>
 

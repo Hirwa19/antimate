@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { loginUser } from "../services/authService";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  Bot,
   Brain,
+  Check,
+  ChevronDown,
+  ChevronUp,
   Cloud,
-  Eye,
-  EyeOff,
+  Globe2,
+  Headphones,
   Leaf,
   LineChart,
+  Lock,
+  Mail,
   Menu,
   MessageCircle,
-  Moon,
   Network,
   Phone,
   Play,
+  Rocket,
   Send,
-  Server,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -24,152 +28,222 @@ import {
   Users,
   X,
   Zap,
-  Mail,
-  Check,
-  ChevronDown,
-  Globe,
-  Bot,
-  Radio,
-  BarChart3,
-  Headphones,
-  MapPin,
-  Clock3,
-  Cpu,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+
+import { loginUser } from "../services/authService";
 import "./Login.css";
 
-const AntimateLogo = ({ size = 48 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 100 100"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="antimate-logo"
-  >
-    <defs>
-      <linearGradient id="antimateGradient" x1="10" y1="10" x2="90" y2="90">
-        <stop offset="0%" stopColor="#00B7FF" />
-        <stop offset="50%" stopColor="#4169E1" />
-        <stop offset="100%" stopColor="#7C3AED" />
-      </linearGradient>
-    </defs>
+/* ============================================================
+   ANTIMATE LOGIN / PUBLIC LANDING PAGE
+   ============================================================
 
-    <circle
-      cx="50"
-      cy="50"
-      r="39"
-      stroke="url(#antimateGradient)"
-      strokeWidth="8"
-    />
+   ANTIMATE
+   Advanced Networked Technology With Intelligent Machines
+   And Telemetry Ecosystem
 
-    <path
-      d="M30 67L39 34C40 30 46 30 47 34L50 46L53 34C54 30 60 30 61 34L70 67"
-      stroke="url(#antimateGradient)"
-      strokeWidth="8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+   Public experience:
+   - RW / EN
+   - Light / Dark
+   - Animated hero
+   - ANTIMATE systems
+   - Plans
+   - Support
+   - Team
+   - Login
+   - Public ANTIMATE AI
+   ============================================================ */
 
-    <circle cx="50" cy="50" r="5" fill="url(#antimateGradient)" />
-  </svg>
-);
 
-const content = {
+/* ============================================================
+   ANTIMATE LOGO
+   ============================================================ */
+
+const AntimateLogo = ({ small = false }) => {
+  return (
+    <div className={`antimate-logo ${small ? "small" : ""}`}>
+      <svg
+        className="antimate-logo-mark"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient
+            id="antimateLogoGradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="#1677ff" />
+            <stop offset="50%" stopColor="#00b8ff" />
+            <stop offset="100%" stopColor="#6b4cff" />
+          </linearGradient>
+        </defs>
+
+        <path
+          d="M50 7C26.25 7 7 26.25 7 50s19.25 43 43 43 43-19.25 43-43S73.75 7 50 7Z"
+          fill="none"
+          stroke="url(#antimateLogoGradient)"
+          strokeWidth="8"
+        />
+
+        <path
+          d="M31 63c7-18 14-27 19-27 6 0 12 9 19 27"
+          fill="none"
+          stroke="url(#antimateLogoGradient)"
+          strokeWidth="7"
+          strokeLinecap="round"
+        />
+
+        <circle
+          cx="50"
+          cy="36"
+          r="5"
+          fill="url(#antimateLogoGradient)"
+        />
+
+        <circle
+          cx="31"
+          cy="63"
+          r="4"
+          fill="url(#antimateLogoGradient)"
+        />
+
+        <circle
+          cx="69"
+          cy="63"
+          r="4"
+          fill="url(#antimateLogoGradient)"
+        />
+      </svg>
+
+      <div className="antimate-logo-text">
+        <strong>ANTIMATE</strong>
+        <span>Intelligent Technology</span>
+      </div>
+    </div>
+  );
+};
+
+
+/* ============================================================
+   ANTIMATE AI O-SHAPED ICON
+   IMPORTANT:
+   Keep this concept consistent with the AI icon used elsewhere.
+   ============================================================ */
+
+const AntimateAIIcon = ({ size = "normal" }) => {
+  return (
+    <div className={`ai-orb ai-orb-${size}`}>
+      <div className="ai-orb-ring ring-one" />
+      <div className="ai-orb-ring ring-two" />
+      <div className="ai-orb-ring ring-three" />
+
+      <div className="ai-orb-core">
+        <div className="ai-orb-inner" />
+      </div>
+
+      <span className="ai-orb-dot dot-one" />
+      <span className="ai-orb-dot dot-two" />
+      <span className="ai-orb-dot dot-three" />
+    </div>
+  );
+};
+
+
+/* ============================================================
+   TRANSLATIONS
+   ============================================================ */
+
+const CONTENT = {
   rw: {
     nav: {
       home: "Ahabanza",
       about: "ANTIMATE",
-      solutions: "Ibisubizo",
+      systems: "Systems",
       plans: "Plans",
-      support: "Ubufasha",
+      support: "Support",
       knowledge: "Knowledge Center",
       login: "Injira",
       signup: "Iyandikishe",
     },
 
     hero: {
-      eyebrow: "SMARTER FUTURE • BUILT IN RWANDA",
-      title1: "Ubwenge.",
-      title2: "Ikoranabuhanga.",
-      title3: "Ejo hazaza.",
-      description:
-        "ANTIMATE ni ecosystem yubaka ibisubizo by'ikoranabuhanga bifasha abantu n'ubucuruzi gukora neza, kumenya byinshi no gufata ibyemezo bifite amakuru.",
-      button1: "Menya ANTIMATE",
-      button2: "Ganira na ANTIMATE AI",
-      trusted: "Yubakiwe Kigali, Rwanda",
-    },
-
-    about: {
-      eyebrow: "ABOUT ANTIMATE",
-      title: "Ikoranabuhanga rigomba kuba ryoroshye gukoresha.",
-      description:
-        "ANTIMATE ihuza ubwenge buhangano, amakuru, automation n'ibikoresho bya smart systems mu buryo bworoshye kandi bufatika.",
-      points: [
-        "Ibisubizo byubakiwe ibibazo nyabyo",
-        "AI iboneka igihe uyikeneye",
-        "Information imwe ahantu hamwe",
+      eyebrow: "THE INTELLIGENT TECHNOLOGY ECOSYSTEM",
+      title1: "Ikoranabuhanga",
+      words: [
+        "Ritekereza.",
+        "Rihuza.",
+        "Rifasha.",
+        "Riteza imbere.",
       ],
-    },
-
-    solutions: {
-      eyebrow: "OUR ECOSYSTEM",
-      title: "Ibisubizo bya ANTIMATE",
       description:
-        "Buri gice cya ANTIMATE gifite uruhare mu gufasha user kubona information, control n'ubufasha bwiza.",
+        "ANTIMATE ni ecosystem y'ikoranabuhanga yubakiye ku guhuza abantu, amakuru, systems n'ubwenge buhangano kugira ngo ibikorwa byawe birusheho kuba smart, byihuse kandi bifite umutekano.",
+      primary: "Menya ANTIMATE",
+      secondary: "Ganira na ANTIMATE AI",
     },
 
-    systems: [
-      {
-        icon: "ai",
+    company: {
+      since: "Kuva tariki 14 Mata 2026",
+      location: "Kigali, Rwanda",
+      open: "Dufungura iminsi yose",
+      title: "ANTIMATE ni iki?",
+      text:
+        "ANTIMATE ni urubuga rw'ikoranabuhanga ruhuza intelligent systems, data, cloud services n'ubwenge buhangano. Intego yacu ni ugukora technology yoroshya ubuzima kandi igafasha abantu n'ibigo gufata ibyemezo byiza.",
+    },
+
+    systems: {
+      eyebrow: "OUR ECOSYSTEM",
+      title: "Systems zakozwe kugira ngo zikore hamwe",
+      description:
+        "Buri system ya ANTIMATE ifite uruhare rwayo, ariko zose zikora nk'igice kimwe cya ecosystem.",
+      ai: {
         title: "ANTIMATE AI",
-        description:
-          "Umufasha w'ubwenge ushobora kugufasha kubaza, kwiga, gusesengura amakuru no kubona ibisubizo.",
-        tag: "INTELLIGENCE",
+        text:
+          "Umufasha w'ubwenge ushobora kugufasha kubona ibisubizo, gusobanukirwa amakuru no kubona guidance igihe uyikeneye.",
+        button: "Koresha AI",
       },
-      {
-        icon: "brooding",
+      brooding: {
         title: "ANTIMATE Smart Brooding",
-        description:
-          "Sisitemu ifasha mu gucunga no gukurikirana ibihe by'ingenzi mu burere bw'inkoko.",
-        tag: "SMART FARMING",
+        text:
+          "System ifasha mu micungire y'ubworozi bw'inkoko, ikagufasha gukurikirana imiterere y'aho inkoko zororerwa no kubona guidance.",
+        button: "Menya byinshi",
       },
-      {
-        icon: "cloud",
+      cloud: {
         title: "ANTIMATE Cloud",
-        description:
-          "Ahantu ho kubika no kurebera amakuru ya systems zawe kugira ngo uyageraho igihe icyo ari cyo cyose.",
-        tag: "CONNECTED",
+        text:
+          "Ahantu amakuru ya systems zawe abikwa kandi ukayageraho mu buryo bworoshye, aho waba uri hose.",
+        button: "Menya Cloud",
       },
-      {
-        icon: "link",
+      link: {
         title: "ANTIMATE Link",
-        description:
-          "Ihuza ibikoresho n'imikorere ya ANTIMATE kugira ngo amakuru n'ubuyobozi bigende neza.",
-        tag: "CONNECTIVITY",
+        text:
+          "Ikoranabuhanga rihuza devices na services za ANTIMATE kugira ngo amakuru abashe kugenda aho akenewe.",
+        button: "Menya Link",
       },
-    ],
+    },
 
     why: {
       eyebrow: "WHY ANTIMATE",
-      title: "Ntabwo twubaka technology gusa.",
-      description:
-        "Twubaka systems zifasha abantu kubona value nyayo mu ikoranabuhanga.",
-      cards: [
+      title: "Technology igenewe abantu",
+      items: [
         {
-          icon: Zap,
           title: "Smart",
-          text: "Systems zikoresha information kugira ngo ibikorwa birusheho gukora neza.",
+          text: "Dukoresha ubwenge n'amakuru kugira ngo technology ikorere umuntu.",
         },
         {
-          icon: ShieldCheck,
-          title: "Reliable",
-          text: "Dushyira imbere stability, security n'ubunararibonye bwiza kuri user.",
+          title: "Connected",
+          text: "Systems zacu zubakiye ku guhuza amakuru n'abantu.",
         },
         {
-          icon: Users,
-          title: "Human",
-          text: "Technology igomba kumvikana no gukoreshwa n'umuntu wese.",
+          title: "Accessible",
+          text: "Dushaka ko technology iba yoroshye gukoresha kuri buri wese.",
+        },
+        {
+          title: "Future Ready",
+          text: "Twubaka ecosystem ishobora gukura uko ibikorwa byawe bikura.",
         },
       ],
     },
@@ -178,49 +252,184 @@ const content = {
       eyebrow: "PLANS & PRICING",
       title: "Hitamo plan ijyanye nawe",
       description:
-        "Tangira ku byo ukeneye uyu munsi, uzamure plan igihe ibikorwa byawe byiyongera.",
+        "Tegura uburyo ushaka gukoresha ANTIMATE kandi uzamure plan yawe igihe ibikorwa byawe bikura.",
+      free: {
+        name: "Free",
+        price: "0 FRW",
+        description: "Gutangira no kumenya ANTIMATE.",
+        features: [
+          "Basic access",
+          "ANTIMATE experience",
+          "Knowledge Center",
+          "Public AI access",
+        ],
+      },
+      basic: {
+        name: "Basic",
+        price: "3,000 FRW",
+        description: "Ku muntu utangiye gukoresha services za ANTIMATE.",
+        features: [
+          "More features",
+          "System insights",
+          "Support",
+          "Improved access",
+        ],
+      },
+      pro: {
+        name: "Pro",
+        price: "7,000 FRW",
+        description: "Ku bakoresha ANTIMATE mu buryo bwagutse.",
+        features: [
+          "Advanced features",
+          "More insights",
+          "Priority support",
+          "Expanded experience",
+        ],
+      },
+      premium: {
+        name: "Premium",
+        price: "15,000 FRW",
+        description: "Experience yuzuye ku bikorwa bikomeye.",
+        features: [
+          "Premium experience",
+          "Advanced insights",
+          "Priority assistance",
+          "Full ecosystem experience",
+        ],
+      },
+      choose: "Hitamo iyi plan",
+      popular: "POPULAR",
     },
 
     support: {
       eyebrow: "ANTIMATE SUPPORT",
-      title: "Iyo ukeneye ubufasha, turi hafi.",
+      title: "Iyo ukeneye ubufasha, turi hafi",
       description:
-        "Waba ushaka kubaza AI, kuvugana natwe kuri WhatsApp, guhamagara, kohereza email cyangwa gukoresha web chat.",
+        "Waba ushaka kubaza AI, kuvugana natwe kuri phone, WhatsApp, email cyangwa web chat — ushobora kutugeraho.",
+      ai: "ANTIMATE AI",
+      phone: "Phone",
+      whatsapp: "WhatsApp",
+      email: "Email",
+      web: "Web Chat Room",
+      open: "Open all days",
+      contact: "Twandikire",
     },
 
     team: {
       eyebrow: "OUR PEOPLE",
-      title: "Abantu bari inyuma ya ANTIMATE",
+      title: "Itsinda riri inyuma ya ANTIMATE",
       description:
-        "Itsinda rihuza leadership, intelligence, development, cloud, marketing n'ubucuruzi.",
+        "ANTIMATE yubakwa n'abantu bafite inshingano zitandukanye ariko bahuje vision imwe.",
+      members: [
+        {
+          name: "HIRWA Salem",
+          role: "CEO — Chief Executive Officer",
+          area: "Leadership",
+        },
+        {
+          name: "CYUSA Chrispin",
+          role: "CAIO — Chief AI Officer",
+          area: "AI & Intelligence",
+        },
+        {
+          name: "DJUMA David",
+          role: "CDO — Chief Data Officer",
+          area: "Data & Cloud",
+        },
+        {
+          name: "ANTIMATE Team",
+          role: "CIO — Connectivity",
+          area: "Network & Communication",
+        },
+        {
+          name: "MUGISHA Prince",
+          role: "CTO — Technology",
+          area: "Product & Development",
+        },
+        {
+          name: "KWIZERA J.Bosco",
+          role: "CMO — Marketing",
+          area: "Marketing & Brand",
+        },
+        {
+          name: "MUGISHA Steven",
+          role: "Business Development",
+          area: "Partnerships & Growth",
+        },
+      ],
+    },
+
+    vision: {
+      eyebrow: "OUR VISION",
+      title: "Kubaka ejo hazaza h'ikoranabuhanga",
+      text:
+        "ANTIMATE ishaka kuba ecosystem y'ikoranabuhanga ifasha abantu n'ibigo gukoresha amakuru n'ubwenge mu buryo bufatika. Turashaka technology itari iy'abahanga gusa, ahubwo yoroshye, ifatika kandi iboneka ku muntu wese.",
+      points: [
+        "Intelligent systems",
+        "Human-centered technology",
+        "Connected ecosystem",
+      ],
+    },
+
+    faq: {
+      eyebrow: "FAQ",
+      title: "Ibibazo bikunze kubazwa",
+      questions: [
+        {
+          q: "ANTIMATE ikora iki?",
+          a:
+            "ANTIMATE ihuza intelligent technology, AI, data na connected systems kugira ngo ifashe abantu n'ibigo gukora neza no gufata ibyemezo bifite amakuru inyuma yabyo.",
+        },
+        {
+          q: "Nshobora gukoresha ANTIMATE AI ntarinjiye?",
+          a:
+            "Yego. ANTIMATE AI ifite public access ushobora gukoresha kugira ngo ubaze ibibazo kandi ubone assistance.",
+        },
+        {
+          q: "ANTIMATE Smart Brooding ni iki?",
+          a:
+            "Ni system yagenewe gufasha mu micungire y'ubworozi bw'inkoko, monitoring no kubona guidance ijyanye n'imimerere y'ubworozi.",
+        },
+        {
+          q: "Nabona nte support?",
+          a:
+            "Ushobora kutugeraho ukoresheje ANTIMATE AI, phone, WhatsApp, email cyangwa web chat room.",
+        },
+      ],
     },
 
     cta: {
-      title: "Witeguye gutangira?",
-      description:
-        "Injira muri ANTIMATE cyangwa utangire kuganira na ANTIMATE AI nonaha.",
-      button1: "Tangira nonaha",
-      button2: "Ganira na AI",
-    },
-
-    footer: {
-      description:
-        "ANTIMATE — Smart technology built to create useful solutions for a better future.",
-      rights: "All rights reserved.",
-      location: "Kigali, Rwanda",
-      open: "Open all days",
+      title: "Tangira gukoresha ANTIMATE",
+      text:
+        "Injira muri ecosystem yubakiye ku ikoranabuhanga, amakuru n'ubwenge.",
+      button: "Tangira ubu",
+      ai: "Ganira na AI",
     },
 
     login: {
-      title: "Murakaza neza",
-      subtitle: "Injira muri konti yawe ya ANTIMATE.",
+      title: "Murakaza neza kuri ANTIMATE",
+      subtitle: "Injira muri account yawe",
       email: "Email",
       password: "Password",
+      emailPlaceholder: "Andika email yawe",
+      passwordPlaceholder: "Andika password yawe",
+      remember: "Nyibuka",
       forgot: "Wibagiwe password?",
       button: "Injira",
-      noAccount: "Nta konti ufite?",
+      loading: "Turimo kwinjiza...",
+      noAccount: "Nta account ufite?",
       signup: "Iyandikishe",
       close: "Funga",
+      error: "Email cyangwa password ntabwo ari byo.",
+    },
+
+    footer: {
+      tagline:
+        "Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem.",
+      explore: "Explore",
+      company: "Company",
+      support: "Support",
+      rights: "All rights reserved.",
     },
   },
 
@@ -228,7 +437,7 @@ const content = {
     nav: {
       home: "Home",
       about: "ANTIMATE",
-      solutions: "Solutions",
+      systems: "Systems",
       plans: "Plans",
       support: "Support",
       knowledge: "Knowledge Center",
@@ -237,87 +446,79 @@ const content = {
     },
 
     hero: {
-      eyebrow: "SMARTER FUTURE • BUILT IN RWANDA",
-      title1: "Intelligence.",
-      title2: "Technology.",
-      title3: "Tomorrow.",
-      description:
-        "ANTIMATE is an intelligent technology ecosystem creating practical solutions that help people and businesses work smarter, understand more and make better decisions.",
-      button1: "Explore ANTIMATE",
-      button2: "Talk to ANTIMATE AI",
-      trusted: "Built in Kigali, Rwanda",
-    },
-
-    about: {
-      eyebrow: "ABOUT ANTIMATE",
-      title: "Technology should be simple to use.",
-      description:
-        "ANTIMATE brings together artificial intelligence, information, automation and smart systems into practical and easy-to-use experiences.",
-      points: [
-        "Solutions built around real problems",
-        "AI assistance when you need it",
-        "Your information in one connected experience",
+      eyebrow: "THE INTELLIGENT TECHNOLOGY ECOSYSTEM",
+      title1: "Technology",
+      words: [
+        "That Thinks.",
+        "That Connects.",
+        "That Helps.",
+        "That Evolves.",
       ],
-    },
-
-    solutions: {
-      eyebrow: "OUR ECOSYSTEM",
-      title: "The ANTIMATE ecosystem",
       description:
-        "Each ANTIMATE service has a clear purpose: helping users access information, control their systems and get better assistance.",
+        "ANTIMATE is an intelligent technology ecosystem designed to connect people, information, systems and AI to make everyday operations smarter, faster and more accessible.",
+      primary: "Explore ANTIMATE",
+      secondary: "Talk to ANTIMATE AI",
     },
 
-    systems: [
-      {
-        icon: "ai",
+    company: {
+      since: "Since 14 April 2026",
+      location: "Kigali, Rwanda",
+      open: "Open all days",
+      title: "What is ANTIMATE?",
+      text:
+        "ANTIMATE is a technology ecosystem combining intelligent systems, data, cloud services and artificial intelligence. Our goal is to build technology that simplifies work and helps people and organizations make better decisions.",
+    },
+
+    systems: {
+      eyebrow: "OUR ECOSYSTEM",
+      title: "Systems designed to work together",
+      description:
+        "Each ANTIMATE system has its own purpose, while all systems work together as one ecosystem.",
+      ai: {
         title: "ANTIMATE AI",
-        description:
-          "An intelligent assistant that can help you ask questions, learn, analyze information and find useful answers.",
-        tag: "INTELLIGENCE",
+        text:
+          "An intelligent assistant that helps you find answers, understand information and get guidance whenever you need it.",
+        button: "Use AI",
       },
-      {
-        icon: "brooding",
+      brooding: {
         title: "ANTIMATE Smart Brooding",
-        description:
-          "A smart solution for monitoring and managing important conditions during chick brooding.",
-        tag: "SMART FARMING",
+        text:
+          "A smart solution for poultry brooding management, helping you monitor conditions and get useful guidance.",
+        button: "Learn more",
       },
-      {
-        icon: "cloud",
+      cloud: {
         title: "ANTIMATE Cloud",
-        description:
-          "A connected place where your system information can be stored and accessed whenever you need it.",
-        tag: "CONNECTED",
+        text:
+          "A place where your system information can be securely stored and accessed whenever you need it.",
+        button: "Explore Cloud",
       },
-      {
-        icon: "link",
+      link: {
         title: "ANTIMATE Link",
-        description:
-          "Connects systems and services so information and control can move together smoothly.",
-        tag: "CONNECTIVITY",
+        text:
+          "A connectivity solution that connects devices and ANTIMATE services so information can reach where it is needed.",
+        button: "Explore Link",
       },
-    ],
+    },
 
     why: {
       eyebrow: "WHY ANTIMATE",
-      title: "We don't just build technology.",
-      description:
-        "We build systems that create real value from technology.",
-      cards: [
+      title: "Technology designed for people",
+      items: [
         {
-          icon: Zap,
           title: "Smart",
-          text: "Systems use information to make everyday operations more effective.",
+          text: "We use intelligence and information to make technology work for people.",
         },
         {
-          icon: ShieldCheck,
-          title: "Reliable",
-          text: "We prioritize stability, security and a quality user experience.",
+          title: "Connected",
+          text: "Our ecosystem is built around connecting information and people.",
         },
         {
-          icon: Users,
-          title: "Human",
-          text: "Technology should be understandable and useful to everyone.",
+          title: "Accessible",
+          text: "We believe technology should be easy to use and accessible.",
+        },
+        {
+          title: "Future Ready",
+          text: "We build an ecosystem that can grow with your needs.",
         },
       ],
     },
@@ -326,153 +527,345 @@ const content = {
       eyebrow: "PLANS & PRICING",
       title: "Choose your plan",
       description:
-        "Start with what you need today and move up as your needs grow.",
+        "Start with what you need and move to a higher experience as your activities grow.",
+      free: {
+        name: "Free",
+        price: "0 FRW",
+        description: "A simple way to start exploring ANTIMATE.",
+        features: [
+          "Basic access",
+          "ANTIMATE experience",
+          "Knowledge Center",
+          "Public AI access",
+        ],
+      },
+      basic: {
+        name: "Basic",
+        price: "3,000 FRW",
+        description: "For users starting with ANTIMATE services.",
+        features: [
+          "More features",
+          "System insights",
+          "Support",
+          "Improved access",
+        ],
+      },
+      pro: {
+        name: "Pro",
+        price: "7,000 FRW",
+        description: "For users who need a broader ANTIMATE experience.",
+        features: [
+          "Advanced features",
+          "More insights",
+          "Priority support",
+          "Expanded experience",
+        ],
+      },
+      premium: {
+        name: "Premium",
+        price: "15,000 FRW",
+        description: "A complete experience for advanced activities.",
+        features: [
+          "Premium experience",
+          "Advanced insights",
+          "Priority assistance",
+          "Full ecosystem experience",
+        ],
+      },
+      choose: "Choose plan",
+      popular: "POPULAR",
     },
 
     support: {
       eyebrow: "ANTIMATE SUPPORT",
-      title: "Whenever you need help, we're here.",
+      title: "We are here when you need us",
       description:
-        "Ask AI, reach us on WhatsApp, call us, send an email or use our web chat.",
+        "Ask our AI, call us, reach us on WhatsApp, email us or use our web chat room.",
+      ai: "ANTIMATE AI",
+      phone: "Phone",
+      whatsapp: "WhatsApp",
+      email: "Email",
+      web: "Web Chat Room",
+      open: "Open all days",
+      contact: "Contact us",
     },
 
     team: {
       eyebrow: "OUR PEOPLE",
       title: "The people behind ANTIMATE",
       description:
-        "A team bringing together leadership, intelligence, development, cloud, marketing and business.",
+        "ANTIMATE is built by people with different responsibilities and one shared vision.",
+      members: [
+        {
+          name: "HIRWA Salem",
+          role: "CEO — Chief Executive Officer",
+          area: "Leadership",
+        },
+        {
+          name: "CYUSA Chrispin",
+          role: "CAIO — Chief AI Officer",
+          area: "AI & Intelligence",
+        },
+        {
+          name: "DJUMA David",
+          role: "CDO — Chief Data Officer",
+          area: "Data & Cloud",
+        },
+        {
+          name: "ANTIMATE Team",
+          role: "CIO — Connectivity",
+          area: "Network & Communication",
+        },
+        {
+          name: "MUGISHA Prince",
+          role: "CTO — Technology",
+          area: "Product & Development",
+        },
+        {
+          name: "KWIZERA J.Bosco",
+          role: "CMO — Marketing",
+          area: "Marketing & Brand",
+        },
+        {
+          name: "MUGISHA Steven",
+          role: "Business Development",
+          area: "Partnerships & Growth",
+        },
+      ],
+    },
+
+    vision: {
+      eyebrow: "OUR VISION",
+      title: "Building the future of intelligent technology",
+      text:
+        "ANTIMATE aims to become an ecosystem that helps people and organizations use information and intelligence in practical ways. We believe technology should not only be for experts, but should be useful, accessible and human-centered.",
+      points: [
+        "Intelligent systems",
+        "Human-centered technology",
+        "Connected ecosystem",
+      ],
+    },
+
+    faq: {
+      eyebrow: "FAQ",
+      title: "Frequently asked questions",
+      questions: [
+        {
+          q: "What does ANTIMATE do?",
+          a:
+            "ANTIMATE connects intelligent technology, AI, data and connected systems to help people and organizations work better and make informed decisions.",
+        },
+        {
+          q: "Can I use ANTIMATE AI without logging in?",
+          a:
+            "Yes. ANTIMATE AI provides public access so you can ask questions and get assistance.",
+        },
+        {
+          q: "What is ANTIMATE Smart Brooding?",
+          a:
+            "It is a solution designed to support poultry brooding management, monitoring and useful guidance.",
+        },
+        {
+          q: "How can I get support?",
+          a:
+            "You can reach us through ANTIMATE AI, phone, WhatsApp, email or our web chat room.",
+        },
+      ],
     },
 
     cta: {
-      title: "Ready to get started?",
-      description:
-        "Join ANTIMATE or start a conversation with ANTIMATE AI right now.",
-      button1: "Get started",
-      button2: "Talk to AI",
-    },
-
-    footer: {
-      description:
-        "ANTIMATE — Smart technology built to create useful solutions for a better future.",
-      rights: "All rights reserved.",
-      location: "Kigali, Rwanda",
-      open: "Open all days",
+      title: "Start with ANTIMATE",
+      text:
+        "Join an ecosystem built around technology, information and intelligence.",
+      button: "Get started",
+      ai: "Talk to AI",
     },
 
     login: {
-      title: "Welcome back",
-      subtitle: "Login to your ANTIMATE account.",
+      title: "Welcome to ANTIMATE",
+      subtitle: "Sign in to your account",
       email: "Email",
       password: "Password",
+      emailPlaceholder: "Enter your email",
+      passwordPlaceholder: "Enter your password",
+      remember: "Remember me",
       forgot: "Forgot password?",
       button: "Login",
+      loading: "Signing in...",
       noAccount: "Don't have an account?",
-      signup: "Sign up",
+      signup: "Create account",
       close: "Close",
+      error: "Incorrect email or password.",
+    },
+
+    footer: {
+      tagline:
+        "Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem.",
+      explore: "Explore",
+      company: "Company",
+      support: "Support",
+      rights: "All rights reserved.",
     },
   },
 };
 
-const iconMap = {
-  ai: Brain,
-  brooding: Leaf,
-  cloud: Cloud,
-  link: Network,
+
+/* ============================================================
+   SYSTEM CARD
+   ============================================================ */
+
+const SystemCard = ({
+  icon,
+  title,
+  text,
+  button,
+  featured,
+  onClick,
+}) => {
+  return (
+    <article
+      className={`system-card ${featured ? "featured-system" : ""}`}
+      data-reveal
+    >
+      <div className="system-card-glow" />
+
+      <div className="system-icon">
+        {icon}
+      </div>
+
+      <div className="system-card-content">
+        <h3>{title}</h3>
+        <p>{text}</p>
+
+        <button
+          type="button"
+          className="text-action"
+          onClick={onClick}
+        >
+          {button}
+          <ArrowRight size={17} />
+        </button>
+      </div>
+
+      <div className="system-card-number">
+        {featured ? "AI" : "•"}
+      </div>
+    </article>
+  );
 };
 
-const plans = [
-  {
-    name: "Free",
-    price: "0",
-    description: "Gutangira no kumenya ANTIMATE.",
-    features: [
-      "Basic access",
-      "ANTIMATE AI",
-      "Knowledge Center",
-    ],
-  },
-  {
-    name: "Basic",
-    price: "3,000",
-    description: "Ku bakoresha bakeneye services ziyongera.",
-    features: [
-      "Advanced features",
-      "AI assistance",
-      "Smart monitoring",
-      "Support",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "7,000",
-    popular: true,
-    description: "Ku bakoresha bashaka byinshi kandi byimbitse.",
-    features: [
-      "Pro features",
-      "Advanced AI assistance",
-      "Smart systems",
-      "Priority support",
-    ],
-  },
-  {
-    name: "Premium",
-    price: "15,000",
-    description: "Experience yagutse ku bakoresha bakomeye.",
-    features: [
-      "Premium features",
-      "Advanced intelligence",
-      "Full smart ecosystem",
-      "Premium support",
-    ],
-  },
-];
 
-const team = [
-  {
-    name: "HIRWA Salem",
-    role: "CEO — Chief Executive Officer",
-    initials: "HS",
-  },
-  {
-    name: "CYUSA Chrispin",
-    role: "CAIO — Chief AI Officer",
-    initials: "CC",
-  },
-  {
-    name: "DJUMA David",
-    role: "CDO — Chief Data Officer",
-    initials: "DD",
-  },
-  {
-    name: "MUGISHA Prince",
-    role: "CTO — Technology & Development",
-    initials: "MP",
-  },
-  {
-    name: "KWIZERA J. Bosco",
-    role: "CMO — Marketing & Brand",
-    initials: "KB",
-  },
-  {
-    name: "MUGISHA Steven",
-    role: "Business Development & Partnerships",
-    initials: "MS",
-  },
-];
+/* ============================================================
+   SUPPORT CARD
+   ============================================================ */
 
-function FloatingParticle({ index }) {
-  return (
-    <span
-      className="floating-particle"
-      style={{
-        "--i": index,
-        "--delay": `${index * 0.65}s`,
-        "--x": `${8 + ((index * 17) % 84)}%`,
-        "--y": `${12 + ((index * 23) % 76)}%`,
-      }}
-    />
+const SupportCard = ({
+  icon,
+  title,
+  value,
+  href,
+  onClick,
+  className = "",
+}) => {
+  const content = (
+    <>
+      <div className="support-icon">{icon}</div>
+      <div className="support-copy">
+        <span>{title}</span>
+        <strong>{value}</strong>
+      </div>
+      <ArrowRight className="support-arrow" size={18} />
+    </>
   );
-}
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={`support-card ${className}`}
+        onClick={onClick}
+        data-reveal
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <a
+      className={`support-card ${className}`}
+      href={href}
+      target={href?.startsWith("http") ? "_blank" : undefined}
+      rel={href?.startsWith("http") ? "noreferrer" : undefined}
+      data-reveal
+    >
+      {content}
+    </a>
+  );
+};
+
+
+/* ============================================================
+   PLAN CARD
+   ============================================================ */
+
+const PlanCard = ({
+  plan,
+  popular,
+  t,
+  onChoose,
+}) => {
+  return (
+    <article
+      className={`plan-card ${popular ? "popular-plan" : ""}`}
+      data-reveal
+    >
+      {popular && (
+        <div className="popular-badge">
+          <Sparkles size={13} />
+          {t.plans.popular}
+        </div>
+      )}
+
+      <div className="plan-top">
+        <span className="plan-name">{plan.name}</span>
+
+        <div className="plan-price">
+          <strong>{plan.price}</strong>
+        </div>
+
+        <p>{plan.description}</p>
+      </div>
+
+      <div className="plan-divider" />
+
+      <ul className="plan-features">
+        {plan.features.map((feature, index) => (
+          <li key={index}>
+            <span className="feature-check">
+              <Check size={13} />
+            </span>
+            {feature}
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        className={`plan-button ${popular ? "primary-plan-button" : ""}`}
+        onClick={onChoose}
+      >
+        {t.plans.choose}
+        <ArrowRight size={17} />
+      </button>
+    </article>
+  );
+};
+
+
+/* ============================================================
+   MAIN COMPONENT
+   ============================================================ */
 
 export default function Login() {
   const navigate = useNavigate();
@@ -480,25 +873,35 @@ export default function Login() {
   const [language, setLanguage] = useState("rw");
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
+
+  const [showLogin, setShowLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [activeFaq, setActiveFaq] = useState(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(false);
 
-  const t = content[language];
+  const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const t = CONTENT[language];
+
+  /* ============================================================
+     SCROLL REVEAL
+     ============================================================ */
 
   useEffect(() => {
-    const revealElements = document.querySelectorAll("[data-reveal]");
+    const elements = document.querySelectorAll("[data-reveal]");
+
+    if (!elements.length) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
+            entry.target.classList.add("is-visible");
             observer.unobserve(entry.target);
           }
         });
@@ -508,20 +911,17 @@ export default function Login() {
       }
     );
 
-    revealElements.forEach((element) => observer.observe(element));
+    elements.forEach((element) => observer.observe(element));
 
     return () => observer.disconnect();
   }, [language]);
 
-  useEffect(() => {
-    document.body.classList.toggle("login-dark", darkMode);
 
-    return () => {
-      document.body.classList.remove("login-dark");
-    };
-  }, [darkMode]);
+  /* ============================================================
+     NAVIGATION
+     ============================================================ */
 
-  const scrollTo = (id) => {
+  const scrollToSection = (id) => {
     setMobileMenu(false);
 
     const element = document.getElementById(id);
@@ -534,1016 +934,1530 @@ export default function Login() {
     }
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
 
+  /* ============================================================
+     LOGIN
+     ============================================================ */
+
+  const openLogin = () => {
+    setMobileMenu(false);
     setLoginError("");
+    setShowLogin(true);
+  };
 
-    if (!email || !password) {
-      setLoginError(
-        language === "rw"
-          ? "Shyiramo email na password."
-          : "Please enter your email and password."
-      );
+  const closeLogin = () => {
+    if (loading) return;
+
+    setShowLogin(false);
+    setLoginError("");
+  };
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
+    if (!email.trim() || !password.trim()) {
+      setLoginError(t.login.error);
       return;
     }
 
-    try {
-      setLoading(true);
+    setLoading(true);
+    setLoginError("");
 
+    try {
       const response = await loginUser({
-        email,
+        email: email.trim(),
         password,
       });
 
-      if (response?.token) {
-        localStorage.setItem("token", response.token);
+      const token =
+        response?.token ||
+        response?.accessToken ||
+        response?.data?.token;
+
+      const user =
+        response?.user ||
+        response?.data?.user ||
+        null;
+
+      if (token) {
+        localStorage.setItem("token", token);
       }
 
-      if (response?.user) {
-        localStorage.setItem("user", JSON.stringify(response.user));
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+
+      if (remember) {
+        localStorage.setItem("antimateRememberEmail", email.trim());
+      } else {
+        localStorage.removeItem("antimateRememberEmail");
       }
 
       navigate("/home");
     } catch (error) {
+      console.error("ANTIMATE LOGIN ERROR:", error);
       setLoginError(
         error?.response?.data?.message ||
-          error?.message ||
-          (language === "rw"
-            ? "Login yanze. Ongera ugerageze."
-            : "Login failed. Please try again.")
+        error?.message ||
+        t.login.error
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const openAI = () => {
-    navigate("/antimate-ai");
+
+  /* ============================================================
+     REMEMBER EMAIL
+     ============================================================ */
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(
+      "antimateRememberEmail"
+    );
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRemember(true);
+    }
+  }, []);
+
+
+  /* ============================================================
+     BODY LOCK WHEN LOGIN IS OPEN
+     ============================================================ */
+
+  useEffect(() => {
+    if (showLogin) {
+      document.body.classList.add("login-modal-open");
+    } else {
+      document.body.classList.remove("login-modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("login-modal-open");
+    };
+  }, [showLogin]);
+
+
+  /* ============================================================
+     KEYBOARD ESC
+     ============================================================ */
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && showLogin) {
+        closeLogin();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showLogin, loading]);
+
+
+  /* ============================================================
+     PLAN ACTION
+     ============================================================ */
+
+  const choosePlan = () => {
+    scrollToSection("support");
   };
 
-  return (
-    <div className={`login-page ${darkMode ? "dark" : ""}`}>
-      <div className="ambient-background">
-        <div className="ambient-orb orb-one" />
-        <div className="ambient-orb orb-two" />
-        <div className="ambient-orb orb-three" />
 
-        {[...Array(12)].map((_, index) => (
-          <FloatingParticle key={index} index={index} />
-        ))}
+  /* ============================================================
+     RENDER
+     ============================================================ */
+
+  return (
+    <div className={`login-page ${darkMode ? "dark" : "light"}`}>
+
+      {/* ======================================================
+          BACKGROUND SYSTEM
+          ====================================================== */}
+
+      <div className="ambient-background">
+        <div className="ambient-orb orb-a" />
+        <div className="ambient-orb orb-b" />
+        <div className="ambient-orb orb-c" />
+
+        <div className="ambient-grid" />
+
+        <div className="ambient-particles">
+          {Array.from({ length: 18 }).map((_, index) => (
+            <span
+              key={index}
+              className="ambient-particle"
+              style={{
+                "--i": index,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* NAVBAR */}
+
+      {/* ======================================================
+          NAVBAR
+          ====================================================== */}
+
       <header className="main-navbar">
         <div className="navbar-inner">
+
           <button
-            className="brand"
-            onClick={() => scrollTo("home")}
+            type="button"
+            className="brand-button"
+            onClick={() => scrollToSection("top")}
             aria-label="ANTIMATE"
           >
-            <AntimateLogo size={48} />
-
-            <div className="brand-text">
-              <strong>ANTIMATE</strong>
-              <span>SMART TECHNOLOGY</span>
-            </div>
+            <AntimateLogo />
           </button>
 
           <nav className={`desktop-nav ${mobileMenu ? "mobile-open" : ""}`}>
-            <button onClick={() => scrollTo("home")}>
+            <button
+              type="button"
+              onClick={() => scrollToSection("top")}
+            >
               {t.nav.home}
             </button>
 
-            <button onClick={() => scrollTo("about")}>
+            <button
+              type="button"
+              onClick={() => scrollToSection("about")}
+            >
               {t.nav.about}
             </button>
 
-            <button onClick={() => scrollTo("solutions")}>
-              {t.nav.solutions}
+            <button
+              type="button"
+              onClick={() => scrollToSection("systems")}
+            >
+              {t.nav.systems}
             </button>
 
-            <button onClick={() => scrollTo("plans")}>
+            <button
+              type="button"
+              onClick={() => scrollToSection("plans")}
+            >
               {t.nav.plans}
             </button>
 
-            <button onClick={() => scrollTo("support")}>
+            <button
+              type="button"
+              onClick={() => scrollToSection("support")}
+            >
               {t.nav.support}
             </button>
 
-            <Link to="/brooding-guide" className="knowledge-link">
-              <span className="trending-badge">TRENDING</span>
+            <Link
+              to="/brooding-guide"
+              className="knowledge-nav"
+              onClick={() => setMobileMenu(false)}
+            >
               {t.nav.knowledge}
+              <span>TRENDING</span>
             </Link>
           </nav>
 
           <div className="navbar-actions">
+
             <button
-              className="language-button"
-              onClick={() => setLanguage(language === "rw" ? "en" : "rw")}
-              title="Language"
+              type="button"
+              className="language-switch"
+              onClick={() =>
+                setLanguage((prev) =>
+                  prev === "rw" ? "en" : "rw"
+                )
+              }
+              aria-label="Change language"
             >
-              <Globe size={17} />
-              {language.toUpperCase()}
+              <Globe2 size={17} />
+              <span>{language.toUpperCase()}</span>
             </button>
 
             <button
+              type="button"
               className="theme-button"
-              onClick={() => setDarkMode(!darkMode)}
+              onClick={() => setDarkMode((prev) => !prev)}
               aria-label="Toggle theme"
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? (
+                <Sun size={18} />
+              ) : (
+                <Sparkles size={18} />
+              )}
             </button>
 
             <button
-              className="login-nav-button"
-              onClick={() => setLoginOpen(true)}
+              type="button"
+              className="nav-login-button"
+              onClick={openLogin}
             >
+              <Lock size={15} />
               {t.nav.login}
             </button>
 
-            <Link to="/signup" className="signup-nav-button">
+            <Link
+              to="/signup"
+              className="nav-signup-button"
+            >
               {t.nav.signup}
+              <ArrowRight size={16} />
             </Link>
 
             <button
+              type="button"
               className="mobile-menu-button"
-              onClick={() => setMobileMenu(!mobileMenu)}
+              onClick={() =>
+                setMobileMenu((prev) => !prev)
+              }
               aria-label="Menu"
             >
-              {mobileMenu ? <X size={22} /> : <Menu size={22} />}
+              {mobileMenu ? (
+                <X size={22} />
+              ) : (
+                <Menu size={22} />
+              )}
             </button>
           </div>
         </div>
       </header>
 
-      {/* HERO */}
-      <main>
-        <section id="home" className="hero-section">
-          <div className="hero-grid" />
+
+      {/* ======================================================
+          HERO
+          ====================================================== */}
+
+      <main id="top">
+
+        <section className="hero-section">
 
           <div className="hero-content" data-reveal>
+
             <div className="hero-eyebrow">
-              <span className="pulse-dot" />
+              <span className="eyebrow-dot" />
               {t.hero.eyebrow}
             </div>
 
             <h1>
               {t.hero.title1}
-              <span>{t.hero.title2}</span>
-              <em>{t.hero.title3}</em>
+              <span className="hero-moving-words">
+                {t.hero.words.map((word, index) => (
+                  <span
+                    key={word}
+                    className="hero-word"
+                    style={{
+                      "--word-index": index,
+                    }}
+                  >
+                    {word}
+                  </span>
+                ))}
+              </span>
             </h1>
 
-            <p>{t.hero.description}</p>
+            <p className="hero-description">
+              {t.hero.description}
+            </p>
 
             <div className="hero-actions">
+
               <button
-                className="primary-button"
-                onClick={() => scrollTo("solutions")}
+                type="button"
+                className="hero-primary"
+                onClick={() => scrollToSection("systems")}
               >
-                {t.hero.button1}
-                <ArrowRight size={19} />
+                <Rocket size={18} />
+                {t.hero.primary}
+                <ArrowRight size={18} />
               </button>
 
-              <button className="secondary-button" onClick={openAI}>
-                <Bot size={19} />
-                {t.hero.button2}
+              <button
+                type="button"
+                className="hero-secondary"
+                onClick={() => navigate("/antimate-ai")}
+              >
+                <AntimateAIIcon size="tiny" />
+                {t.hero.secondary}
               </button>
+
             </div>
 
-            <div className="hero-trust">
-              <div className="trust-icons">
-                <span>
-                  <MapPin size={15} />
-                </span>
-                <span>
-                  <Sparkles size={15} />
-                </span>
-                <span>
-                  <ShieldCheck size={15} />
-                </span>
-              </div>
-
-              <span>{t.hero.trusted}</span>
+            <div className="hero-trust-line">
+              <ShieldCheck size={17} />
+              <span>{t.company.open}</span>
+              <span className="trust-separator">•</span>
+              <span>{t.company.location}</span>
             </div>
           </div>
 
-          <div className="hero-visual" data-reveal>
-            <div className="hero-ring ring-one" />
-            <div className="hero-ring ring-two" />
 
-            <div className="hero-image-wrap">
+          {/* ==================================================
+              HERO VISUAL
+              ================================================== */}
+
+          <div
+            className="hero-visual"
+            data-reveal
+          >
+
+            <div className="hero-image-frame">
+
+              <div className="hero-image-glow" />
+
               <img
-                src="https://images.unsplash.com/photo-1535378917042-10a22c95931a?auto=format&fit=crop&w=1100&q=85"
-                alt="Smart technology"
+                src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1400&q=85"
+                alt="ANTIMATE intelligent technology"
               />
 
-              <div className="image-glow" />
-            </div>
+              <div className="hero-image-overlay" />
 
-            <div className="floating-card card-ai">
-              <div className="floating-card-icon">
-                <Brain size={20} />
-              </div>
-
-              <div>
-                <strong>ANTIMATE AI</strong>
-                <span>Always learning</span>
-              </div>
-
-              <div className="live-indicator">
-                <i />
-                LIVE
-              </div>
-            </div>
-
-            <div className="floating-card card-smart">
-              <div className="mini-chart">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-
-              <div>
-                <strong>SMART SYSTEM</strong>
-                <span>Connected</span>
-              </div>
-            </div>
-
-            <div className="floating-card card-location">
-              <MapPin size={17} />
-              <span>Kigali, Rwanda</span>
-            </div>
-          </div>
-
-          <div className="hero-scroll">
-            <span>SCROLL</span>
-            <div className="scroll-line" />
-          </div>
-        </section>
-
-        {/* COMPANY STRIP */}
-        <section className="company-strip">
-          <div className="company-strip-item">
-            <Sparkles size={17} />
-            <span>ANTIMATE</span>
-          </div>
-
-          <div className="strip-line" />
-
-          <div className="company-strip-item">
-            <Clock3 size={17} />
-            <span>Since 14 April 2026</span>
-          </div>
-
-          <div className="strip-line" />
-
-          <div className="company-strip-item">
-            <MapPin size={17} />
-            <span>Kigali, Rwanda</span>
-          </div>
-
-          <div className="strip-line" />
-
-          <div className="company-strip-item">
-            <Headphones size={17} />
-            <span>{t.footer.open}</span>
-          </div>
-        </section>
-
-        {/* ABOUT */}
-        <section id="about" className="about-section section">
-          <div className="about-image" data-reveal>
-            <div className="about-image-frame">
-              <img
-                src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1000&q=85"
-                alt="ANTIMATE technology"
-              />
-
-              <div className="image-overlay" />
-
-              <div className="about-badge">
-                <div className="about-badge-icon">
-                  <Cpu size={21} />
+              <div className="hero-floating-card card-ai">
+                <div className="floating-icon ai-floating-icon">
+                  <AntimateAIIcon size="tiny" />
                 </div>
 
                 <div>
-                  <strong>ANTIMATE</strong>
-                  <span>Smart ecosystem</span>
+                  <span>ANTIMATE</span>
+                  <strong>AI</strong>
+                </div>
+
+                <div className="live-dot">
+                  <i />
+                  LIVE
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="about-content" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.about.eyebrow}
-            </div>
 
-            <h2>{t.about.title}</h2>
-
-            <p>{t.about.description}</p>
-
-            <div className="about-points">
-              {t.about.points.map((point, index) => (
-                <div className="about-point" key={index}>
-                  <div className="point-check">
-                    <Check size={15} />
-                  </div>
-                  <span>{point}</span>
+              <div className="hero-floating-card card-system">
+                <div className="floating-icon">
+                  <Network size={19} />
                 </div>
-              ))}
+
+                <div>
+                  <span>Connected</span>
+                  <strong>Intelligent Systems</strong>
+                </div>
+              </div>
+
+
+              <div className="hero-floating-card card-data">
+                <div className="mini-chart">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+
+                <div>
+                  <span>Smart Data</span>
+                  <strong>+ Intelligence</strong>
+                </div>
+              </div>
+
             </div>
 
-            <button
-              className="text-button"
-              onClick={() => scrollTo("solutions")}
-            >
-              {t.hero.button1}
-              <ArrowRight size={18} />
-            </button>
+
+            <div className="hero-orbit orbit-one" />
+            <div className="hero-orbit orbit-two" />
+
+            <div className="hero-orbit-dot orbit-dot-one" />
+            <div className="hero-orbit-dot orbit-dot-two" />
+            <div className="hero-orbit-dot orbit-dot-three" />
+
           </div>
         </section>
 
-        {/* MOVING MARQUEE */}
+
+        {/* ====================================================
+            COMPANY STRIP
+            ==================================================== */}
+
+        <section className="company-strip">
+          <div className="company-strip-inner">
+
+            <div className="company-strip-item">
+              <span className="strip-icon">
+                <Rocket size={16} />
+              </span>
+              <span>{t.company.since}</span>
+            </div>
+
+            <div className="strip-line" />
+
+            <div className="company-strip-item">
+              <span className="strip-icon">
+                <Globe2 size={16} />
+              </span>
+              <span>{t.company.location}</span>
+            </div>
+
+            <div className="strip-line" />
+
+            <div className="company-strip-item">
+              <span className="strip-icon">
+                <Headphones size={16} />
+              </span>
+              <span>{t.company.open}</span>
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            MARQUEE
+            ==================================================== */}
+
         <div className="marquee-section">
           <div className="marquee-track">
-            {[...Array(2)].map((_, group) => (
-              <div className="marquee-group" key={group}>
-                <span>ANTIMATE AI</span>
-                <b>✦</b>
-                <span>SMART FARMING</span>
-                <b>✦</b>
-                <span>CONNECTED SYSTEMS</span>
-                <b>✦</b>
-                <span>INTELLIGENT FUTURE</span>
-                <b>✦</b>
-                <span>BUILT IN RWANDA</span>
-                <b>✦</b>
-              </div>
+
+            {[
+              "ANTIMATE AI",
+              "SMART TECHNOLOGY",
+              "CONNECTED SYSTEMS",
+              "INTELLIGENT DATA",
+              "SMART BROODING",
+              "ANTIMATE CLOUD",
+              "ANTIMATE LINK",
+              "FUTURE READY",
+            ].map((item, index) => (
+              <React.Fragment key={`${item}-${index}`}>
+                <span>{item}</span>
+                <i>✦</i>
+              </React.Fragment>
             ))}
+
+            {[
+              "ANTIMATE AI",
+              "SMART TECHNOLOGY",
+              "CONNECTED SYSTEMS",
+              "INTELLIGENT DATA",
+              "SMART BROODING",
+              "ANTIMATE CLOUD",
+              "ANTIMATE LINK",
+              "FUTURE READY",
+            ].map((item, index) => (
+              <React.Fragment key={`second-${item}-${index}`}>
+                <span>{item}</span>
+                <i>✦</i>
+              </React.Fragment>
+            ))}
+
           </div>
         </div>
 
-        {/* SOLUTIONS */}
-        <section id="solutions" className="solutions-section section">
-          <div className="section-heading centered" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.solutions.eyebrow}
-              <span />
-            </div>
 
-            <h2>{t.solutions.title}</h2>
-            <p>{t.solutions.description}</p>
-          </div>
+        {/* ====================================================
+            ABOUT
+            ==================================================== */}
 
-          <div className="systems-grid">
-            {t.systems.map((system, index) => {
-              const Icon = iconMap[system.icon];
+        <section
+          className="section about-section"
+          id="about"
+        >
+          <div className="section-container">
 
-              return (
-                <article
-                  className={`system-card system-${index + 1}`}
-                  key={system.title}
-                  data-reveal
-                  style={{ "--delay": `${index * 0.1}s` }}
-                >
-                  <div className="system-card-top">
-                    <div className="system-icon">
-                      <Icon size={26} />
-                    </div>
-
-                    <span>{system.tag}</span>
-                  </div>
-
-                  <h3>{system.title}</h3>
-                  <p>{system.description}</p>
-
-                  <div className="system-card-bottom">
-                    <span>EXPLORE</span>
-                    <ArrowRight size={18} />
-                  </div>
-
-                  <div className="card-shine" />
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* WHY */}
-        <section className="why-section section">
-          <div className="why-heading" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.why.eyebrow}
-            </div>
-
-            <h2>{t.why.title}</h2>
-            <p>{t.why.description}</p>
-          </div>
-
-          <div className="why-grid">
-            {t.why.cards.map((card, index) => {
-              const Icon = card.icon;
-
-              return (
-                <div
-                  className="why-card"
-                  key={card.title}
-                  data-reveal
-                  style={{ "--delay": `${index * 0.12}s` }}
-                >
-                  <div className="why-number">0{index + 1}</div>
-
-                  <div className="why-icon">
-                    <Icon size={25} />
-                  </div>
-
-                  <h3>{card.title}</h3>
-                  <p>{card.text}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* PLANS */}
-        <section id="plans" className="plans-section section">
-          <div className="section-heading centered" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.plans.eyebrow}
-              <span />
-            </div>
-
-            <h2>{t.plans.title}</h2>
-            <p>{t.plans.description}</p>
-          </div>
-
-          <div className="plans-grid">
-            {plans.map((plan, index) => (
-              <article
-                className={`plan-card ${plan.popular ? "popular" : ""}`}
-                key={plan.name}
-                data-reveal
-                style={{ "--delay": `${index * 0.1}s` }}
-              >
-                {plan.popular && (
-                  <div className="popular-label">
-                    <Sparkles size={14} />
-                    POPULAR
-                  </div>
-                )}
-
-                <div className="plan-icon">
-                  {index === 0 && <Leaf size={22} />}
-                  {index === 1 && <Zap size={22} />}
-                  {index === 2 && <Brain size={22} />}
-                  {index === 3 && <Sparkles size={22} />}
-                </div>
-
-                <h3>{plan.name}</h3>
-
-                <div className="plan-price">
-                  <strong>{plan.price}</strong>
-                  <span>FRW</span>
-                </div>
-
-                <p>{plan.description}</p>
-
-                <div className="plan-divider" />
-
-                <ul>
-                  {plan.features.map((feature) => (
-                    <li key={feature}>
-                      <Check size={15} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  className={plan.popular ? "plan-button primary" : "plan-button"}
-                  onClick={() =>
-                    plan.name === "Free"
-                      ? navigate("/signup")
-                      : setLoginOpen(true)
-                  }
-                >
-                  {language === "rw" ? "Hitamo plan" : "Choose plan"}
-                  <ArrowRight size={17} />
-                </button>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* SUPPORT */}
-        <section id="support" className="support-section section">
-          <div className="section-heading centered" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.support.eyebrow}
-              <span />
-            </div>
-
-            <h2>{t.support.title}</h2>
-            <p>{t.support.description}</p>
-          </div>
-
-          <div className="support-grid">
-            <button
-              className="support-card support-ai"
-              onClick={openAI}
+            <div
+              className="section-heading centered"
               data-reveal
             >
-              <div className="support-card-icon">
-                <Bot size={25} />
-              </div>
+              <span className="section-eyebrow">
+                <Sparkles size={15} />
+                {t.company.title}
+              </span>
 
-              <div>
-                <span>24/7 AI</span>
-                <h3>ANTIMATE AI</h3>
-                <p>
-                  {language === "rw"
-                    ? "Baza ikibazo cyawe nonaha."
-                    : "Ask your question right now."}
-                </p>
-              </div>
+              <h2>{t.company.title}</h2>
 
-              <ArrowRight size={19} />
-            </button>
-
-            <a
-              href="tel:+250798698431"
-              className="support-card"
-              data-reveal
-            >
-              <div className="support-card-icon">
-                <Phone size={24} />
-              </div>
-
-              <div>
-                <span>PHONE</span>
-                <h3>+250 798 698 431</h3>
-                <p>
-                  {language === "rw"
-                    ? "Twandikire kuri telefoni."
-                    : "Call our support team."}
-                </p>
-              </div>
-
-              <ArrowRight size={19} />
-            </a>
-
-            <a
-              href="https://wa.me/250798698431"
-              target="_blank"
-              rel="noreferrer"
-              className="support-card"
-              data-reveal
-            >
-              <div className="support-card-icon">
-                <MessageCircle size={24} />
-              </div>
-
-              <div>
-                <span>WHATSAPP</span>
-                <h3>+250 798 698 431</h3>
-                <p>
-                  {language === "rw"
-                    ? "Twandikire kuri WhatsApp."
-                    : "Message us on WhatsApp."}
-                </p>
-              </div>
-
-              <ArrowRight size={19} />
-            </a>
-
-            <a
-              href="mailto:antimate.inc@gmai.com"
-              className="support-card"
-              data-reveal
-            >
-              <div className="support-card-icon">
-                <Mail size={24} />
-              </div>
-
-              <div>
-                <span>EMAIL</span>
-                <h3>antimate.inc@gmai.com</h3>
-                <p>
-                  {language === "rw"
-                    ? "Twohereze email."
-                    : "Send us an email."}
-                </p>
-              </div>
-
-              <ArrowRight size={19} />
-            </a>
-
-            <button
-              className="support-card"
-              onClick={openAI}
-              data-reveal
-            >
-              <div className="support-card-icon">
-                <MessageCircle size={24} />
-              </div>
-
-              <div>
-                <span>WEB CHAT</span>
-                <h3>ANTIMATE Chat Room</h3>
-                <p>
-                  {language === "rw"
-                    ? "Ganira natwe online."
-                    : "Chat with ANTIMATE online."}
-                </p>
-              </div>
-
-              <ArrowRight size={19} />
-            </button>
-          </div>
-        </section>
-
-        {/* TEAM */}
-        <section className="team-section section">
-          <div className="section-heading centered" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {t.team.eyebrow}
-              <span />
+              <p>
+                {t.company.text}
+              </p>
             </div>
 
-            <h2>{t.team.title}</h2>
-            <p>{t.team.description}</p>
-          </div>
 
-          <div className="team-grid">
-            {team.map((member, index) => (
-              <article
-                className="team-card"
-                key={member.name}
-                data-reveal
-                style={{ "--delay": `${index * 0.08}s` }}
-              >
-                <div className="team-avatar">
-                  {member.initials}
+            <div className="about-layout">
 
-                  <span className="avatar-status" />
-                </div>
-
-                <h3>{member.name}</h3>
-                <p>{member.role}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* FAQ / QUICK ANSWERS */}
-        <section className="faq-section section">
-          <div className="faq-heading" data-reveal>
-            <div className="section-eyebrow">
-              <span />
-              {language === "rw" ? "WAKIBAZA?" : "STILL CURIOUS?"}
-            </div>
-
-            <h2>
-              {language === "rw"
-                ? "ANTIMATE ikora iki?"
-                : "What does ANTIMATE do?"}
-            </h2>
-
-            <p>
-              {language === "rw"
-                ? "Dore ibisubizo bigufi ku bibazo bikunze kubazwa."
-                : "Here are quick answers to common questions."}
-            </p>
-          </div>
-
-          <div className="faq-list" data-reveal>
-            {[
-              {
-                q:
-                  language === "rw"
-                    ? "ANTIMATE AI ishobora kumfasha iki?"
-                    : "What can ANTIMATE AI help me with?",
-                a:
-                  language === "rw"
-                    ? "ANTIMATE AI igufasha kubaza ibibazo, kubona ibisubizo, gusobanukirwa amakuru no kukuyobora ku byo ushaka gukora."
-                    : "ANTIMATE AI can help you ask questions, understand information, find answers and guide you through what you want to accomplish.",
-              },
-              {
-                q:
-                  language === "rw"
-                    ? "Nshobora gukoresha ANTIMATE nta konti?"
-                    : "Can I use ANTIMATE without an account?",
-                a:
-                  language === "rw"
-                    ? "Yego. Services zimwe nka ANTIMATE AI zishobora kuboneka public. Konti ikenerwa ku services zibika cyangwa zihuza amakuru yawe."
-                    : "Yes. Some services such as ANTIMATE AI can be available publicly. An account is needed for services that store or connect your personal system information.",
-              },
-              {
-                q:
-                  language === "rw"
-                    ? "ANTIMATE iboneka he?"
-                    : "Where is ANTIMATE based?",
-                a:
-                  language === "rw"
-                    ? "ANTIMATE yubakiwe i Kigali, Rwanda kandi ikorera ku ishyaka ryo gukora technology ifite akamaro."
-                    : "ANTIMATE is built in Kigali, Rwanda with a focus on creating useful technology.",
-              },
-            ].map((faq, index) => (
               <div
-                className={`faq-item ${activeFaq === index ? "open" : ""}`}
-                key={faq.q}
+                className="about-visual"
+                data-reveal
               >
-                <button
-                  onClick={() =>
-                    setActiveFaq(activeFaq === index ? -1 : index)
-                  }
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown size={19} />
-                </button>
+                <div className="about-circle about-circle-one" />
+                <div className="about-circle about-circle-two" />
 
-                <div className="faq-answer">
-                  <p>{faq.a}</p>
+                <div className="about-center-logo">
+                  <AntimateLogo small />
+                </div>
+
+                <div className="about-floating about-floating-one">
+                  <Brain size={19} />
+                  <span>AI</span>
+                </div>
+
+                <div className="about-floating about-floating-two">
+                  <Cloud size={19} />
+                  <span>Cloud</span>
+                </div>
+
+                <div className="about-floating about-floating-three">
+                  <Network size={19} />
+                  <span>Connect</span>
+                </div>
+
+                <div className="about-floating about-floating-four">
+                  <LineChart size={19} />
+                  <span>Data</span>
                 </div>
               </div>
-            ))}
+
+
+              <div
+                className="about-copy"
+                data-reveal
+              >
+                <div className="about-copy-label">
+                  <span>ANTIMATE</span>
+                  <div />
+                  <span>2026 →</span>
+                </div>
+
+                <h3>
+                  {language === "rw"
+                    ? "Ikoranabuhanga rihuza ubwenge n'ibikorwa."
+                    : "Technology that connects intelligence with action."}
+                </h3>
+
+                <p>
+                  {t.company.text}
+                </p>
+
+                <div className="about-values">
+
+                  <div>
+                    <span className="value-number">01</span>
+                    <strong>
+                      {language === "rw"
+                        ? "Ubwenge"
+                        : "Intelligence"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="value-number">02</span>
+                    <strong>
+                      {language === "rw"
+                        ? "Guhuza"
+                        : "Connection"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="value-number">03</span>
+                    <strong>
+                      {language === "rw"
+                        ? "Iterambere"
+                        : "Progress"}
+                    </strong>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
           </div>
         </section>
 
-        {/* CTA */}
+
+        {/* ====================================================
+            SYSTEMS
+            ==================================================== */}
+
+        <section
+          className="section systems-section"
+          id="systems"
+        >
+          <div className="section-container">
+
+            <div className="section-heading">
+              <span
+                className="section-eyebrow"
+                data-reveal
+              >
+                <Network size={15} />
+                {t.systems.eyebrow}
+              </span>
+
+              <h2 data-reveal>
+                {t.systems.title}
+              </h2>
+
+              <p data-reveal>
+                {t.systems.description}
+              </p>
+            </div>
+
+
+            <div className="systems-grid">
+
+              <SystemCard
+                featured
+                icon={<AntimateAIIcon size="small" />}
+                title={t.systems.ai.title}
+                text={t.systems.ai.text}
+                button={t.systems.ai.button}
+                onClick={() => navigate("/antimate-ai")}
+              />
+
+              <SystemCard
+                icon={<Leaf size={25} />}
+                title={t.systems.brooding.title}
+                text={t.systems.brooding.text}
+                button={t.systems.brooding.button}
+                onClick={() => navigate("/brooding-guide")}
+              />
+
+              <SystemCard
+                icon={<Cloud size={25} />}
+                title={t.systems.cloud.title}
+                text={t.systems.cloud.text}
+                button={t.systems.cloud.button}
+                onClick={() => scrollToSection("support")}
+              />
+
+              <SystemCard
+                icon={<Network size={25} />}
+                title={t.systems.link.title}
+                text={t.systems.link.text}
+                button={t.systems.link.button}
+                onClick={() => scrollToSection("support")}
+              />
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            WHY ANTIMATE
+            ==================================================== */}
+
+        <section className="section why-section">
+          <div className="section-container">
+
+            <div className="section-heading centered">
+              <span
+                className="section-eyebrow"
+                data-reveal
+              >
+                <Target size={15} />
+                {t.why.eyebrow}
+              </span>
+
+              <h2 data-reveal>
+                {t.why.title}
+              </h2>
+            </div>
+
+
+            <div className="why-grid">
+
+              {t.why.items.map((item, index) => (
+                <article
+                  className="why-card"
+                  key={item.title}
+                  data-reveal
+                >
+                  <div className="why-number">
+                    0{index + 1}
+                  </div>
+
+                  <div className="why-card-icon">
+                    {index === 0 && <Brain size={22} />}
+                    {index === 1 && <Network size={22} />}
+                    {index === 2 && <Users size={22} />}
+                    {index === 3 && <Rocket size={22} />}
+                  </div>
+
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </article>
+              ))}
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            VISION
+            ==================================================== */}
+
+        <section
+          className="section vision-section"
+          id="vision"
+        >
+          <div className="section-container">
+
+            <div className="vision-card">
+
+              <div className="vision-glow vision-glow-one" />
+              <div className="vision-glow vision-glow-two" />
+
+              <div
+                className="vision-content"
+                data-reveal
+              >
+                <span className="section-eyebrow">
+                  <Target size={15} />
+                  {t.vision.eyebrow}
+                </span>
+
+                <h2>{t.vision.title}</h2>
+
+                <p>{t.vision.text}</p>
+
+                <div className="vision-points">
+                  {t.vision.points.map((point, index) => (
+                    <div key={point}>
+                      <span>
+                        <Check size={14} />
+                      </span>
+                      <strong>{point}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+
+              <div
+                className="vision-art"
+                data-reveal
+              >
+                <div className="vision-core">
+                  <AntimateLogo small />
+                </div>
+
+                <div className="vision-orbit v-orbit-one" />
+                <div className="vision-orbit v-orbit-two" />
+                <div className="vision-orbit v-orbit-three" />
+
+                <div className="vision-node node-one">
+                  <Brain size={18} />
+                </div>
+
+                <div className="vision-node node-two">
+                  <Cloud size={18} />
+                </div>
+
+                <div className="vision-node node-three">
+                  <Network size={18} />
+                </div>
+
+                <div className="vision-node node-four">
+                  <Sparkles size={18} />
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            PLANS
+            ==================================================== */}
+
+        <section
+          className="section plans-section"
+          id="plans"
+        >
+          <div className="section-container">
+
+            <div className="section-heading centered">
+              <span
+                className="section-eyebrow"
+                data-reveal
+              >
+                <Zap size={15} />
+                {t.plans.eyebrow}
+              </span>
+
+              <h2 data-reveal>
+                {t.plans.title}
+              </h2>
+
+              <p data-reveal>
+                {t.plans.description}
+              </p>
+            </div>
+
+
+            <div className="plans-grid">
+
+              <PlanCard
+                plan={t.plans.free}
+                t={t}
+                onChoose={choosePlan}
+              />
+
+              <PlanCard
+                plan={t.plans.basic}
+                t={t}
+                onChoose={choosePlan}
+              />
+
+              <PlanCard
+                plan={t.plans.pro}
+                popular
+                t={t}
+                onChoose={choosePlan}
+              />
+
+              <PlanCard
+                plan={t.plans.premium}
+                t={t}
+                onChoose={choosePlan}
+              />
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            SUPPORT
+            ==================================================== */}
+
+        <section
+          className="section support-section"
+          id="support"
+        >
+          <div className="section-container">
+
+            <div className="support-header">
+
+              <div>
+                <span
+                  className="section-eyebrow"
+                  data-reveal
+                >
+                  <Headphones size={15} />
+                  {t.support.eyebrow}
+                </span>
+
+                <h2 data-reveal>
+                  {t.support.title}
+                </h2>
+
+                <p data-reveal>
+                  {t.support.description}
+                </p>
+              </div>
+
+              <div
+                className="support-open-badge"
+                data-reveal
+              >
+                <span />
+                {t.support.open}
+              </div>
+
+            </div>
+
+
+            <div className="support-grid">
+
+              <SupportCard
+                icon={<AntimateAIIcon size="tiny" />}
+                title={t.support.ai}
+                value={t.support.web}
+                onClick={() => navigate("/antimate-ai")}
+                className="support-ai"
+              />
+
+              <SupportCard
+                icon={<Phone size={22} />}
+                title={t.support.phone}
+                value="+250 798 698 431"
+                href="tel:+250798698431"
+              />
+
+              <SupportCard
+                icon={<MessageCircle size={22} />}
+                title={t.support.whatsapp}
+                value="+250 798 698 431"
+                href="https://wa.me/250798698431"
+              />
+
+              <SupportCard
+                icon={<Mail size={22} />}
+                title={t.support.email}
+                value="antimate.inc@gmai.com"
+                href="mailto:antimate.inc@gmai.com"
+              />
+
+              <SupportCard
+                icon={<MessageCircle size={22} />}
+                title={t.support.web}
+                value="ANTIMATE AI Chat"
+                onClick={() => navigate("/antimate-ai")}
+                className="support-web"
+              />
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            TEAM
+            ==================================================== */}
+
+        <section className="section team-section">
+          <div className="section-container">
+
+            <div className="section-heading centered">
+
+              <span
+                className="section-eyebrow"
+                data-reveal
+              >
+                <Users size={15} />
+                {t.team.eyebrow}
+              </span>
+
+              <h2 data-reveal>
+                {t.team.title}
+              </h2>
+
+              <p data-reveal>
+                {t.team.description}
+              </p>
+
+            </div>
+
+
+            <div className="team-grid">
+
+              {t.team.members.map((member, index) => (
+                <article
+                  className="team-card"
+                  key={`${member.name}-${index}`}
+                  data-reveal
+                >
+                  <div className="team-avatar">
+                    {member.name
+                      .replace("ANTIMATE Team", "AT")
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+
+                  <div className="team-info">
+                    <span>{member.area}</span>
+                    <h3>{member.name}</h3>
+                    <p>{member.role}</p>
+                  </div>
+
+                  <div className="team-index">
+                    {String(index + 1).padStart(2, "0")}
+                  </div>
+                </article>
+              ))}
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            FAQ
+            ==================================================== */}
+
+        <section className="section faq-section">
+          <div className="section-container faq-container">
+
+            <div className="section-heading centered">
+              <span
+                className="section-eyebrow"
+                data-reveal
+              >
+                <MessageCircle size={15} />
+                {t.faq.eyebrow}
+              </span>
+
+              <h2 data-reveal>
+                {t.faq.title}
+              </h2>
+            </div>
+
+
+            <div className="faq-list">
+
+              {t.faq.questions.map((item, index) => {
+                const isOpen = openFaq === index;
+
+                return (
+                  <div
+                    className={`faq-item ${isOpen ? "faq-open" : ""}`}
+                    key={item.q}
+                    data-reveal
+                  >
+                    <button
+                      type="button"
+                      className="faq-question"
+                      onClick={() =>
+                        setOpenFaq(
+                          isOpen ? null : index
+                        )
+                      }
+                    >
+                      <span>{item.q}</span>
+
+                      <span className="faq-toggle">
+                        {isOpen ? (
+                          <ChevronUp size={18} />
+                        ) : (
+                          <ChevronDown size={18} />
+                        )}
+                      </span>
+                    </button>
+
+                    <div className="faq-answer">
+                      <p>{item.a}</p>
+                    </div>
+                  </div>
+                );
+              })}
+
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ====================================================
+            CTA
+            ==================================================== */}
+
         <section className="cta-section">
-          <div className="cta-background">
+          <div className="cta-container">
+
             <div className="cta-orb cta-orb-one" />
             <div className="cta-orb cta-orb-two" />
-          </div>
 
-          <div className="cta-content" data-reveal>
-            <div className="cta-icon">
-              <Sparkles size={28} />
+            <div className="cta-content" data-reveal>
+
+              <div className="cta-ai">
+                <AntimateAIIcon size="normal" />
+              </div>
+
+              <span className="section-eyebrow">
+                <Sparkles size={15} />
+                ANTIMATE
+              </span>
+
+              <h2>{t.cta.title}</h2>
+
+              <p>{t.cta.text}</p>
+
+              <div className="cta-actions">
+
+                <Link
+                  to="/signup"
+                  className="cta-primary"
+                >
+                  <Rocket size={18} />
+                  {t.cta.button}
+                  <ArrowRight size={18} />
+                </Link>
+
+                <button
+                  type="button"
+                  className="cta-secondary"
+                  onClick={() => navigate("/antimate-ai")}
+                >
+                  <Bot size={18} />
+                  {t.cta.ai}
+                </button>
+
+              </div>
+
             </div>
 
-            <div className="section-eyebrow">
-              <span />
-              ANTIMATE
-              <span />
-            </div>
-
-            <h2>{t.cta.title}</h2>
-            <p>{t.cta.description}</p>
-
-            <div className="cta-actions">
-              <Link to="/signup" className="primary-button">
-                {t.cta.button1}
-                <ArrowRight size={19} />
-              </Link>
-
-              <button className="secondary-button" onClick={openAI}>
-                <Bot size={19} />
-                {t.cta.button2}
-              </button>
-            </div>
           </div>
         </section>
+
       </main>
 
-      {/* FOOTER */}
-      <footer className="site-footer">
-        <div className="footer-main">
-          <div className="footer-brand">
-            <div className="footer-logo-row">
-              <AntimateLogo size={45} />
 
-              <div>
-                <strong>ANTIMATE</strong>
-                <span>SMART TECHNOLOGY</span>
-              </div>
-            </div>
+      {/* ======================================================
+          FLOATING AI BUTTON
+          ====================================================== */}
 
-            <p>{t.footer.description}</p>
-
-            <div className="footer-location">
-              <MapPin size={16} />
-              {t.footer.location}
-            </div>
-          </div>
-
-          <div className="footer-column">
-            <h4>{t.nav.solutions}</h4>
-            <button onClick={() => scrollTo("solutions")}>
-              ANTIMATE AI
-            </button>
-            <button onClick={() => scrollTo("solutions")}>
-              Smart Brooding
-            </button>
-            <button onClick={() => scrollTo("solutions")}>
-              ANTIMATE Cloud
-            </button>
-            <button onClick={() => scrollTo("solutions")}>
-              ANTIMATE Link
-            </button>
-          </div>
-
-          <div className="footer-column">
-            <h4>{t.nav.support}</h4>
-            <button onClick={openAI}>AI Chat</button>
-            <a href="tel:+250798698431">Phone</a>
-            <a
-              href="https://wa.me/250798698431"
-              target="_blank"
-              rel="noreferrer"
-            >
-              WhatsApp
-            </a>
-            <a href="mailto:antimate.inc@gmai.com">Email</a>
-          </div>
-
-          <div className="footer-column">
-            <h4>{language === "rw" ? "Quick Links" : "Quick Links"}</h4>
-            <button onClick={() => scrollTo("about")}>
-              {t.nav.about}
-            </button>
-            <button onClick={() => scrollTo("plans")}>
-              {t.nav.plans}
-            </button>
-            <Link to="/brooding-guide">{t.nav.knowledge}</Link>
-            <Link to="/signup">{t.nav.signup}</Link>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <span>
-            © {new Date().getFullYear()} ANTIMATE. {t.footer.rights}
-          </span>
-
-          <span>Made with intelligence in Rwanda 🇷🇼</span>
-        </div>
-      </footer>
-
-      {/* FLOATING AI */}
-      <button className="floating-ai-button" onClick={openAI}>
-        <div className="ai-button-pulse" />
-
-        <div className="floating-ai-icon">
-          <Brain size={23} />
+      <button
+        type="button"
+        className="floating-ai-button"
+        onClick={() => navigate("/antimate-ai")}
+        aria-label="Open ANTIMATE AI"
+      >
+        <div className="floating-ai-orb">
+          <AntimateAIIcon size="tiny" />
         </div>
 
         <div className="floating-ai-text">
-          <strong>ANTIMATE AI</strong>
-          <span>
-            {language === "rw" ? "Baza ikibazo" : "Ask anything"}
-          </span>
+          <span>ANTIMATE</span>
+          <strong>AI</strong>
         </div>
 
         <ArrowRight size={17} />
       </button>
 
-      {/* LOGIN MODAL */}
-      {loginOpen && (
+
+      {/* ======================================================
+          FOOTER
+          ====================================================== */}
+
+      <footer className="site-footer">
+
+        <div className="footer-top">
+
+          <div className="footer-brand">
+            <AntimateLogo />
+
+            <p>{t.footer.tagline}</p>
+
+            <div className="footer-contact-mini">
+              <span>Kigali, Rwanda</span>
+              <span>+250 798 698 431</span>
+            </div>
+          </div>
+
+
+          <div className="footer-column">
+            <h4>{t.footer.explore}</h4>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("systems")}
+            >
+              {t.nav.systems}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("plans")}
+            >
+              {t.nav.plans}
+            </button>
+
+            <Link to="/brooding-guide">
+              {t.nav.knowledge}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => navigate("/antimate-ai")}
+            >
+              ANTIMATE AI
+            </button>
+          </div>
+
+
+          <div className="footer-column">
+            <h4>{t.footer.company}</h4>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("about")}
+            >
+              {t.nav.about}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("vision")}
+            >
+              {t.vision.eyebrow}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("support")}
+            >
+              {t.support.contact}
+            </button>
+          </div>
+
+
+          <div className="footer-column">
+            <h4>{t.footer.support}</h4>
+
+            <a href="tel:+250798698431">
+              <Phone size={14} />
+              +250 798 698 431
+            </a>
+
+            <a href="https://wa.me/250798698431">
+              <MessageCircle size={14} />
+              WhatsApp
+            </a>
+
+            <a href="mailto:antimate.inc@gmai.com">
+              <Mail size={14} />
+              antimate.inc@gmai.com
+            </a>
+
+            <button
+              type="button"
+              onClick={() => navigate("/antimate-ai")}
+            >
+              <Bot size={14} />
+              Web Chat
+            </button>
+          </div>
+
+        </div>
+
+
+        <div className="footer-bottom">
+          <span>
+            © {new Date().getFullYear()} ANTIMATE.{" "}
+            {t.footer.rights}
+          </span>
+
+          <span>
+            Advanced Networked Technology With Intelligent
+            Machines And Telemetry Ecosystem.
+          </span>
+        </div>
+
+      </footer>
+
+
+      {/* ======================================================
+          LOGIN MODAL
+          ====================================================== */}
+
+      {showLogin && (
         <div
-          className="login-overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setLoginOpen(false);
+          className="login-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeLogin();
             }
           }}
         >
-          <div className="login-modal">
+
+          <div
+            className="login-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-title"
+          >
+
             <button
-              className="modal-close"
-              onClick={() => setLoginOpen(false)}
+              type="button"
+              className="login-modal-close"
+              onClick={closeLogin}
               aria-label={t.login.close}
             >
-              <X size={20} />
+              <X size={19} />
             </button>
 
-            <div className="modal-logo">
-              <AntimateLogo size={58} />
+
+            <div className="login-modal-visual">
+
+              <div className="login-modal-glow glow-one" />
+              <div className="login-modal-glow glow-two" />
+
+              <AntimateAIIcon size="normal" />
+
+              <span>ANTIMATE</span>
+              <strong>Intelligent Access</strong>
+
             </div>
 
-            <div className="modal-header">
-              <div className="modal-eyebrow">
-                <Sparkles size={14} />
-                ANTIMATE
+
+            <div className="login-modal-content">
+
+              <div className="login-modal-heading">
+                <span className="login-small-label">
+                  ANTIMATE
+                </span>
+
+                <h2 id="login-title">
+                  {t.login.title}
+                </h2>
+
+                <p>
+                  {t.login.subtitle}
+                </p>
               </div>
 
-              <h2>{t.login.title}</h2>
-              <p>{t.login.subtitle}</p>
-            </div>
 
-            <form onSubmit={handleLogin}>
-              <label>{t.login.email}</label>
+              <form onSubmit={handleLogin}>
 
-              <div className="input-wrapper">
-                <Mail size={18} />
+                <div className="login-field">
+                  <label htmlFor="login-email">
+                    {t.login.email}
+                  </label>
 
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@email.com"
-                  autoComplete="email"
-                />
-              </div>
+                  <div className="login-input-wrap">
+                    <Mail size={18} />
 
-              <label>{t.login.password}</label>
+                    <input
+                      id="login-email"
+                      type="email"
+                      value={email}
+                      onChange={(event) =>
+                        setEmail(event.target.value)
+                      }
+                      placeholder={
+                        t.login.emailPlaceholder
+                      }
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
 
-              <div className="input-wrapper">
-                <ShieldCheck size={18} />
 
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
+                <div className="login-field">
+                  <label htmlFor="login-password">
+                    {t.login.password}
+                  </label>
+
+                  <div className="login-input-wrap">
+                    <Lock size={18} />
+
+                    <input
+                      id="login-password"
+                      type={
+                        showPassword
+                          ? "text"
+                          : "password"
+                      }
+                      value={password}
+                      onChange={(event) =>
+                        setPassword(event.target.value)
+                      }
+                      placeholder={
+                        t.login.passwordPlaceholder
+                      }
+                      autoComplete="current-password"
+                    />
+
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() =>
+                        setShowPassword(
+                          (prev) => !prev
+                        )
+                      }
+                      aria-label={
+                        showPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+
+                <div className="login-options">
+
+                  <label className="remember-check">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(event) =>
+                        setRemember(
+                          event.target.checked
+                        )
+                      }
+                    />
+
+                    <span>
+                      <Check size={12} />
+                    </span>
+
+                    {t.login.remember}
+                  </label>
+
+                  <Link to="/forgot-password">
+                    {t.login.forgot}
+                  </Link>
+
+                </div>
+
+
+                {loginError && (
+                  <div className="login-error">
+                    <span>!</span>
+                    {loginError}
+                  </div>
+                )}
+
 
                 <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
+                  type="submit"
+                  className="login-submit"
+                  disabled={loading}
                 >
-                  {showPassword ? (
-                    <EyeOff size={18} />
+                  {loading ? (
+                    <>
+                      <span className="button-loader" />
+                      {t.login.loading}
+                    </>
                   ) : (
-                    <Eye size={18} />
+                    <>
+                      <Send size={17} />
+                      {t.login.button}
+                      <ArrowRight size={17} />
+                    </>
                   )}
                 </button>
-              </div>
 
-              <div className="login-extra">
-                <Link to="/forgot-password" onClick={() => setLoginOpen(false)}>
-                  {t.login.forgot}
+              </form>
+
+
+              <div className="login-signup-line">
+                <span>{t.login.noAccount}</span>
+
+                <Link
+                  to="/signup"
+                  onClick={() => setShowLogin(false)}
+                >
+                  {t.login.signup}
                 </Link>
               </div>
 
-              {loginError && (
-                <div className="login-error">
-                  {loginError}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="login-submit"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="button-spinner" />
-                    {language === "rw"
-                      ? "Turimo kwinjiza..."
-                      : "Signing in..."}
-                  </>
-                ) : (
-                  <>
-                    {t.login.button}
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="modal-divider">
-              <span />
-              <small>
-                {language === "rw" ? "CYANGWA" : "OR"}
-              </small>
-              <span />
             </div>
 
-            <button
-              className="modal-ai-button"
-              onClick={() => {
-                setLoginOpen(false);
-                openAI();
-              }}
-            >
-              <Bot size={19} />
-              {language === "rw"
-                ? "Koresha ANTIMATE AI"
-                : "Use ANTIMATE AI"}
-            </button>
-
-            <div className="modal-signup">
-              {t.login.noAccount}{" "}
-              <Link to="/signup" onClick={() => setLoginOpen(false)}>
-                {t.login.signup}
-              </Link>
-            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

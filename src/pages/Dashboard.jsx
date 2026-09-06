@@ -19,168 +19,172 @@ const API =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
-/*
-|--------------------------------------------------------------------------
-| Dashboard
-|--------------------------------------------------------------------------
-| Frontend responsibility:
-|   - Receive data
-|   - Display data
-|   - Render chart
-|   - Handle UI interactions
-|
-| Backend responsibility:
-|   - Device online/offline status
-|   - Last activity / heartbeat
-|   - Chicks age
-|   - Telemetry history/window
-|   - Condition/status
-|   - Authentication/authorization
-|   - Socket user identification
-|--------------------------------------------------------------------------
-*/
+const socket = io(API, {
+  transports: ["websocket", "polling"],
+});
+
+const DEVICE_TIMEOUT = 3 * 60 * 1000;
+const CHART_WINDOW = 120 * 60 * 1000;
 
 function Dashboard() {
-  const {
-    isDark,
-    text,
-    telemetryHistory,
-  } = useAppSettings();
+  const { isDark, text, telemetryHistory, addTelemetryPoint } = useAppSettings();
 
   const [data, setData] = useState({
-    temperature: null,
-    humidity: null,
+    temperature: 0,
+    humidity: 0,
     heater: "OFF",
     fanSpeed: 0,
     condition: "NORMAL",
     chicksAge: null,
-
-    // Backend should provide these
-    deviceStatus: "OFFLINE",
-    lastActivity: null,
   });
 
+  const [lastActivity, setLastActivity] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [hoveredPoint, setHoveredPoint] = useState(null);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Theme
-  |--------------------------------------------------------------------------
-  */
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 10000);
 
-  const bg = isDark ? "#0f172a" : "#f8fafc";
-  const primaryText = isDark ? "#f8fafc" : "#0f172a";
-  const muted = isDark ? "#94a3b8" : "#64748b";
+    return () => clearInterval(timer);
+  }, []);
 
-  const softBg = isDark
-    ? "rgba(30,41,59,0.72)"
-    : "rgba(255,255,255,0.78)";
+  const getTimestamp = (telemetry) => {
+    const timestamp =
+      telemetry?.heartbeatAt ||
+      telemetry?.lastHeartbeat ||
+      telemetry?.heartbeat ||
+      telemetry?.createdAt ||
+      telemetry?.timestamp ||
+      telemetry?.updatedAt;
 
-  const border = isDark
-    ? "rgba(148,163,184,0.14)"
-    : "rgba(15,23,42,0.08)";
+    if (!timestamp) return Date.now();
 
-  /*
-  |--------------------------------------------------------------------------
-  | Normalize backend payload
-  |--------------------------------------------------------------------------
-  |
-  | Backend should ideally return one consistent schema.
-  | These fallbacks make the page tolerant of old telemetry payloads
-  | without putting business logic here.
-  |--------------------------------------------------------------------------
-  */
+    const parsed = new Date(timestamp).getTime();
+
+    return Number.isNaN(parsed) ? Date.now() : parsed;
+  };
+
+  const getChicksAge = (telemetry) => {
+    const directAge =
+      telemetry?.chicksAge ??
+      telemetry?.chickAge ??
+      telemetry?.ageDays ??
+      telemetry?.dayAge ??
+      telemetry?.flockAge ??
+      telemetry?.chickenAge;
+
+    if (
+      directAge !== undefined &&
+      directAge !== null &&
+      directAge !== ""
+    ) {
+      const age = Number(directAge);
+      if (!Number.isNaN(age)) return age;
+    }
+
+    const birthDate =
+      telemetry?.birthDate ||
+      telemetry?.chicksBirthDate ||
+      telemetry?.flockBirthDate;
+
+    if (birthDate) {
+      const birth = new Date(birthDate).getTime();
+      if (!Number.isNaN(birth)) {
+        return Math.max(
+          0,
+          Math.floor((Date.now() - birth) / (24 * 60 * 60 * 1000))
+        );
+      }
+    }
+
+    return null;
+  };
 
   const updateTelemetry = (telemetry) => {
     if (!telemetry) return;
 
-    const payload = telemetry.data || telemetry;
+    const temperature = Number(
+      telemetry.temperature ??
+        telemetry.temp ??
+        telemetry.t ??
+        0
+    );
+
+    const humidity = Number(
+      telemetry.humidity ??
+        telemetry.rh ??
+        telemetry.h ??
+        0
+    );
+
+    const fanSpeed = Number(
+      telemetry.fanSpeed ??
+        telemetry.fan ??
+        telemetry.fanPercent ??
+        0
+    );
+
+    const heater =
+      telemetry.heater ??
+      telemetry.heaterStatus ??
+      "OFF";
+
+    const condition =
+      telemetry.condition ||
+      telemetry.status ||
+      "NORMAL";
+
+    const timestamp = getTimestamp(telemetry);
+    const chicksAge = getChicksAge(telemetry);
 
     setData({
-      temperature:
-        payload.temperature ??
-        payload.temp ??
-        null,
+      temperature,
+      humidity,
+      heater,
+      fanSpeed,
+      condition,
+      chicksAge,
+    });
 
-      humidity:
-        payload.humidity ??
-        payload.rh ??
-        null,
+    setLastActivity(timestamp);
 
-      heater:
-        payload.heater ??
-        payload.heaterStatus ??
-        "OFF",
-
-      fanSpeed:
-        payload.fanSpeed ??
-        payload.fanPercent ??
-        payload.fan ??
-        0,
-
-      condition:
-        payload.condition ??
-        payload.status ??
-        "NORMAL",
-
-      chicksAge:
-        payload.chicksAge ??
-        payload.chickAge ??
-        payload.ageDays ??
-        null,
-
-      deviceStatus:
-        payload.deviceStatus ??
-        payload.deviceOnline
-          ? "ONLINE"
-          : payload.deviceStatus || "OFFLINE",
-
-      lastActivity:
-        payload.lastActivity ??
-        payload.lastHeartbeat ??
-        payload.heartbeatAt ??
-        null,
+    // Bika ipimo rishya muri Context no muri localStorage
+    addTelemetryPoint({
+      timestamp,
+      temperature,
+      humidity,
     });
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Authentication
-  |--------------------------------------------------------------------------
-  */
-
-  const getToken = () => {
-    try {
-      return localStorage.getItem("token");
-    } catch {
-      return null;
-    }
-  };
-
-  /*
-  |--------------------------------------------------------------------------
-  | REST API
-  |--------------------------------------------------------------------------
-  |
-  | Initial state comes from backend.
-  | No timeout calculations.
-  | No chicks-age calculations.
-  | No heartbeat calculations.
-  |--------------------------------------------------------------------------
-  */
-
   useEffect(() => {
-    let mounted = true;
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
 
-    const token = getToken();
+    const userId = user?._id || user?.id;
 
-    if (!token) {
-      console.warn("⚠️ Dashboard: authentication token missing");
-      return;
-    }
+    const handleConnect = () => {
+      setSocketConnected(true);
+      if (userId) {
+        socket.emit("join-user", userId);
+      }
+    };
+
+    const handleDisconnect = () => {
+      setSocketConnected(false);
+    };
+
+    const handleTelemetry = (telemetry) => {
+      updateTelemetry(telemetry);
+    };
 
     const loadTelemetry = async () => {
+      if (!token) return;
+
       try {
         const response = await axios.get(
           `${API}/api/telemetry/latest`,
@@ -188,20 +192,16 @@ function Dashboard() {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-            timeout: 15000,
           }
         );
 
-        if (!mounted) return;
-
         const telemetry =
-          response.data?.data ??
-          response.data;
+          response.data?.data || response.data;
 
-        updateTelemetry(telemetry);
+        if (telemetry) {
+          updateTelemetry(telemetry);
+        }
       } catch (error) {
-        if (!mounted) return;
-
         console.error(
           "❌ TELEMETRY LOAD ERROR:",
           error.response?.data || error.message
@@ -209,120 +209,47 @@ function Dashboard() {
       }
     };
 
-    loadTelemetry();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Socket.IO
-  |--------------------------------------------------------------------------
-  |
-  | IMPORTANT:
-  | Do NOT send userId from localStorage.
-  |
-  | JWT is sent to backend.
-  | Backend should authenticate socket.handshake.auth.token
-  | and determine the user itself.
-  |--------------------------------------------------------------------------
-  */
-
-  useEffect(() => {
-    const token = getToken();
-
-    if (!token) {
-      console.warn("⚠️ Dashboard Socket: authentication token missing");
-      return undefined;
-    }
-
-    const socket = io(API, {
-      transports: ["websocket", "polling"],
-
-      auth: {
-        token,
-      },
-
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-    });
-
-    const handleConnect = () => {
-      setSocketConnected(true);
-
-      console.log("✅ Dashboard Socket connected");
-    };
-
-    const handleDisconnect = (reason) => {
-      setSocketConnected(false);
-
-      console.warn(
-        "⚠️ Dashboard Socket disconnected:",
-        reason
-      );
-    };
-
-    const handleConnectError = (error) => {
-      setSocketConnected(false);
-
-      console.error(
-        "❌ Dashboard Socket authentication/connection error:",
-        error?.message || error
-      );
-    };
-
-    const handleTelemetry = (telemetry) => {
-      updateTelemetry(telemetry);
-    };
-
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
-    socket.on("connect_error", handleConnectError);
+    socket.on("telemetry:update", handleTelemetry);
 
-    socket.on(
-      "telemetry:update",
-      handleTelemetry
-    );
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    loadTelemetry();
 
     return () => {
       socket.off("connect", handleConnect);
       socket.off("disconnect", handleDisconnect);
-      socket.off("connect_error", handleConnectError);
-
-      socket.off(
-        "telemetry:update",
-        handleTelemetry
-      );
-
-      socket.disconnect();
+      socket.off("telemetry:update", handleTelemetry);
     };
   }, []);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Display values
-  |--------------------------------------------------------------------------
-  */
+  const deviceOnline = useMemo(() => {
+    if (!lastActivity) return false;
+    return now - lastActivity <= DEVICE_TIMEOUT;
+  }, [lastActivity, now]);
 
-  const temperature =
-    data.temperature === null ||
-    data.temperature === undefined ||
-    Number.isNaN(Number(data.temperature))
-      ? null
-      : Number(data.temperature);
+  const lastSeenText = useMemo(() => {
+    if (!lastActivity) {
+      return text?.noDataReceived || "No data received";
+    }
 
-  const humidity =
-    data.humidity === null ||
-    data.humidity === undefined ||
-    Number.isNaN(Number(data.humidity))
-      ? null
-      : Number(data.humidity);
+    const seconds = Math.floor((now - lastActivity) / 1000);
 
+    if (seconds < 10) return text?.justNow || "Just now";
+    if (seconds < 60) return `${seconds}s ${text?.ago || "ago"}`;
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ${text?.ago || "ago"}`;
+
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${text?.ago || "ago"}`;
+  }, [lastActivity, now, text]);
+
+  const temperature = Number(data.temperature || 0);
+  const humidity = Number(data.humidity || 0);
   const heaterOn =
     data.heater === "ON" ||
     data.heater === 1 ||
@@ -330,88 +257,25 @@ function Dashboard() {
 
   const fanValue = Math.max(
     0,
-    Math.min(
-      100,
-      Number(data.fanSpeed) || 0
-    )
+    Math.min(100, Number(data.fanSpeed || 0))
   );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Backend controlled device status
-  |--------------------------------------------------------------------------
-  */
-
-  const deviceOnline =
-    String(data.deviceStatus).toUpperCase() ===
-      "ONLINE" ||
-    String(data.deviceStatus).toLowerCase() ===
-      "online";
-
-  /*
-  |--------------------------------------------------------------------------
-  | Last activity
-  |--------------------------------------------------------------------------
-  |
-  | Backend provides the timestamp.
-  | Frontend only formats it.
-  |--------------------------------------------------------------------------
-  */
-
-  const lastSeenText = useMemo(() => {
-    if (!data.lastActivity) {
-      return (
-        text?.noDataReceived ||
-        "No data received"
-      );
-    }
-
-    const date = new Date(data.lastActivity);
-
-    if (Number.isNaN(date.getTime())) {
-      return (
-        text?.noDataReceived ||
-        "No data received"
-      );
-    }
-
-    return date.toLocaleString();
-  }, [data.lastActivity, text]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Chicks age
-  |--------------------------------------------------------------------------
-  |
-  | Backend calculates this.
-  |--------------------------------------------------------------------------
-  */
-
   const chicksAgeText =
-    data.chicksAge === null ||
-    data.chicksAge === undefined ||
-    data.chicksAge === ""
+    data.chicksAge === null || data.chicksAge === undefined
       ? "—"
       : `${Number(data.chicksAge).toFixed(0)} ${
           text?.days || "days"
         }`;
 
-  /*
-  |--------------------------------------------------------------------------
-  | Chart
-  |--------------------------------------------------------------------------
-  |
-  | Backend/Context provides the already-selected history.
-  |
-  | Frontend does NOT decide:
-  |   - 5 minutes
-  |   - 120 minutes
-  |   - 3 minutes
-  |   - device timeout
-  |
-  | It only renders the points supplied to it.
-  |--------------------------------------------------------------------------
-  */
+  const bg = isDark ? "#0f172a" : "#f8fafc";
+  const primaryText = isDark ? "#f8fafc" : "#0f172a";
+  const muted = isDark ? "#94a3b8" : "#64748b";
+  const softBg = isDark
+    ? "rgba(30,41,59,0.72)"
+    : "rgba(255,255,255,0.78)";
+  const border = isDark
+    ? "rgba(148,163,184,0.14)"
+    : "rgba(15,23,42,0.08)";
 
   const chart = useMemo(() => {
     const width = 360;
@@ -422,260 +286,107 @@ function Dashboard() {
     const top = 18;
     const bottom = 28;
 
-    const plotWidth =
-      width - left - right;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
 
-    const plotHeight =
-      height - top - bottom;
+    const cutoff = now - CHART_WINDOW;
 
-    const points = Array.isArray(
-      telemetryHistory
-    )
-      ? telemetryHistory
-          .filter(
-            (item) =>
-              item &&
-              item.timestamp &&
-              item.temperature !== null &&
-              item.temperature !== undefined &&
-              !Number.isNaN(
-                Number(item.temperature)
-              )
-          )
-          .map((item) => ({
-            ...item,
-            timestamp: new Date(
-              item.timestamp
-            ).getTime(),
-            temperature: Number(
-              item.temperature
-            ),
-          }))
-          .filter(
-            (item) =>
-              !Number.isNaN(
-                item.timestamp
-              )
-          )
-      : [];
+    // Koresha telemetryHistory ivuye mu Context
+    const points = (telemetryHistory || [])
+      .filter((item) => item.timestamp >= cutoff)
+      .sort((a, b) => a.timestamp - b.timestamp);
 
-    let minTime =
-      points.length > 0
-        ? Math.min(
-            ...points.map(
-              (p) => p.timestamp
-            )
-          )
-        : Date.now() - 60 * 60 * 1000;
-
-    let maxTime =
-      points.length > 0
-        ? Math.max(
-            ...points.map(
-              (p) => p.timestamp
-            )
-          )
-        : Date.now();
+    let minTime = points.length > 0 ? points[0].timestamp : cutoff;
+    let maxTime = points.length > 0 ? points[points.length - 1].timestamp : now;
 
     if (maxTime === minTime) {
-      minTime -= 10000;
-      maxTime += 10000;
+      minTime = maxTime - 10000;
     }
 
-    const timeSpan =
-      maxTime - minTime;
+    const timeSpan = maxTime - minTime;
 
-    let values = points.map(
-      (item) => item.temperature
-    );
+    let values = points.map((item) => Number(item.temperature));
 
     if (!values.length) {
-      values =
-        temperature !== null
-          ? [temperature]
-          : [25];
+      values = [temperature || 25];
     }
 
-    let minTemp = Math.floor(
-      Math.min(...values) - 1.5
-    );
-
-    let maxTemp = Math.ceil(
-      Math.max(...values) + 1.5
-    );
+    let minTemp = Math.floor(Math.min(...values) - 1.5);
+    let maxTemp = Math.ceil(Math.max(...values) + 1.5);
 
     if (maxTemp - minTemp < 4) {
-      const middle =
-        (maxTemp + minTemp) / 2;
-
-      minTemp = Math.floor(
-        middle - 2
-      );
-
-      maxTemp = Math.ceil(
-        middle + 2
-      );
+      const middle = (maxTemp + minTemp) / 2;
+      minTemp = Math.floor(middle - 2);
+      maxTemp = Math.ceil(middle + 2);
     }
 
-    const tempRange =
-      maxTemp - minTemp;
+    const tempRange = maxTemp - minTemp;
 
     const getX = (timestamp) => {
-      const position =
-        (timestamp - minTime) /
-        timeSpan;
-
-      return (
-        left +
-        Math.max(
-          0,
-          Math.min(1, position)
-        ) *
-          plotWidth
-      );
+      const position = (timestamp - minTime) / timeSpan;
+      return left + Math.max(0, Math.min(1, position)) * plotWidth;
     };
 
     const getY = (value) => {
-      const position =
-        (value - minTemp) /
-        tempRange;
-
-      return (
-        top +
-        (1 - position) *
-          plotHeight
-      );
+      const position = (value - minTemp) / tempRange;
+      return top + (1 - position) * plotHeight;
     };
 
-    const plottedPoints =
-      points.map((point) => ({
-        x: getX(point.timestamp),
-        y: getY(point.temperature),
-        temp: point.temperature,
-
-        time: new Date(
-          point.timestamp
-        ).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        }),
-
-        raw: point,
-      }));
+    const plottedPoints = points.map((point) => ({
+      x: getX(point.timestamp),
+      y: getY(point.temperature),
+      temp: point.temperature,
+      time: new Date(point.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      raw: point,
+    }));
 
     let linePath = "";
     let areaPath = "";
 
     if (plottedPoints.length === 1) {
-      const p =
-        plottedPoints[0];
-
-      linePath =
-        `M ${left},${p.y} ` +
-        `L ${width - right},${p.y}`;
-
-      areaPath =
-        `M ${left},${top + plotHeight} ` +
-        `L ${left},${p.y} ` +
-        `L ${width - right},${p.y} ` +
-        `L ${width - right},${top + plotHeight} Z`;
-    }
-
-    if (plottedPoints.length > 1) {
-      linePath =
-        `M ${plottedPoints[0].x},${plottedPoints[0].y}`;
-
-      for (
-        let i = 0;
-        i < plottedPoints.length - 1;
-        i++
-      ) {
-        const curr =
-          plottedPoints[i];
-
-        const next =
-          plottedPoints[i + 1];
-
-        const cx =
-          (curr.x + next.x) / 2;
-
-        linePath +=
-          ` C ${cx},${curr.y} ` +
-          `${cx},${next.y} ` +
-          `${next.x},${next.y}`;
+      const p = plottedPoints[0];
+      linePath = `M ${left},${p.y} L ${width - right},${p.y}`;
+      areaPath = `M ${left},${top + plotHeight} L ${left},${p.y} L ${width - right},${p.y} L ${width - right},${top + plotHeight} Z`;
+    } else if (plottedPoints.length > 1) {
+      linePath = `M ${plottedPoints[0].x},${plottedPoints[0].y}`;
+      for (let i = 0; i < plottedPoints.length - 1; i++) {
+        const curr = plottedPoints[i];
+        const next = plottedPoints[i + 1];
+        const cx = (curr.x + next.x) / 2;
+        linePath += ` C ${cx},${curr.y} ${cx},${next.y} ${next.x},${next.y}`;
       }
 
-      const firstX =
-        plottedPoints[0].x;
+      const firstX = plottedPoints[0].x;
+      const lastX = plottedPoints[plottedPoints.length - 1].x;
+      const bottomY = top + plotHeight;
 
-      const lastX =
-        plottedPoints[
-          plottedPoints.length - 1
-        ].x;
-
-      const bottomY =
-        top + plotHeight;
-
-      areaPath =
-        `${linePath} ` +
-        `L ${lastX},${bottomY} ` +
-        `L ${firstX},${bottomY} Z`;
+      areaPath = `${linePath} L ${lastX},${bottomY} L ${firstX},${bottomY} Z`;
     }
 
-    const last =
-      plottedPoints.length
-        ? plottedPoints[
-            plottedPoints.length - 1
-          ]
-        : null;
+    const last = plottedPoints.length ? plottedPoints[plottedPoints.length - 1] : null;
 
     const yTicks = [
       maxTemp,
-      Math.round(
-        minTemp +
-          tempRange * 0.66
-      ),
-      Math.round(
-        minTemp +
-          tempRange * 0.33
-      ),
+      Math.round(minTemp + tempRange * 0.66),
+      Math.round(minTemp + tempRange * 0.33),
       minTemp,
     ];
 
-    const formatTimeLabel = (
-      timestamp
-    ) =>
-      new Date(
-        timestamp
-      ).toLocaleTimeString([], {
+    const formatTimeLabel = (ms) => {
+      return new Date(ms).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       });
+    };
 
     const xTicks = [
-      {
-        label:
-          formatTimeLabel(
-            minTime
-          ),
-        ratio: 0,
-      },
-      {
-        label:
-          formatTimeLabel(
-            minTime +
-              timeSpan * 0.5
-          ),
-        ratio: 0.5,
-      },
-      {
-        label:
-          formatTimeLabel(
-            maxTime
-          ),
-        ratio: 1,
-      },
+      { label: formatTimeLabel(minTime), ratio: 0 },
+      { label: formatTimeLabel(minTime + timeSpan * 0.5), ratio: 0.5 },
+      { label: formatTimeLabel(maxTime), ratio: 1 },
     ];
 
     return {
@@ -694,24 +405,9 @@ function Dashboard() {
       xTicks,
       points: plottedPoints,
     };
-  }, [
-    telemetryHistory,
-    temperature,
-  ]);
+  }, [telemetryHistory, now, temperature]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Info Row
-  |--------------------------------------------------------------------------
-  */
-
-  const InfoRow = ({
-    icon,
-    label,
-    value,
-    extra,
-    valueColor,
-  }) => (
+  const InfoRow = ({ icon, label, value, extra, valueColor }) => (
     <div
       style={{
         ...styles.infoRow,
@@ -720,26 +416,14 @@ function Dashboard() {
       }}
     >
       <div style={styles.infoLeft}>
-        <div style={styles.iconBox}>
-          {icon}
-        </div>
+        <div style={styles.iconBox}>{icon}</div>
 
         <div>
-          <p
-            style={{
-              ...styles.label,
-              color: muted,
-            }}
-          >
-            {label}
-          </p>
-
+          <p style={{ ...styles.label, color: muted }}>{label}</p>
           <h3
             style={{
               ...styles.value,
-              color:
-                valueColor ||
-                primaryText,
+              color: valueColor || primaryText,
             }}
           >
             {value}
@@ -748,23 +432,12 @@ function Dashboard() {
       </div>
 
       {extra && (
-        <span
-          style={{
-            ...styles.extra,
-            color: muted,
-          }}
-        >
+        <span style={{ ...styles.extra, color: muted }}>
           {extra}
         </span>
       )}
     </div>
   );
-
-  /*
-  |--------------------------------------------------------------------------
-  | Render
-  |--------------------------------------------------------------------------
-  */
 
   return (
     <div
@@ -774,128 +447,61 @@ function Dashboard() {
         color: primaryText,
       }}
     >
-      <AppHeader
-        title={
-          text?.dashboard ||
-          "Dashboard"
-        }
-      />
+      <AppHeader title={text?.dashboard || "Dashboard"} />
 
       <main style={styles.content}>
-        {/* HERO */}
-
         <section style={styles.hero}>
           <div>
-            <p
-              style={{
-                ...styles.smallText,
-                color: muted,
-              }}
-            >
-              {text?.liveBrooderStatus ||
-                "Live brooder status"}
+            <p style={{ ...styles.smallText, color: muted }}>
+              {text?.liveBrooderStatus || "Live brooder status"}
             </p>
-
-            <h2 style={styles.title}>
-              ANTIMATE Edge
-            </h2>
+            <h2 style={styles.title}>ANTIMATE Edge</h2>
           </div>
 
           <div
             style={{
               ...styles.statusPill,
-              background:
-                deviceOnline
-                  ? "rgba(34,197,94,0.14)"
-                  : "rgba(239,68,68,0.14)",
-
-              color: deviceOnline
-                ? "#22c55e"
-                : "#ef4444",
-
-              border:
-                deviceOnline
-                  ? "1px solid rgba(34,197,94,0.22)"
-                  : "1px solid rgba(239,68,68,0.22)",
+              background: deviceOnline
+                ? "rgba(34,197,94,0.14)"
+                : "rgba(239,68,68,0.14)",
+              color: deviceOnline ? "#22c55e" : "#ef4444",
+              border: deviceOnline
+                ? "1px solid rgba(34,197,94,0.22)"
+                : "1px solid rgba(239,68,68,0.22)",
             }}
           >
             <Activity size={14} />
-
             <span>
               {deviceOnline
-                ? text?.online ||
-                  "Online"
-                : text?.offline ||
-                  "Offline"}
+                ? text?.online || "Online"
+                : text?.offline || "Offline"}
             </span>
           </div>
         </section>
 
-        {/* QUICK STATS */}
-
-        <section
-          style={styles.quickStats}
-        >
-          <div
-            style={styles.bigStat}
-          >
+        <section style={styles.quickStats}>
+          <div style={styles.bigStat}>
             <Thermometer size={18} />
-
             <div>
-              <p
-                style={
-                  styles.whiteLabel
-                }
-              >
-                {text?.temperature ||
-                  "Temperature"}
+              <p style={styles.whiteLabel}>
+                {text?.temperature || "Temperature"}
               </p>
-
-              <h1
-                style={
-                  styles.bigValue
-                }
-              >
-                {temperature === null
-                  ? "—"
-                  : `${temperature.toFixed(
-                      1
-                    )}°C`}
+              <h1 style={styles.bigValue}>
+                {temperature.toFixed(1)}°C
               </h1>
             </div>
           </div>
 
-          <div
-            style={styles.bigStat}
-          >
+          <div style={styles.bigStat}>
             <Droplets size={18} />
-
             <div>
-              <p
-                style={
-                  styles.whiteLabel
-                }
-              >
-                {text?.humidity ||
-                  "Humidity"}
+              <p style={styles.whiteLabel}>
+                {text?.humidity || "Humidity"}
               </p>
-
-              <h1
-                style={
-                  styles.bigValue
-                }
-              >
-                {humidity === null
-                  ? "—"
-                  : `${humidity.toFixed(
-                      1
-                    )}%`}
-              </h1>
+              <h1 style={styles.bigValue}>{humidity.toFixed(1)}%</h1>
             </div>
           </div>
         </section>
-
-        {/* CHICKS AGE */}
 
         <section
           style={{
@@ -905,20 +511,12 @@ function Dashboard() {
           }}
         >
           <div>
-            <p
-              style={{
-                ...styles.label,
-                color: muted,
-              }}
-            >
-              {text?.chicksAge ||
-                "Chicks age"}
+            <p style={{ ...styles.label, color: muted }}>
+              {text?.chicksAge || "Chicks age"}
             </p>
-
             <h2
               style={{
-                margin:
-                  "4px 0 0",
+                margin: "4px 0 0",
                 fontSize: "21px",
               }}
             >
@@ -929,24 +527,17 @@ function Dashboard() {
           <div
             style={{
               ...styles.ageIndicator,
-              background:
-                deviceOnline
-                  ? "rgba(34,197,94,0.12)"
-                  : "rgba(239,68,68,0.12)",
-              color: deviceOnline
-                ? "#22c55e"
-                : "#ef4444",
+              background: deviceOnline
+                ? "rgba(34,197,94,0.12)"
+                : "rgba(239,68,68,0.12)",
+              color: deviceOnline ? "#22c55e" : "#ef4444",
             }}
           >
             {deviceOnline
-              ? text?.deviceActive ||
-                "Device active"
-              : text?.deviceOffline ||
-                "Device offline"}
+              ? text?.deviceActive || "Device active"
+              : text?.deviceOffline || "Device offline"}
           </div>
         </section>
-
-        {/* TEMPERATURE CHART */}
 
         <section
           style={{
@@ -955,65 +546,33 @@ function Dashboard() {
             border: `1px solid ${border}`,
           }}
         >
-          <div
-            style={
-              styles.chartHeader
-            }
-          >
+          <div style={styles.chartHeader}>
             <div>
-              <p
-                style={{
-                  ...styles.label,
-                  color: muted,
-                }}
-              >
-                {text?.temperature ||
-                  "Temperature"}
+              <p style={{ ...styles.label, color: muted }}>
+                {text?.temperature || "Temperature"}
               </p>
-
               <h3
                 style={{
                   ...styles.chartTitle,
-                  color:
-                    primaryText,
+                  color: primaryText,
                 }}
               >
-                {text?.last120Minutes ||
-                  "Live Trend Graph"}
+                {text?.last120Minutes || "Live Trend Graph"}
               </h3>
             </div>
 
-            <span
-              style={{
-                ...styles.extra,
-                color: muted,
-              }}
-            >
-              {chart.points.length}{" "}
-              {text?.readings ||
-                "readings"}
+            <span style={{ ...styles.extra, color: muted }}>
+              {chart.points.length} {text?.readings || "readings"}
             </span>
           </div>
 
-          <div
-            style={
-              styles.chartWrapper
-            }
-          >
+          <div style={styles.chartWrapper}>
             <svg
               viewBox={`0 0 ${chart.width} ${chart.height}`}
               style={styles.svg}
               preserveAspectRatio="none"
-              onMouseLeave={() =>
-                setHoveredPoint(
-                  null
-                )
-              }
-              onTouchEnd={() =>
-                setHoveredPoint(
-                  null
-                )
-              }
+              onMouseLeave={() => setHoveredPoint(null)}
+              onTouchEnd={() => setHoveredPoint(null)}
             >
               <defs>
                 <linearGradient
@@ -1023,15 +582,8 @@ function Dashboard() {
                   x2="1"
                   y2="0"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="#2563eb"
-                  />
-
-                  <stop
-                    offset="100%"
-                    stopColor="#7c3aed"
-                  />
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="100%" stopColor="#7c3aed" />
                 </linearGradient>
 
                 <linearGradient
@@ -1041,88 +593,51 @@ function Dashboard() {
                   x2="0"
                   y2="1"
                 >
-                  <stop
-                    offset="0%"
-                    stopColor="#7c3aed"
-                    stopOpacity="0.28"
-                  />
-
-                  <stop
-                    offset="100%"
-                    stopColor="#2563eb"
-                    stopOpacity="0"
-                  />
+                  <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
-              {/* GRID */}
+              {/* Grid Lines */}
+              {chart.yTicks.map((value, index) => {
+                const y =
+                  chart.top +
+                  (index / (chart.yTicks.length - 1)) * chart.plotHeight;
 
-              {chart.yTicks.map(
-                (
-                  value,
-                  index
-                ) => {
-                  const y =
-                    chart.top +
-                    (index /
-                      (chart.yTicks
-                        .length -
-                        1)) *
-                      chart.plotHeight;
-
-                  return (
-                    <g
-                      key={`y-${index}`}
+                return (
+                  <g key={`y-${index}`}>
+                    <line
+                      x1={chart.left}
+                      x2={chart.width - chart.right}
+                      y1={y}
+                      y2={y}
+                      stroke={
+                        isDark
+                          ? "rgba(148,163,184,0.10)"
+                          : "rgba(15,23,42,0.08)"
+                      }
+                      strokeWidth="1"
+                      strokeDasharray="3 3"
+                    />
+                    <text
+                      x="2"
+                      y={y + 3}
+                      fontSize="9"
+                      fill={muted}
+                      fontWeight="500"
                     >
-                      <line
-                        x1={
-                          chart.left
-                        }
-                        x2={
-                          chart.width -
-                          chart.right
-                        }
-                        y1={y}
-                        y2={y}
-                        stroke={
-                          isDark
-                            ? "rgba(148,163,184,0.10)"
-                            : "rgba(15,23,42,0.08)"
-                        }
-                        strokeWidth="1"
-                        strokeDasharray="3 3"
-                      />
+                      {value}°
+                    </text>
+                  </g>
+                );
+              })}
 
-                      <text
-                        x="2"
-                        y={y + 3}
-                        fontSize="9"
-                        fill={muted}
-                        fontWeight="500"
-                      >
-                        {value}°
-                      </text>
-                    </g>
-                  );
-                }
-              )}
-
-              {/* BASELINE */}
-
+              {/* Bottom Baseline */}
               <line
                 x1={chart.left}
-                x2={
-                  chart.width -
-                  chart.right
-                }
-                y1={
-                  chart.top +
-                  chart.plotHeight
-                }
-                y2={
-                  chart.top +
-                  chart.plotHeight
-                }
+                x2={chart.width - chart.right}
+                y1={chart.top + chart.plotHeight}
+                y2={chart.top + chart.plotHeight}
                 stroke={
                   isDark
                     ? "rgba(148,163,184,0.20)"
@@ -1130,65 +645,39 @@ function Dashboard() {
                 }
               />
 
-              {/* TIME LABELS */}
+              {/* Time X-Ticks */}
+              {chart.xTicks.map((tick, idx) => {
+                const x = chart.left + tick.ratio * chart.plotWidth;
 
-              {chart.xTicks.map(
-                (
-                  tick,
-                  idx
-                ) => {
-                  const x =
-                    chart.left +
-                    tick.ratio *
-                      chart.plotWidth;
+                return (
+                  <text
+                    key={`xtick-${idx}`}
+                    x={x}
+                    y={chart.height - 6}
+                    textAnchor={
+                      idx === 0
+                        ? "start"
+                        : idx === chart.xTicks.length - 1
+                        ? "end"
+                        : "middle"
+                    }
+                    fontSize="9"
+                    fill={muted}
+                  >
+                    {tick.label}
+                  </text>
+                );
+              })}
 
-                  return (
-                    <text
-                      key={`xtick-${idx}`}
-                      x={x}
-                      y={
-                        chart.height -
-                        6
-                      }
-                      textAnchor={
-                        idx === 0
-                          ? "start"
-                          : idx ===
-                            chart.xTicks
-                              .length -
-                              1
-                          ? "end"
-                          : "middle"
-                      }
-                      fontSize="9"
-                      fill={muted}
-                    >
-                      {
-                        tick.label
-                      }
-                    </text>
-                  );
-                }
-              )}
-
-              {/* AREA */}
-
+              {/* Area Under Curve */}
               {chart.areaPath && (
-                <path
-                  d={
-                    chart.areaPath
-                  }
-                  fill="url(#areaGradient)"
-                />
+                <path d={chart.areaPath} fill="url(#areaGradient)" />
               )}
 
-              {/* LINE */}
-
+              {/* Smooth Curved Line */}
               {chart.linePath && (
                 <path
-                  d={
-                    chart.linePath
-                  }
+                  d={chart.linePath}
                   fill="none"
                   stroke="url(#lineGradient)"
                   strokeWidth="2.5"
@@ -1197,106 +686,62 @@ function Dashboard() {
                 />
               )}
 
-              {/* TOUCH TARGETS */}
+              {/* Touch/hover targets */}
+              {chart.points.map((p, i) => (
+                <circle
+                  key={`target-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r="12"
+                  fill="transparent"
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHoveredPoint(p)}
+                  onTouchStart={() => setHoveredPoint(p)}
+                />
+              ))}
 
-              {chart.points.map(
-                (p, i) => (
+              {/* Current Point indicator */}
+              {!hoveredPoint && chart.last && (
+                <g>
                   <circle
-                    key={`target-${i}`}
-                    cx={p.x}
-                    cy={p.y}
-                    r="12"
-                    fill="transparent"
-                    style={{
-                      cursor:
-                        "pointer",
-                    }}
-                    onMouseEnter={() =>
-                      setHoveredPoint(
-                        p
-                      )
-                    }
-                    onTouchStart={() =>
-                      setHoveredPoint(
-                        p
-                      )
-                    }
+                    cx={chart.last.x}
+                    cy={chart.last.y}
+                    r="6"
+                    fill="rgba(124,58,237,0.25)"
+                  >
+                    <animate
+                      attributeName="r"
+                      values="4;8;4"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                  <circle
+                    cx={chart.last.x}
+                    cy={chart.last.y}
+                    r="3.5"
+                    fill="#7c3aed"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
                   />
-                )
+                </g>
               )}
 
-              {/* CURRENT POINT */}
-
-              {!hoveredPoint &&
-                chart.last && (
-                  <g>
-                    <circle
-                      cx={
-                        chart.last
-                          .x
-                      }
-                      cy={
-                        chart.last
-                          .y
-                      }
-                      r="6"
-                      fill="rgba(124,58,237,0.25)"
-                    >
-                      <animate
-                        attributeName="r"
-                        values="4;8;4"
-                        dur="2s"
-                        repeatCount="indefinite"
-                      />
-                    </circle>
-
-                    <circle
-                      cx={
-                        chart.last
-                          .x
-                      }
-                      cy={
-                        chart.last
-                          .y
-                      }
-                      r="3.5"
-                      fill="#7c3aed"
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                    />
-                  </g>
-                )}
-
-              {/* HOVER */}
-
+              {/* Hovered State Crosshair and Tooltip */}
               {hoveredPoint && (
                 <g>
                   <line
-                    x1={
-                      hoveredPoint.x
-                    }
-                    x2={
-                      hoveredPoint.x
-                    }
-                    y1={
-                      chart.top
-                    }
-                    y2={
-                      chart.top +
-                      chart.plotHeight
-                    }
+                    x1={hoveredPoint.x}
+                    x2={hoveredPoint.x}
+                    y1={chart.top}
+                    y2={chart.top + chart.plotHeight}
                     stroke="#7c3aed"
                     strokeWidth="1"
                     strokeDasharray="2 2"
                   />
-
                   <circle
-                    cx={
-                      hoveredPoint.x
-                    }
-                    cy={
-                      hoveredPoint.y
-                    }
+                    cx={hoveredPoint.x}
+                    cy={hoveredPoint.y}
                     r="5"
                     fill="#7c3aed"
                     stroke="#ffffff"
@@ -1305,20 +750,9 @@ function Dashboard() {
 
                   <g
                     transform={`translate(${Math.max(
-                      chart.left +
-                        30,
-                      Math.min(
-                        chart.width -
-                          chart.right -
-                          55,
-                        hoveredPoint.x
-                      )
-                    )}, ${Math.max(
-                      chart.top +
-                        15,
-                      hoveredPoint.y -
-                        12
-                    )})`}
+                      chart.left + 30,
+                      Math.min(chart.width - chart.right - 55, hoveredPoint.x)
+                    )}, ${Math.max(chart.top + 15, hoveredPoint.y - 12)})`}
                   >
                     <rect
                       x="-35"
@@ -1326,38 +760,21 @@ function Dashboard() {
                       width="70"
                       height="22"
                       rx="6"
-                      fill={
-                        isDark
-                          ? "#1e293b"
-                          : "#ffffff"
-                      }
-                      stroke={
-                        isDark
-                          ? "#334155"
-                          : "#e2e8f0"
-                      }
+                      fill={isDark ? "#1e293b" : "#ffffff"}
+                      stroke={isDark ? "#334155" : "#e2e8f0"}
                       strokeWidth="1"
                       filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.15))"
                     />
-
                     <text
                       x="0"
                       y="-4"
                       textAnchor="middle"
                       fontSize="9"
                       fontWeight="bold"
-                      fill={
-                        isDark
-                          ? "#f8fafc"
-                          : "#0f172a"
-                      }
+                      fill={isDark ? "#f8fafc" : "#0f172a"}
                     >
-                      {
-                        hoveredPoint.temp
-                      }
-                      °C
+                      {hoveredPoint.temp}°C
                     </text>
-
                     <text
                       x="0"
                       y="1"
@@ -1365,9 +782,7 @@ function Dashboard() {
                       fontSize="7.5"
                       fill={muted}
                     >
-                      {
-                        hoveredPoint.time
-                      }
+                      {hoveredPoint.time}
                     </text>
                   </g>
                 </g>
@@ -1377,111 +792,64 @@ function Dashboard() {
 
           <div
             style={{
-              display:
-                "flex",
-              justifyContent:
-                "space-between",
+              display: "flex",
+              justifyContent: "space-between",
               marginTop: "4px",
               fontSize: "10px",
               color: muted,
             }}
           >
-            <span>
-              {text?.temperature ||
-                "Temperature"}{" "}
-              (°C)
-            </span>
-
-            <span>
-              {text?.time ||
-                "Time Timeline"}
-            </span>
+            <span>{text?.temperature || "Temperature"} (°C)</span>
+            <span>{text?.time || "Time Timeline"}</span>
           </div>
         </section>
 
-        {/* DEVICE INFO */}
-
-        <section
-          style={
-            styles.deviceSection
-          }
-        >
+        <section style={styles.deviceSection}>
           <InfoRow
-            icon={
-              <Power size={17} />
-            }
-            label={
-              text?.deviceStatus ||
-              "Device status"
-            }
+            icon={<Power size={17} />}
+            label={text?.deviceStatus || "Device status"}
             value={
               deviceOnline
-                ? text?.online ||
-                  "Online"
-                : text?.offline ||
-                  "Offline"
+                ? text?.online || "Online"
+                : text?.offline || "Offline"
             }
-            valueColor={
-              deviceOnline
-                ? "#22c55e"
-                : "#ef4444"
-            }
+            valueColor={deviceOnline ? "#22c55e" : "#ef4444"}
             extra={
-              socketConnected
-                ? text?.dataReceived ||
-                  "data received"
-                : text?.connectionLost ||
-                  "connection unavailable"
+              deviceOnline
+                ? text?.dataReceived || "data received"
+                : lastActivity
+                ? `${text?.last || "last"} ${lastSeenText}`
+                : text?.noData || "no data"
             }
           />
 
           <InfoRow
-            icon={
-              <Flame size={17} />
-            }
-            label={
-              text?.heater ||
-              "Heater"
-            }
+            icon={<Flame size={17} />}
+            label={text?.heater || "Heater"}
             value={
               heaterOn
                 ? text?.on || "ON"
                 : text?.off || "OFF"
             }
-            valueColor={
-              heaterOn
-                ? "#f59e0b"
-                : undefined
-            }
+            valueColor={heaterOn ? "#f59e0b" : undefined}
             extra={
               heaterOn
-                ? text?.heating ||
-                  "heating"
-                : text?.standby ||
-                  "standby"
+                ? text?.heating || "heating"
+                : text?.standby || "standby"
             }
           />
 
           <InfoRow
-            icon={
-              <Wind size={17} />
-            }
-            label={
-              text?.fan ||
-              "Fan"
-            }
+            icon={<Wind size={17} />}
+            label={text?.fan || "Fan"}
             value={`${fanValue}%`}
             extra={
               fanValue > 0
-                ? text?.running ||
-                  "running"
-                : text?.off ||
-                  "off"
+                ? text?.running || "running"
+                : text?.off || "off"
             }
           />
         </section>
-
-        {/* HEARTBEAT */}
 
         <section
           style={{
@@ -1491,55 +859,31 @@ function Dashboard() {
           }}
         >
           <div>
-            <p
-              style={{
-                ...styles.label,
-                color: muted,
-              }}
-            >
-              {text?.deviceHeartbeat ||
-                "Device heartbeat"}
+            <p style={{ ...styles.label, color: muted }}>
+              {text?.deviceHeartbeat || "Device heartbeat"}
             </p>
-
-            <strong
-              style={{
-                fontSize: "14px",
-              }}
-            >
+            <strong style={{ fontSize: "14px" }}>
               {deviceOnline
-                ? text?.receivingData ||
-                  "Receiving data normally"
+                ? text?.receivingData || "Receiving data normally"
                 : text?.noRecentHeartbeat ||
                   "No recent heartbeat or telemetry"}
             </strong>
           </div>
 
-          <span
-            style={{
-              fontSize: "11px",
-              color: muted,
-            }}
-          >
+          <span style={{ fontSize: "11px", color: muted }}>
             {lastSeenText}
           </span>
         </section>
 
-        {/* ANALYSIS */}
-
         <button
           onClick={() => {
-            window.location.href =
-              "/analysis";
+            window.location.href = "/analysis";
           }}
-          style={
-            styles.analysisButton
-          }
+          style={styles.analysisButton}
         >
           <BarChart3 size={18} />
-
           <span>
-            {text?.viewDetailedAnalysis ||
-              "View detailed analysis"}
+            {text?.viewDetailedAnalysis || "View detailed analysis"}
           </span>
         </button>
       </main>
@@ -1549,25 +893,17 @@ function Dashboard() {
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| Styles
-|--------------------------------------------------------------------------
-*/
-
 const styles = {
   page: {
     minHeight: "100vh",
     paddingBottom: "95px",
     overflowX: "hidden",
   },
-
   content: {
     padding: "18px",
     maxWidth: "520px",
     margin: "0 auto",
   },
-
   hero: {
     display: "flex",
     alignItems: "center",
@@ -1575,18 +911,15 @@ const styles = {
     gap: "12px",
     marginBottom: "18px",
   },
-
   smallText: {
     margin: 0,
     fontSize: "12px",
   },
-
   title: {
     margin: "3px 0 0",
     fontSize: "22px",
     fontWeight: 700,
   },
-
   statusPill: {
     display: "flex",
     alignItems: "center",
@@ -1597,15 +930,12 @@ const styles = {
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
-
   quickStats: {
     display: "grid",
-    gridTemplateColumns:
-      "1fr 1fr",
+    gridTemplateColumns: "1fr 1fr",
     gap: "12px",
     marginBottom: "12px",
   },
-
   bigStat: {
     minHeight: "112px",
     borderRadius: "26px",
@@ -1613,26 +943,21 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
-    background:
-      "linear-gradient(145deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(145deg,#2563eb,#7c3aed)",
     color: "white",
-    boxShadow:
-      "0 18px 35px rgba(37,99,235,0.22)",
+    boxShadow: "0 18px 35px rgba(37,99,235,0.22)",
   },
-
   whiteLabel: {
     margin: 0,
     fontSize: "11px",
     fontWeight: 500,
     opacity: 0.85,
   },
-
   bigValue: {
     margin: "5px 0 0",
     fontSize: "25px",
     fontWeight: 750,
   },
-
   ageCard: {
     minHeight: "68px",
     borderRadius: "22px",
@@ -1642,10 +967,8 @@ const styles = {
     justifyContent: "space-between",
     gap: "10px",
     marginBottom: "14px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
-
   ageIndicator: {
     padding: "7px 10px",
     borderRadius: "999px",
@@ -1653,68 +976,56 @@ const styles = {
     fontWeight: 700,
     whiteSpace: "nowrap",
   },
-
   label: {
     margin: 0,
     fontSize: "11px",
     fontWeight: 500,
   },
-
   chartBox: {
     borderRadius: "26px",
     padding: "15px",
     marginBottom: "14px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
-
   chartHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "8px",
   },
-
   chartTitle: {
     margin: "3px 0 0",
     fontSize: "15px",
   },
-
   chartWrapper: {
     width: "100%",
     overflow: "hidden",
   },
-
   svg: {
     width: "100%",
     height: "160px",
     display: "block",
     overflow: "visible",
   },
-
   deviceSection: {
     display: "flex",
     flexDirection: "column",
     gap: "10px",
     marginBottom: "14px",
   },
-
   infoRow: {
     borderRadius: "20px",
     padding: "12px 16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
-
   infoLeft: {
     display: "flex",
     alignItems: "center",
     gap: "12px",
   },
-
   iconBox: {
     width: "36px",
     height: "36px",
@@ -1722,22 +1033,18 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background:
-      "rgba(37,99,235,0.12)",
+    background: "rgba(37,99,235,0.12)",
     color: "#2563eb",
   },
-
   value: {
     margin: "2px 0 0",
     fontSize: "16px",
     fontWeight: 600,
   },
-
   extra: {
     fontSize: "12px",
     fontWeight: 500,
   },
-
   connectionCard: {
     borderRadius: "20px",
     padding: "14px 16px",
@@ -1745,17 +1052,14 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: "18px",
-    backdropFilter:
-      "blur(12px)",
+    backdropFilter: "blur(12px)",
   },
-
   analysisButton: {
     width: "100%",
     height: "52px",
     borderRadius: "18px",
     border: "none",
-    background:
-      "linear-gradient(135deg,#2563eb,#7c3aed)",
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
     fontWeight: 600,
     fontSize: "15px",
@@ -1764,8 +1068,7 @@ const styles = {
     justifyContent: "center",
     gap: "10px",
     cursor: "pointer",
-    boxShadow:
-      "0 10px 25px rgba(37,99,235,0.25)",
+    boxShadow: "0 10px 25px rgba(37,99,235,0.25)",
   },
 };
 

@@ -24,23 +24,35 @@ import ForgotPassword from "./pages/ForgotPassword";
 import AntimateAI from "./pages/AntimateAI";
 import BroodingGuide from "./pages/BroodingGuide";
 
+import LinkProjects from "./pages/LinkProjects";
+import LinkDeveloper from "./pages/LinkDeveloper";
+import LinkNetwork from "./pages/LinkNetwork";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* redirect root */}
         <Route
           path="/"
-          element={<Navigate to="/home" replace />}
+          element={
+            <Navigate
+              to="/home"
+              replace
+            />
+          }
         />
 
-        {/* auth pages */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/login"
+          element={<Login />}
+        />
 
-        {/* home */}
+        <Route
+          path="/signup"
+          element={<Signup />}
+        />
+
         <Route
           path="/home"
           element={
@@ -50,7 +62,6 @@ function App() {
           }
         />
 
-        {/* dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -59,126 +70,151 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* notifications*/}
-         <Route
-  path="/notifications"
-  element={
-    <ProtectedRoute>
-      <Notifications />
-    </ProtectedRoute>
-  }
-/>
-{/* history*/}
-<Route
-  path="/history"
-  element={
-    <ProtectedRoute>
-      <History />
-    </ProtectedRoute>
-  }
-  />
-  {/* PLAN */}
-<Route
-  path="/plan"
-  element={
-    <ProtectedRoute>
-      <Plan />
-    </ProtectedRoute>
-  }
-/>
 
-{/* PLANS - alias */}
-<Route
-  path="/plans"
-  element={
-    <ProtectedRoute>
-      <Plan />
-    </ProtectedRoute>
-  }
-/>
-{/* payment*/}
-<Route
-  path="/payment"
-  element={
-    <ProtectedRoute>
-      <Payment />
-    </ProtectedRoute>
-  }
-/>
-{/* profile*/}
-<Route
-  path="/profile"
-  element={
-    <ProtectedRoute>
-      <Profile />
-    </ProtectedRoute>
-  }
-/>
-{/* settings*/}
-<Route
-  path="/settings"
-  element={
-    <ProtectedRoute>
-      <Settings />
-    </ProtectedRoute>
-  }
-/>
-{/* help*/}
-<Route
-  path="/help"
-  element={
-    <ProtectedRoute>
-      <Help />
-    </ProtectedRoute>
-  }
-/>
-{/* analysis*/}
-<Route
-  path="/analysis"
-  element={
-    <ProtectedRoute>
-      <Analysis />
-    </ProtectedRoute>
-  }
-/>
-{/* systems*/}
-<Route
-  path="/systems"
-  element={
-    <ProtectedRoute>
-      <Systems />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
 
-{/* device management */}
-<Route
-  path="/device-management"
-  element={
-    <ProtectedRoute>
-      <DeviceManagement />
-    </ProtectedRoute>
-  }
-/>
-{/* forgot password */}
-<Route
- path="/forgot-password" 
- element={
- <ForgotPassword />
- } />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          }
+        />
 
-{/* Antimate AI*/}
-{/* ==================================================
-    ANTIMATE AI — PUBLIC
-    User can use AI without login
-================================================== */}
+        <Route
+          path="/plan"
+          element={
+            <ProtectedRoute>
+              <Plan />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/antimate-ai"
-  element={<AntimateAI />}
-/>
+        <Route
+          path="/plans"
+          element={
+            <ProtectedRoute>
+              <Plan />
+            </ProtectedRoute>
+          }
+        />
 
-<Route path="/brooding-guide" element={<BroodingGuide />} />
+        <Route
+          path="/payment"
+          element={
+            <ProtectedRoute>
+              <Payment />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/help"
+          element={
+            <ProtectedRoute>
+              <Help />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/analysis"
+          element={
+            <ProtectedRoute>
+              <Analysis />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/systems"
+          element={
+            <ProtectedRoute>
+              <Systems />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/device-management"
+          element={
+            <ProtectedRoute>
+              <DeviceManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ======================================================
+            ANTIMATE LINK
+        ====================================================== */}
+
+        <Route
+          path="/link/projects"
+          element={
+            <ProtectedRoute>
+              <LinkProjects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/link/developer/:projectId"
+          element={
+            <ProtectedRoute>
+              <LinkDeveloper />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/link/network"
+          element={
+            <ProtectedRoute>
+              <LinkNetwork />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        <Route
+          path="/antimate-ai"
+          element={<AntimateAI />}
+        />
+
+        <Route
+          path="/brooding-guide"
+          element={<BroodingGuide />}
+        />
 
       </Routes>
     </BrowserRouter>

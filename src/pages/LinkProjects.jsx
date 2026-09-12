@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Circle,
   Copy,
+  ExternalLink,
   KeyRound,
   Link2,
   Loader2,
@@ -18,6 +19,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -33,9 +35,17 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://brooder-backend.onrender.com";
 
+/* ============================================================
+   AUTH
+============================================================ */
+
 function getToken() {
   return localStorage.getItem("token");
 }
+
+/* ============================================================
+   API REQUEST
+============================================================ */
 
 async function apiRequest(
   endpoint,
@@ -51,6 +61,9 @@ async function apiRequest(
 
         headers: {
           "Content-Type":
+            "application/json",
+
+          Accept:
             "application/json",
 
           ...(token
@@ -73,6 +86,7 @@ async function apiRequest(
   if (!response.ok) {
     throw new Error(
       data.message ||
+        data.error ||
         "Request failed."
     );
   }
@@ -105,7 +119,7 @@ export default function LinkProjects() {
   const [selectedProject, setSelectedProject] =
     useState(null);
 
-  const [newApiKey, setNewApiKey] =
+  const [projectKey, setProjectKey] =
     useState("");
 
   const [copied, setCopied] =
@@ -115,10 +129,12 @@ export default function LinkProjects() {
     useState({
       projectName: "",
       description: "",
+      destinationUrl: "",
+      platform: "esp32",
     });
 
   /* ==========================================================
-     LOAD
+     LOAD PROJECTS
   ========================================================== */
 
   const loadProjects =
@@ -133,12 +149,16 @@ export default function LinkProjects() {
           );
 
         setProjects(
-          data.projects || []
+          Array.isArray(
+            data.projects
+          )
+            ? data.projects
+            : []
         );
       } catch (err) {
         setError(
           err.message ||
-            "Failed to load projects."
+            "Failed to load LINK projects."
         );
       } finally {
         setLoading(false);
@@ -150,7 +170,7 @@ export default function LinkProjects() {
   }, [loadProjects]);
 
   /* ==========================================================
-     CREATE
+     CREATE PROJECT
   ========================================================== */
 
   async function handleCreate(
@@ -158,9 +178,26 @@ export default function LinkProjects() {
   ) {
     event.preventDefault();
 
-    if (
-      !form.projectName.trim()
-    ) {
+    const projectName =
+      form.projectName.trim();
+
+    const description =
+      form.description.trim();
+
+    const destinationUrl =
+      form.destinationUrl.trim();
+
+    if (!projectName) {
+      setError(
+        "Project name is required."
+      );
+      return;
+    }
+
+    if (!destinationUrl) {
+      setError(
+        "Destination URL is required."
+      );
       return;
     }
 
@@ -175,11 +212,14 @@ export default function LinkProjects() {
             method: "POST",
 
             body: JSON.stringify({
-              projectName:
-                form.projectName,
+              projectName,
 
-              description:
-                form.description,
+              description,
+
+              destinationUrl,
+
+              platform:
+                form.platform,
             }),
           }
         );
@@ -187,27 +227,47 @@ export default function LinkProjects() {
       const project =
         data.project;
 
-      setProjects((current) => [
-        project,
-        ...current,
-      ]);
+      const credentials =
+        data.credentials || {};
 
-      setNewApiKey(
-        data.apiKey || ""
+      const generatedKey =
+        credentials.projectKey ||
+        data.projectKey ||
+        "";
+
+      if (project) {
+        setProjects(
+          (current) => [
+            project,
+            ...current.filter(
+              (item) =>
+                item.projectId !==
+                project.projectId
+            ),
+          ]
+        );
+      }
+
+      setProjectKey(
+        generatedKey
       );
 
-      setSelectedProject(project);
+      setSelectedProject(
+        project || null
+      );
 
       setForm({
         projectName: "",
         description: "",
+        destinationUrl: "",
+        platform: "esp32",
       });
 
       setShowCreate(false);
     } catch (err) {
       setError(
         err.message ||
-          "Failed to create project."
+          "Failed to create LINK project."
       );
     } finally {
       setSaving(false);
@@ -222,6 +282,10 @@ export default function LinkProjects() {
     value,
     type
   ) {
+    if (!value) {
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(
         value
@@ -245,21 +309,25 @@ export default function LinkProjects() {
 
   function openDeveloper(
     project,
-    apiKey = ""
+    key = ""
   ) {
+    if (!project?.projectId) {
+      return;
+    }
+
     navigate(
       `/link/developer/${project.projectId}`,
       {
         state: {
           project,
-          apiKey,
+          projectKey: key,
         },
       }
     );
   }
 
   /* ==========================================================
-     REGENERATE KEY
+     REGENERATE PROJECT KEY
   ========================================================== */
 
   async function regenerateKey(
@@ -267,7 +335,7 @@ export default function LinkProjects() {
   ) {
     const confirmed =
       window.confirm(
-        "Regenerate this API key? The current key will stop working."
+        "Regenerate this Project Key? The current key will stop working immediately."
       );
 
     if (!confirmed) {
@@ -286,30 +354,214 @@ export default function LinkProjects() {
           }
         );
 
-      setNewApiKey(
-        data.apiKey || ""
+      const credentials =
+        data.credentials || {};
+
+      const generatedKey =
+        credentials.projectKey ||
+        data.projectKey ||
+        "";
+
+      const updatedProject =
+        data.project ||
+        project;
+
+      setProjectKey(
+        generatedKey
       );
 
       setSelectedProject(
-        data.project
+        updatedProject
       );
 
-      setProjects((current) =>
-        current.map((item) =>
-          item.projectId ===
-          project.projectId
-            ? data.project
-            : item
-        )
+      setProjects(
+        (current) =>
+          current.map(
+            (item) =>
+              item.projectId ===
+              project.projectId
+                ? updatedProject
+                : item
+          )
       );
     } catch (err) {
       setError(
         err.message ||
-          "Failed to regenerate API key."
+          "Failed to regenerate Project Key."
       );
     } finally {
       setSaving(false);
     }
+  }
+
+  /* ==========================================================
+     SUSPEND PROJECT
+  ========================================================== */
+
+  async function suspendProject(
+    project
+  ) {
+    const confirmed =
+      window.confirm(
+        "Suspend this project? Its devices will no longer be allowed to use the project."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      const data =
+        await apiRequest(
+          `/api/link/projects/${project.projectId}/suspend`,
+          {
+            method: "POST",
+          }
+        );
+
+      const updatedProject =
+        data.project;
+
+      if (updatedProject) {
+        setProjects(
+          (current) =>
+            current.map(
+              (item) =>
+                item.projectId ===
+                project.projectId
+                  ? updatedProject
+                  : item
+            )
+        );
+
+        setSelectedProject(
+          updatedProject
+        );
+      }
+    } catch (err) {
+      setError(
+        err.message ||
+          "Failed to suspend project."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* ==========================================================
+     ACTIVATE PROJECT
+  ========================================================== */
+
+  async function activateProject(
+    project
+  ) {
+    try {
+      setSaving(true);
+      setError("");
+
+      const data =
+        await apiRequest(
+          `/api/link/projects/${project.projectId}/activate`,
+          {
+            method: "POST",
+          }
+        );
+
+      const updatedProject =
+        data.project;
+
+      if (updatedProject) {
+        setProjects(
+          (current) =>
+            current.map(
+              (item) =>
+                item.projectId ===
+                project.projectId
+                  ? updatedProject
+                  : item
+            )
+        );
+
+        setSelectedProject(
+          updatedProject
+        );
+      }
+    } catch (err) {
+      setError(
+        err.message ||
+          "Failed to activate project."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* ==========================================================
+     DELETE PROJECT
+  ========================================================== */
+
+  async function deleteProject(
+    project
+  ) {
+    const confirmed =
+      window.confirm(
+        `Delete "${project.projectName}" permanently? This action cannot be undone.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      await apiRequest(
+        `/api/link/projects/${project.projectId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      setProjects(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.projectId !==
+              project.projectId
+          )
+      );
+
+      setSelectedProject(
+        null
+      );
+
+      setProjectKey("");
+    } catch (err) {
+      setError(
+        err.message ||
+          "Failed to delete project."
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* ==========================================================
+     CLOSE DETAILS
+  ========================================================== */
+
+  function closeDetails() {
+    setSelectedProject(
+      null
+    );
+
+    setProjectKey("");
+
+    setCopied("");
   }
 
   /* ==========================================================
@@ -324,9 +576,11 @@ export default function LinkProjects() {
         "var(--page-bg, #f7f9fc)",
       color:
         "var(--text-color, #111827)",
+      boxSizing: "border-box",
     },
 
     container: {
+      width: "100%",
       maxWidth: "1250px",
       margin: "0 auto",
     },
@@ -352,11 +606,13 @@ export default function LinkProjects() {
         "7px 0 0",
       opacity: 0.62,
       fontSize: "14px",
+      lineHeight: 1.5,
     },
 
     createButton: {
       display: "inline-flex",
       alignItems: "center",
+      justifyContent: "center",
       gap: "8px",
       border: 0,
       borderRadius: "12px",
@@ -367,6 +623,7 @@ export default function LinkProjects() {
         "linear-gradient(135deg,#2563eb,#6366f1)",
       fontWeight: 800,
       cursor: "pointer",
+      whiteSpace: "nowrap",
     },
 
     error: {
@@ -418,7 +675,7 @@ export default function LinkProjects() {
     row: {
       display: "grid",
       gridTemplateColumns:
-        "minmax(220px, 1.5fr) minmax(150px,.7fr) minmax(150px,.7fr) auto",
+        "minmax(220px,1.5fr) minmax(120px,.65fr) minmax(150px,.8fr) auto",
       alignItems: "center",
       gap: "20px",
       padding:
@@ -456,6 +713,9 @@ export default function LinkProjects() {
       margin: 0,
       fontSize: "15px",
       fontWeight: 850,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
     },
 
     projectId: {
@@ -464,6 +724,9 @@ export default function LinkProjects() {
       opacity: 0.52,
       fontFamily:
         "ui-monospace,SFMono-Regular,Menlo,monospace",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
     },
 
     metaLabel: {
@@ -471,7 +734,7 @@ export default function LinkProjects() {
       fontSize: "10px",
       textTransform: "uppercase",
       letterSpacing: ".8px",
-      opacity: .45,
+      opacity: 0.45,
       marginBottom: "4px",
       fontWeight: 800,
     },
@@ -500,6 +763,7 @@ export default function LinkProjects() {
     actionButton: {
       display: "inline-flex",
       alignItems: "center",
+      justifyContent: "center",
       gap: "6px",
       border:
         "1px solid rgba(100,116,139,.17)",
@@ -512,6 +776,7 @@ export default function LinkProjects() {
       color: "inherit",
       fontWeight: 750,
       fontSize: "11px",
+      whiteSpace: "nowrap",
     },
 
     primaryAction: {
@@ -546,7 +811,7 @@ export default function LinkProjects() {
 
     modal: {
       width: "100%",
-      maxWidth: "570px",
+      maxWidth: "590px",
       maxHeight: "90vh",
       overflowY: "auto",
       position: "relative",
@@ -556,6 +821,7 @@ export default function LinkProjects() {
       color: "#111827",
       boxShadow:
         "0 30px 90px rgba(0,0,0,.25)",
+      boxSizing: "border-box",
     },
 
     close: {
@@ -585,7 +851,7 @@ export default function LinkProjects() {
       margin:
         "0 0 22px",
       fontSize: "13px",
-      opacity: .62,
+      opacity: 0.62,
       lineHeight: 1.6,
     },
 
@@ -617,7 +883,7 @@ export default function LinkProjects() {
     textarea: {
       width: "100%",
       boxSizing: "border-box",
-      minHeight: "95px",
+      minHeight: "90px",
       resize: "vertical",
       padding:
         "10px 12px",
@@ -629,9 +895,28 @@ export default function LinkProjects() {
       fontFamily: "inherit",
     },
 
+    select: {
+      width: "100%",
+      boxSizing: "border-box",
+      minHeight: "43px",
+      padding:
+        "10px 12px",
+      border:
+        "1px solid #dbe2ea",
+      borderRadius: "10px",
+      outline: "none",
+      fontSize: "13px",
+      background: "#fff",
+      cursor: "pointer",
+    },
+
     submit: {
       width: "100%",
       minHeight: "44px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "8px",
       border: 0,
       borderRadius: "11px",
       color: "#fff",
@@ -696,6 +981,24 @@ export default function LinkProjects() {
       borderRadius: "12px",
       background:
         "rgba(100,116,139,.055)",
+      minWidth: 0,
+    },
+
+    destination: {
+      display: "block",
+      marginTop: "5px",
+      fontSize: "11px",
+      color: "#2563eb",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+    },
+
+    modalActions: {
+      display: "flex",
+      gap: "8px",
+      marginTop: "18px",
+      flexWrap: "wrap",
     },
   };
 
@@ -707,37 +1010,44 @@ export default function LinkProjects() {
     <div style={styles.page}>
       <div style={styles.container}>
 
-        {/* HEADER */}
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
 
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>
-              ANTIMATE Link
+              ANTIMATE LINK
             </h1>
 
             <p style={styles.subtitle}>
-              Manage your Link projects,
-              credentials and developer
-              connections.
+              Create and manage projects
+              connected to the ANTIMATE
+              LINK Network.
             </p>
           </div>
 
           <button
             style={styles.createButton}
-            onClick={() =>
-              setShowCreate(true)
-            }
+            onClick={() => {
+              setError("");
+              setShowCreate(true);
+            }}
           >
             <Plus size={17} />
             Create project
           </button>
         </div>
 
-        {/* ERROR */}
+        {/* ====================================================
+            ERROR
+        ==================================================== */}
 
         {error && (
           <div style={styles.error}>
-            <span>{error}</span>
+            <span>
+              {error}
+            </span>
 
             <button
               onClick={() =>
@@ -748,6 +1058,7 @@ export default function LinkProjects() {
                 background:
                   "transparent",
                 cursor: "pointer",
+                color: "inherit",
               }}
             >
               <X size={16} />
@@ -755,13 +1066,15 @@ export default function LinkProjects() {
           </div>
         )}
 
-        {/* TOOLBAR */}
+        {/* ====================================================
+            TOOLBAR
+        ==================================================== */}
 
         <div style={styles.toolbar}>
           <span
             style={{
               fontSize: "12px",
-              opacity: .55,
+              opacity: 0.55,
             }}
           >
             {projects.length} project
@@ -788,7 +1101,9 @@ export default function LinkProjects() {
           </button>
         </div>
 
-        {/* PROJECTS */}
+        {/* ====================================================
+            PROJECT LIST
+        ==================================================== */}
 
         {loading ? (
           <div
@@ -812,7 +1127,7 @@ export default function LinkProjects() {
             <Link2
               size={38}
               style={{
-                opacity: .35,
+                opacity: 0.35,
                 marginBottom: "13px",
               }}
             />
@@ -823,13 +1138,15 @@ export default function LinkProjects() {
 
             <p
               style={{
-                opacity: .55,
+                opacity: 0.55,
                 fontSize: "13px",
+                lineHeight: 1.6,
               }}
             >
               Create your first project
-              to start using ANTIMATE
-              Link SDK.
+              to connect your devices
+              to the ANTIMATE LINK
+              Network.
             </p>
 
             <button
@@ -837,9 +1154,10 @@ export default function LinkProjects() {
                 ...styles.createButton,
                 marginTop: "10px",
               }}
-              onClick={() =>
-                setShowCreate(true)
-              }
+              onClick={() => {
+                setError("");
+                setShowCreate(true);
+              }}
             >
               <Plus size={16} />
               Create project
@@ -854,7 +1172,11 @@ export default function LinkProjects() {
                     project.projectId
                   }
                   style={styles.row}
+                  className="link-project-row"
                 >
+
+                  {/* PROJECT */}
+
                   <div
                     style={
                       styles.projectInfo
@@ -895,6 +1217,8 @@ export default function LinkProjects() {
                     </div>
                   </div>
 
+                  {/* STATUS */}
+
                   <div>
                     <span
                       style={
@@ -911,6 +1235,9 @@ export default function LinkProjects() {
                           project.status ===
                           "active"
                             ? "#16a34a"
+                            : project.status ===
+                              "suspended"
+                            ? "#d97706"
                             : "#dc2626",
                       }}
                     >
@@ -925,9 +1252,12 @@ export default function LinkProjects() {
                         />
                       )}
 
-                      {project.status}
+                      {project.status ||
+                        "unknown"}
                     </span>
                   </div>
+
+                  {/* PLATFORM */}
 
                   <div>
                     <span
@@ -935,7 +1265,7 @@ export default function LinkProjects() {
                         styles.metaLabel
                       }
                     >
-                      Virtual SIM
+                      Platform
                     </span>
 
                     <span
@@ -943,11 +1273,12 @@ export default function LinkProjects() {
                         styles.metaValue
                       }
                     >
-                      {
-                        project.virtualSimId
-                      }
+                      {project.platform ||
+                        "ESP32"}
                     </span>
                   </div>
+
+                  {/* ACTIONS */}
 
                   <div
                     style={
@@ -976,7 +1307,7 @@ export default function LinkProjects() {
                         styles.actionButton
                       }
                       onClick={() => {
-                        setNewApiKey("");
+                        setProjectKey("");
                         setSelectedProject(
                           project
                         );
@@ -993,13 +1324,17 @@ export default function LinkProjects() {
       </div>
 
       {/* ========================================================
-          CREATE MODAL
+          CREATE PROJECT MODAL
       ======================================================== */}
 
       {showCreate && (
         <div
-          style={styles.modalOverlay}
-          onMouseDown={(event) => {
+          style={
+            styles.modalOverlay
+          }
+          onMouseDown={(
+            event
+          ) => {
             if (
               event.target ===
               event.currentTarget
@@ -1009,6 +1344,7 @@ export default function LinkProjects() {
           }}
         >
           <div style={styles.modal}>
+
             <button
               style={styles.close}
               onClick={() =>
@@ -1019,37 +1355,55 @@ export default function LinkProjects() {
             </button>
 
             <h2
-              style={styles.modalTitle}
+              style={
+                styles.modalTitle
+              }
             >
               Create LINK project
             </h2>
 
             <p
-              style={styles.modalText}
+              style={
+                styles.modalText
+              }
             >
-              Create a project for your
-              ANTIMATE Link SDK
-              application.
+              Create a project and
+              provide the backend URL
+              where your application
+              wants to receive data.
             </p>
 
             <form
-              onSubmit={handleCreate}
+              onSubmit={
+                handleCreate
+              }
             >
+
+              {/* PROJECT NAME */}
+
               <div
-                style={styles.inputGroup}
+                style={
+                  styles.inputGroup
+                }
               >
                 <label
-                  style={styles.label}
+                  style={
+                    styles.label
+                  }
                 >
                   Project name
                 </label>
 
                 <input
-                  style={styles.input}
+                  style={
+                    styles.input
+                  }
                   value={
                     form.projectName
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setForm({
                       ...form,
                       projectName:
@@ -1058,25 +1412,36 @@ export default function LinkProjects() {
                     })
                   }
                   placeholder="e.g. Farm Network"
+                  maxLength={120}
                   required
                 />
               </div>
 
+              {/* DESCRIPTION */}
+
               <div
-                style={styles.inputGroup}
+                style={
+                  styles.inputGroup
+                }
               >
                 <label
-                  style={styles.label}
+                  style={
+                    styles.label
+                  }
                 >
                   Description
                 </label>
 
                 <textarea
-                  style={styles.textarea}
+                  style={
+                    styles.textarea
+                  }
                   value={
                     form.description
                   }
-                  onChange={(event) =>
+                  onChange={(
+                    event
+                  ) =>
                     setForm({
                       ...form,
                       description:
@@ -1085,13 +1450,125 @@ export default function LinkProjects() {
                     })
                   }
                   placeholder="What will this project connect?"
+                  maxLength={500}
                 />
               </div>
 
+              {/* DESTINATION URL */}
+
+              <div
+                style={
+                  styles.inputGroup
+                }
+              >
+                <label
+                  style={
+                    styles.label
+                  }
+                >
+                  Destination URL
+                </label>
+
+                <input
+                  type="url"
+                  style={
+                    styles.input
+                  }
+                  value={
+                    form.destinationUrl
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setForm({
+                      ...form,
+                      destinationUrl:
+                        event.target
+                          .value,
+                    })
+                  }
+                  placeholder="https://your-backend.com/api/antimate/data"
+                  maxLength={500}
+                  required
+                />
+
+                <span
+                  style={{
+                    fontSize:
+                      "11px",
+                    opacity:
+                      0.5,
+                    lineHeight:
+                      1.5,
+                  }}
+                >
+                  This is your own backend
+                  endpoint where LINK
+                  data will be delivered.
+                </span>
+              </div>
+
+              {/* PLATFORM */}
+
+              <div
+                style={
+                  styles.inputGroup
+                }
+              >
+                <label
+                  style={
+                    styles.label
+                  }
+                >
+                  Platform
+                </label>
+
+                <select
+                  style={
+                    styles.select
+                  }
+                  value={
+                    form.platform
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setForm({
+                      ...form,
+                      platform:
+                        event.target
+                          .value,
+                    })
+                  }
+                >
+                  <option value="esp32">
+                    ESP32
+                  </option>
+
+                  <option value="arduino">
+                    Arduino
+                  </option>
+
+                  <option value="platformio">
+                    PlatformIO
+                  </option>
+
+                  <option value="other">
+                    Other
+                  </option>
+                </select>
+              </div>
+
+              {/* SUBMIT */}
+
               <button
                 type="submit"
-                style={styles.submit}
-                disabled={saving}
+                style={
+                  styles.submit
+                }
+                disabled={
+                  saving
+                }
               >
                 {saving ? (
                   <>
@@ -1120,39 +1597,40 @@ export default function LinkProjects() {
       )}
 
       {/* ========================================================
-          DETAIL MODAL
+          PROJECT DETAILS MODAL
       ======================================================== */}
 
       {selectedProject && (
         <div
-          style={styles.modalOverlay}
-          onMouseDown={(event) => {
+          style={
+            styles.modalOverlay
+          }
+          onMouseDown={(
+            event
+          ) => {
             if (
               event.target ===
               event.currentTarget
             ) {
-              setSelectedProject(
-                null
-              );
-              setNewApiKey("");
+              closeDetails();
             }
           }}
         >
           <div style={styles.modal}>
+
             <button
               style={styles.close}
-              onClick={() => {
-                setSelectedProject(
-                  null
-                );
-                setNewApiKey("");
-              }}
+              onClick={
+                closeDetails
+              }
             >
               <X size={17} />
             </button>
 
             <h2
-              style={styles.modalTitle}
+              style={
+                styles.modalTitle
+              }
             >
               {
                 selectedProject.projectName
@@ -1160,19 +1638,30 @@ export default function LinkProjects() {
             </h2>
 
             <p
-              style={styles.modalText}
+              style={
+                styles.modalText
+              }
             >
               {
                 selectedProject.description ||
-                "ANTIMATE Link project"
+                "ANTIMATE LINK project"
               }
             </p>
 
+            {/* DETAILS */}
+
             <div
-              style={styles.detailGrid}
+              style={
+                styles.detailGrid
+              }
             >
+
+              {/* PROJECT ID */}
+
               <div
-                style={styles.detail}
+                style={
+                  styles.detail
+                }
               >
                 <span
                   style={
@@ -1184,9 +1673,12 @@ export default function LinkProjects() {
 
                 <strong
                   style={{
-                    fontSize: "12px",
+                    fontSize:
+                      "12px",
                     fontFamily:
                       "ui-monospace,SFMono-Regular,Menlo,monospace",
+                    wordBreak:
+                      "break-all",
                   }}
                 >
                   {
@@ -1195,30 +1687,76 @@ export default function LinkProjects() {
                 </strong>
               </div>
 
+              {/* STATUS */}
+
               <div
-                style={styles.detail}
+                style={
+                  styles.detail
+                }
               >
                 <span
                   style={
                     styles.metaLabel
                   }
                 >
-                  Virtual SIM
+                  Status
                 </span>
 
                 <strong
                   style={{
-                    fontSize: "12px",
+                    fontSize:
+                      "12px",
+                    color:
+                      selectedProject.status ===
+                      "active"
+                        ? "#16a34a"
+                        : selectedProject.status ===
+                          "suspended"
+                        ? "#d97706"
+                        : "#dc2626",
                   }}
                 >
                   {
-                    selectedProject.virtualSimId
+                    selectedProject.status ||
+                    "unknown"
                   }
                 </strong>
               </div>
 
+              {/* PLATFORM */}
+
               <div
-                style={styles.detail}
+                style={
+                  styles.detail
+                }
+              >
+                <span
+                  style={
+                    styles.metaLabel
+                  }
+                >
+                  Platform
+                </span>
+
+                <strong
+                  style={{
+                    fontSize:
+                      "12px",
+                  }}
+                >
+                  {
+                    selectedProject.platform ||
+                    "esp32"
+                  }
+                </strong>
+              </div>
+
+              {/* PROTOCOL */}
+
+              <div
+                style={
+                  styles.detail
+                }
               >
                 <span
                   style={
@@ -1231,35 +1769,171 @@ export default function LinkProjects() {
                 <strong>
                   v
                   {
-                    selectedProject.protocolVersion
+                    selectedProject.protocolVersion ||
+                    "1.0"
                   }
                 </strong>
               </div>
 
+              {/* SDK */}
+
               <div
-                style={styles.detail}
+                style={
+                  styles.detail
+                }
               >
                 <span
                   style={
                     styles.metaLabel
                   }
                 >
-                  SDK
+                  Edge SDK
                 </span>
 
                 <strong>
                   {
-                    selectedProject.sdkVersion
+                    selectedProject.sdkVersion ||
+                    "1.0.0"
                   }
+                </strong>
+              </div>
+
+              {/* VIRTUAL SIM */}
+
+              <div
+                style={
+                  styles.detail
+                }
+              >
+                <span
+                  style={
+                    styles.metaLabel
+                  }
+                >
+                  Virtual SIM
+                </span>
+
+                <strong
+                  style={{
+                    fontSize:
+                      "12px",
+                    fontFamily:
+                      selectedProject.virtualSimId
+                        ? "ui-monospace,SFMono-Regular,Menlo,monospace"
+                        : "inherit",
+                    opacity:
+                      selectedProject.virtualSimId
+                        ? 1
+                        : 0.55,
+                  }}
+                >
+                  {
+                    selectedProject.virtualSimId ||
+                    "Not assigned"
+                  }
+                </strong>
+              </div>
+
+              {/* DESTINATION */}
+
+              <div
+                style={{
+                  ...styles.detail,
+                  gridColumn:
+                    "1 / -1",
+                }}
+              >
+                <span
+                  style={
+                    styles.metaLabel
+                  }
+                >
+                  Destination URL
+                </span>
+
+                <span
+                  style={
+                    styles.destination
+                  }
+                  title={
+                    selectedProject.destinationUrl ||
+                    ""
+                  }
+                >
+                  {
+                    selectedProject.destinationUrl ||
+                    "Not configured"
+                  }
+                </span>
+              </div>
+
+              {/* LAST CONNECTION */}
+
+              <div
+                style={
+                  styles.detail
+                }
+              >
+                <span
+                  style={
+                    styles.metaLabel
+                  }
+                >
+                  Connection
+                </span>
+
+                <strong
+                  style={{
+                    fontSize:
+                      "12px",
+                  }}
+                >
+                  {
+                    selectedProject.lastConnectionStatus ||
+                    "unknown"
+                  }
+                </strong>
+              </div>
+
+              {/* LAST CONNECTED */}
+
+              <div
+                style={
+                  styles.detail
+                }
+              >
+                <span
+                  style={
+                    styles.metaLabel
+                  }
+                >
+                  Last connected
+                </span>
+
+                <strong
+                  style={{
+                    fontSize:
+                      "11px",
+                  }}
+                >
+                  {selectedProject.lastConnectedAt
+                    ? new Date(
+                        selectedProject.lastConnectedAt
+                      ).toLocaleString()
+                    : "Never"}
                 </strong>
               </div>
             </div>
 
-            {/* API KEY */}
+            {/* ==================================================
+                PROJECT KEY
+            ================================================== */}
 
-            {newApiKey ? (
+            {projectKey ? (
               <div
-                style={styles.keyBox}
+                style={
+                  styles.keyBox
+                }
               >
                 <div
                   style={
@@ -1271,11 +1945,12 @@ export default function LinkProjects() {
                   />
 
                   <span>
-                    This API key is shown
-                    only now. Store it
-                    securely. After leaving
-                    this screen, it cannot
-                    be recovered.
+                    This Project Key is
+                    shown only now.
+                    Store it securely.
+                    ANTIMATE does not store
+                    the original key in
+                    readable form.
                   </span>
                 </div>
 
@@ -1286,7 +1961,9 @@ export default function LinkProjects() {
                 >
                   <input
                     readOnly
-                    value={newApiKey}
+                    value={
+                      projectKey
+                    }
                     style={
                       styles.keyInput
                     }
@@ -1298,13 +1975,13 @@ export default function LinkProjects() {
                     }
                     onClick={() =>
                       copyText(
-                        newApiKey,
-                        "key"
+                        projectKey,
+                        "project-key"
                       )
                     }
                   >
                     {copied ===
-                    "key" ? (
+                    "project-key" ? (
                       <CheckCircle2
                         size={15}
                       />
@@ -1314,7 +1991,8 @@ export default function LinkProjects() {
                       />
                     )}
 
-                    {copied === "key"
+                    {copied ===
+                    "project-key"
                       ? "Copied"
                       : "Copy"}
                   </button>
@@ -1341,22 +2019,27 @@ export default function LinkProjects() {
                   />
 
                   <span>
-                    API key is securely
-                    hidden. It cannot be
-                    recovered after creation.
+                    The Project Key is
+                    securely hidden. It
+                    cannot be recovered
+                    after creation.
                   </span>
                 </div>
               </div>
             )}
 
+            {/* ==================================================
+                ACTIONS
+            ================================================== */}
+
             <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                marginTop: "18px",
-                flexWrap: "wrap",
-              }}
+              style={
+                styles.modalActions
+              }
             >
+
+              {/* DEVELOPER */}
+
               <button
                 style={{
                   ...styles.actionButton,
@@ -1365,15 +2048,21 @@ export default function LinkProjects() {
                 onClick={() =>
                   openDeveloper(
                     selectedProject,
-                    newApiKey
+                    projectKey
                   )
                 }
               >
                 <Smartphone
                   size={15}
                 />
-                Open Developer
+
+                Developer
+                <ArrowRight
+                  size={13}
+                />
               </button>
+
+              {/* REGENERATE KEY */}
 
               <button
                 style={
@@ -1384,18 +2073,95 @@ export default function LinkProjects() {
                     selectedProject
                   )
                 }
-                disabled={saving}
+                disabled={
+                  saving
+                }
               >
                 <RefreshCw
                   size={15}
                 />
 
-                Regenerate API key
+                Regenerate key
+              </button>
+
+              {/* SUSPEND */}
+
+              {selectedProject.status ===
+              "active" ? (
+                <button
+                  style={
+                    styles.actionButton
+                  }
+                  onClick={() =>
+                    suspendProject(
+                      selectedProject
+                    )
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  <Circle
+                    size={15}
+                  />
+
+                  Suspend
+                </button>
+              ) : (
+                <button
+                  style={{
+                    ...styles.actionButton,
+                    ...styles.primaryAction,
+                  }}
+                  onClick={() =>
+                    activateProject(
+                      selectedProject
+                    )
+                  }
+                  disabled={
+                    saving
+                  }
+                >
+                  <CheckCircle2
+                    size={15}
+                  />
+
+                  Activate
+                </button>
+              )}
+
+              {/* DELETE */}
+
+              <button
+                style={{
+                  ...styles.actionButton,
+                  color: "#dc2626",
+                  borderColor:
+                    "rgba(220,38,38,.18)",
+                }}
+                onClick={() =>
+                  deleteProject(
+                    selectedProject
+                  )
+                }
+                disabled={
+                  saving
+                }
+              >
+                <Trash2
+                  size={15}
+                />
+
+                Delete
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ========================================================
+          RESPONSIVE CSS
+      ======================================================== */}
 
       <style>
         {`
@@ -1403,14 +2169,30 @@ export default function LinkProjects() {
             from {
               transform: rotate(0deg);
             }
+
             to {
               transform: rotate(360deg);
             }
           }
 
-          @media (max-width: 900px) {
+          @media (max-width: 1000px) {
+            .link-project-row {
+              grid-template-columns: 1fr 1fr !important;
+            }
+
+            .link-project-row > div:last-child {
+              grid-column: 1 / -1;
+              justify-content: flex-start !important;
+            }
+          }
+
+          @media (max-width: 650px) {
             .link-project-row {
               grid-template-columns: 1fr !important;
+            }
+
+            .link-project-row > div:last-child {
+              grid-column: auto;
             }
           }
 

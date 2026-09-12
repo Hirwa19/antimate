@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import {
   Activity,
   AlertTriangle,
@@ -20,100 +27,600 @@ import {
   Zap,
 } from "lucide-react";
 
-const INITIAL_LOGS = [
-  {
-    id: 1,
-    time: "17:48:21.142",
-    level: "SUCCESS",
-    source: "GATEWAY",
-    device: "GTW-26-86FD75",
-    message: "Gateway connected successfully",
-  },
-  {
-    id: 2,
-    time: "17:48:22.031",
-    level: "INFO",
-    source: "LINK",
-    device: "GTW-26-86FD75",
-    message: "Gateway heartbeat received",
-  },
-  {
-    id: 3,
-    time: "17:48:23.487",
-    level: "SUCCESS",
-    source: "NODE",
-    device: "DEV-339CD8",
-    message: "Node registered on network",
-  },
-  {
-    id: 4,
-    time: "17:48:25.104",
-    level: "INFO",
-    source: "LORA",
-    device: "DEV-339CD8",
-    message: "LoRa packet received",
-  },
-  {
-    id: 5,
-    time: "17:48:25.129",
-    level: "SUCCESS",
-    source: "LINK",
-    device: "DEV-339CD8",
-    message: "Packet forwarded successfully",
-  },
-  {
-    id: 6,
-    time: "17:48:27.612",
-    level: "INFO",
-    source: "PROJECT",
-    device: "ANT-LK-8F29",
-    message: "Project traffic synchronized",
-  },
-  {
-    id: 7,
-    time: "17:48:29.305",
-    level: "SUCCESS",
-    source: "GATEWAY",
-    device: "GTW-26-86FD75",
-    message: "Heartbeat acknowledged",
-  },
-  {
-    id: 8,
-    time: "17:48:31.774",
-    level: "WARNING",
-    source: "NETWORK",
-    device: "GTW-26-86FD75",
-    message: "Network latency above normal threshold",
-  },
-  {
-    id: 9,
-    time: "17:48:33.020",
-    level: "INFO",
-    source: "LINK",
-    device: "ANT-LK-8F29",
-    message: "Listening for incoming events",
-  },
+import { io } from "socket.io-client";
+
+/* ============================================================
+   CONFIG
+============================================================ */
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://brooder-backend.onrender.com";
+
+const SOCKET_URL = API_URL;
+
+const LEVELS = [
+  "ALL",
+  "INFO",
+  "SUCCESS",
+  "WARNING",
+  "ERROR",
 ];
 
-const LEVELS = ["ALL", "INFO", "SUCCESS", "WARNING", "ERROR"];
+/* ============================================================
+   HELPERS
+============================================================ */
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function formatTime(date = new Date()) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const milliseconds = String(
+    date.getMilliseconds()
+  ).padStart(3, "0");
+
+  return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+}
+
+function normalizeLevel(level) {
+  const value = String(level || "").toUpperCase();
+
+  if (
+    value === "SUCCESS" ||
+    value === "OK" ||
+    value === "CONNECTED"
+  ) {
+    return "SUCCESS";
+  }
+
+  if (
+    value === "WARNING" ||
+    value === "WARN"
+  ) {
+    return "WARNING";
+  }
+
+  if (
+    value === "ERROR" ||
+    value === "FAILED" ||
+    value === "FAIL"
+  ) {
+    return "ERROR";
+  }
+
+  return "INFO";
+}
+
+function extractDeviceId(data) {
+  return (
+    data?.deviceId ||
+    data?.gatewayId ||
+    data?.nodeId ||
+    data?.device ||
+    data?.id ||
+    "UNKNOWN"
+  );
+}
+
+function extractMessage(data) {
+  if (typeof data === "string") {
+    return data;
+  }
+
+  return (
+    data?.message ||
+    data?.event ||
+    data?.statusMessage ||
+    data?.type ||
+    "Network event received"
+  );
+}
+
+/* ============================================================
+   COMPONENT
+============================================================ */
 
 const LinkNetwork = () => {
-  const [logs, setLogs] = useState(INITIAL_LOGS);
-  const [paused, setPaused] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [levelFilter, setLevelFilter] = useState("ALL");
-  const [sourceFilter, setSourceFilter] = useState("ALL");
-  const [search, setSearch] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [logs, setLogs] = useState([]);
+
+  const [paused, setPaused] =
+    useState(false);
+
+  const [autoScroll, setAutoScroll] =
+    useState(true);
+
+  const [levelFilter, setLevelFilter] =
+    useState("ALL");
+
+  const [sourceFilter, setSourceFilter] =
+    useState("ALL");
+
+  const [search, setSearch] =
+    useState("");
+
+  const [copied, setCopied] =
+    useState(false);
+
+  const [socketConnected, setSocketConnected] =
+    useState(false);
+
+  const [lastEventAt, setLastEventAt] =
+    useState(null);
+
+  const [connectionError, setConnectionError] =
+    useState("");
+
+  const [refreshing, setRefreshing] =
+    useState(false);
 
   const terminalRef = useRef(null);
 
+  const socketRef = useRef(null);
+
+  const pausedRef = useRef(false);
+
+  /* ==========================================================
+     KEEP PAUSED REF IN SYNC
+  ========================================================== */
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
+  /* ==========================================================
+     ADD REAL NETWORK LOG
+  ========================================================== */
+
+  const addLog = useCallback(
+    ({
+      level = "INFO",
+      source = "LINK",
+      device = "UNKNOWN",
+      message = "Network event received",
+      timestamp = null,
+    }) => {
+      if (pausedRef.current) {
+        return;
+      }
+
+      const normalizedLevel =
+        normalizeLevel(level);
+
+      const eventDate = timestamp
+        ? new Date(timestamp)
+        : new Date();
+
+      const newLog = {
+        id:
+          `${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`,
+
+        time: formatTime(
+          Number.isNaN(eventDate.getTime())
+            ? new Date()
+            : eventDate
+        ),
+
+        level: normalizedLevel,
+        source: String(source || "LINK").toUpperCase(),
+        device: String(device || "UNKNOWN"),
+        message: String(
+          message || "Network event received"
+        ),
+      };
+
+      setLogs((current) => {
+        const next = [
+          ...current,
+          newLog,
+        ];
+
+        if (next.length > 300) {
+          return next.slice(
+            next.length - 300
+          );
+        }
+
+        return next;
+      });
+
+      setLastEventAt(
+        new Date().toISOString()
+      );
+    },
+    []
+  );
+
+  /* ==========================================================
+     SOCKET.IO
+  ========================================================== */
+
+  const connectSocket = useCallback(() => {
+    const token = getToken();
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    setConnectionError("");
+    setSocketConnected(false);
+
+    const socket = io(
+      SOCKET_URL,
+      {
+        transports: [
+          "websocket",
+          "polling",
+        ],
+
+        auth: token
+          ? {
+              token,
+            }
+          : undefined,
+
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000,
+      }
+    );
+
+    socketRef.current = socket;
+
+    /* --------------------------------------------------------
+       CONNECT
+    -------------------------------------------------------- */
+
+    socket.on("connect", () => {
+      setSocketConnected(true);
+      setConnectionError("");
+
+      addLog({
+        level: "SUCCESS",
+        source: "LINK",
+        device: "LINK-SOCKET",
+        message:
+          "Connected to ANTIMATE LINK real-time service",
+      });
+    });
+
+    /* --------------------------------------------------------
+       DISCONNECT
+    -------------------------------------------------------- */
+
+    socket.on("disconnect", (reason) => {
+      setSocketConnected(false);
+
+      addLog({
+        level: "WARNING",
+        source: "LINK",
+        device: "LINK-SOCKET",
+        message:
+          `Real-time connection disconnected: ${reason}`,
+      });
+    });
+
+    /* --------------------------------------------------------
+       CONNECT ERROR
+    -------------------------------------------------------- */
+
+    socket.on("connect_error", (error) => {
+      setSocketConnected(false);
+
+      setConnectionError(
+        error?.message ||
+          "Unable to connect to real-time service."
+      );
+    });
+
+    /* --------------------------------------------------------
+       GENERIC NETWORK EVENT
+    -------------------------------------------------------- */
+
+    socket.on(
+      "network:event",
+      (data) => {
+        addLog({
+          level:
+            data?.level ||
+            data?.status ||
+            "INFO",
+
+          source:
+            data?.source ||
+            "NETWORK",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            extractMessage(data),
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       LINK EVENT
+    -------------------------------------------------------- */
+
+    socket.on(
+      "link:event",
+      (data) => {
+        addLog({
+          level:
+            data?.level ||
+            data?.status ||
+            "INFO",
+
+          source:
+            data?.source ||
+            "LINK",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            extractMessage(data),
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       GATEWAY EVENT
+    -------------------------------------------------------- */
+
+    socket.on(
+      "gateway:event",
+      (data) => {
+        addLog({
+          level:
+            data?.level ||
+            data?.status ||
+            "INFO",
+
+          source: "GATEWAY",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            extractMessage(data),
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       NODE EVENT
+    -------------------------------------------------------- */
+
+    socket.on(
+      "node:event",
+      (data) => {
+        addLog({
+          level:
+            data?.level ||
+            data?.status ||
+            "INFO",
+
+          source: "NODE",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            extractMessage(data),
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       TELEMETRY UPDATE
+       
+       Existing ANTIMATE backend already emits:
+       telemetry:update
+    -------------------------------------------------------- */
+
+    socket.on(
+      "telemetry:update",
+      (data) => {
+        const source =
+          data?.source ||
+          data?.protocol ||
+          "TELEMETRY";
+
+        const device =
+          extractDeviceId(data);
+
+        addLog({
+          level: "SUCCESS",
+          source,
+          device,
+          message:
+            data?.message ||
+            "Telemetry update received",
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       DASHBOARD UPDATE
+       
+       Existing backend event.
+    -------------------------------------------------------- */
+
+    socket.on(
+      "dashboard:update",
+      (data) => {
+        addLog({
+          level: "INFO",
+          source: "LINK",
+          device:
+            extractDeviceId(data),
+
+          message:
+            data?.message ||
+            "Dashboard network data synchronized",
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       ALERT
+       
+       Existing backend event.
+    -------------------------------------------------------- */
+
+    socket.on(
+      "alert:new",
+      (data) => {
+        addLog({
+          level:
+            data?.severity === "critical"
+              ? "ERROR"
+              : data?.severity === "warning"
+              ? "WARNING"
+              : "INFO",
+
+          source:
+            data?.source ||
+            "ALERT",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            data?.message ||
+            data?.title ||
+            "New ANTIMATE alert",
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    /* --------------------------------------------------------
+       STATUS EVENT
+    -------------------------------------------------------- */
+
+    socket.on(
+      "status:update",
+      (data) => {
+        addLog({
+          level:
+            data?.level ||
+            data?.status ||
+            "INFO",
+
+          source:
+            data?.source ||
+            "STATUS",
+
+          device:
+            extractDeviceId(data),
+
+          message:
+            extractMessage(data),
+
+          timestamp:
+            data?.timestamp ||
+            data?.createdAt ||
+            null,
+        });
+      }
+    );
+
+    return socket;
+  }, [addLog]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+
+      socketRef.current = null;
+    };
+  }, [connectSocket]);
+
+  /* ==========================================================
+     REFRESH CONNECTION
+  ========================================================== */
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+
+    connectSocket();
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 700);
+  };
+
+  /* ==========================================================
+     FILTER SOURCES
+  ========================================================== */
+
   const sources = useMemo(() => {
-    const values = logs.map((log) => log.source);
-    return ["ALL", ...new Set(values)];
+    const values = logs.map(
+      (log) => log.source
+    );
+
+    return [
+      "ALL",
+      ...new Set(values),
+    ];
   }, [logs]);
 
+  /* ==========================================================
+     FILTERED LOGS
+  ========================================================== */
+
   const filteredLogs = useMemo(() => {
+    const query =
+      search.trim().toLowerCase();
+
     return logs.filter((log) => {
       const matchesLevel =
         levelFilter === "ALL" ||
@@ -123,13 +630,20 @@ const LinkNetwork = () => {
         sourceFilter === "ALL" ||
         log.source === sourceFilter;
 
-      const query = search.trim().toLowerCase();
-
       const matchesSearch =
         !query ||
-        log.message.toLowerCase().includes(query) ||
-        log.device.toLowerCase().includes(query) ||
-        log.source.toLowerCase().includes(query);
+        log.message
+          .toLowerCase()
+          .includes(query) ||
+        log.device
+          .toLowerCase()
+          .includes(query) ||
+        log.source
+          .toLowerCase()
+          .includes(query) ||
+        log.level
+          .toLowerCase()
+          .includes(query);
 
       return (
         matchesLevel &&
@@ -137,114 +651,70 @@ const LinkNetwork = () => {
         matchesSearch
       );
     });
-  }, [logs, levelFilter, sourceFilter, search]);
+  }, [
+    logs,
+    levelFilter,
+    sourceFilter,
+    search,
+  ]);
+
+  /* ==========================================================
+     STATISTICS
+  ========================================================== */
 
   const statistics = useMemo(() => {
     return {
       total: logs.length,
+
       success: logs.filter(
-        (log) => log.level === "SUCCESS"
+        (log) =>
+          log.level === "SUCCESS"
       ).length,
+
       warnings: logs.filter(
-        (log) => log.level === "WARNING"
+        (log) =>
+          log.level === "WARNING"
       ).length,
+
       errors: logs.filter(
-        (log) => log.level === "ERROR"
+        (log) =>
+          log.level === "ERROR"
       ).length,
     };
   }, [logs]);
 
+  /* ==========================================================
+     AUTO SCROLL
+  ========================================================== */
+
   useEffect(() => {
-    if (!autoScroll || paused || !terminalRef.current) {
+    if (
+      !autoScroll ||
+      paused ||
+      !terminalRef.current
+    ) {
       return;
     }
 
     terminalRef.current.scrollTop =
       terminalRef.current.scrollHeight;
-  }, [filteredLogs, autoScroll, paused]);
+  }, [
+    filteredLogs,
+    autoScroll,
+    paused,
+  ]);
 
-  useEffect(() => {
-    if (paused) {
-      return undefined;
-    }
-
-    const timer = setInterval(() => {
-      const now = new Date();
-
-      const hours = String(now.getHours()).padStart(2, "0");
-      const minutes = String(now.getMinutes()).padStart(2, "0");
-      const seconds = String(now.getSeconds()).padStart(2, "0");
-      const milliseconds = String(
-        now.getMilliseconds()
-      ).padStart(3, "0");
-
-      const demoEvents = [
-        {
-          level: "INFO",
-          source: "LINK",
-          device: "ANT-LK-8F29",
-          message: "Network heartbeat received",
-        },
-        {
-          level: "SUCCESS",
-          source: "LORA",
-          device: "DEV-339CD8",
-          message: "Telemetry packet received",
-        },
-        {
-          level: "INFO",
-          source: "GATEWAY",
-          device: "GTW-26-86FD75",
-          message: "Gateway status synchronized",
-        },
-        {
-          level: "SUCCESS",
-          source: "LINK",
-          device: "GTW-26-86FD75",
-          message: "Packet forwarded successfully",
-        },
-        {
-          level: "WARNING",
-          source: "NETWORK",
-          device: "GTW-26-86FD75",
-          message: "Waiting for network response",
-        },
-      ];
-
-      const event =
-        demoEvents[
-          Math.floor(
-            Math.random() * demoEvents.length
-          )
-        ];
-
-      const newLog = {
-        id: Date.now(),
-        time: `${hours}:${minutes}:${seconds}.${milliseconds}`,
-        ...event,
-      };
-
-      setLogs((current) => {
-        const next = [...current, newLog];
-
-        if (next.length > 150) {
-          return next.slice(next.length - 150);
-        }
-
-        return next;
-      });
-    }, 4500);
-
-    return () => clearInterval(timer);
-  }, [paused]);
+  /* ==========================================================
+     CLEAR LOGS
+  ========================================================== */
 
   const clearLogs = () => {
     setLogs([]);
   };
 
-  const restoreDemoLogs = () => {
-    setLogs(INITIAL_LOGS);
-  };
+  /* ==========================================================
+     COPY LOGS
+  ========================================================== */
 
   const copyLogs = async () => {
     const text = filteredLogs
@@ -254,8 +724,15 @@ const LinkNetwork = () => {
       )
       .join("\n");
 
+    if (!text) {
+      return;
+    }
+
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(
+        text
+      );
+
       setCopied(true);
 
       setTimeout(() => {
@@ -265,6 +742,10 @@ const LinkNetwork = () => {
       setCopied(false);
     }
   };
+
+  /* ==========================================================
+     LEVEL CLASS
+  ========================================================== */
 
   const levelClass = (level) => {
     switch (level) {
@@ -282,21 +763,44 @@ const LinkNetwork = () => {
     }
   };
 
+  /* ==========================================================
+     LEVEL ICON
+  ========================================================== */
+
   const levelIcon = (level) => {
     switch (level) {
       case "SUCCESS":
-        return <CheckCircle2 size={13} />;
+        return (
+          <CheckCircle2 size={13} />
+        );
 
       case "WARNING":
-        return <AlertTriangle size={13} />;
+        return (
+          <AlertTriangle size={13} />
+        );
 
       case "ERROR":
-        return <XCircle size={13} />;
+        return (
+          <XCircle size={13} />
+        );
 
       default:
-        return <Info size={13} />;
+        return (
+          <Info size={13} />
+        );
     }
   };
+
+  /* ==========================================================
+     LAST EVENT
+  ========================================================== */
+
+  const lastEventLabel =
+    lastEventAt
+      ? new Date(
+          lastEventAt
+        ).toLocaleTimeString()
+      : "Waiting";
 
   return (
     <>
@@ -345,7 +849,9 @@ const LinkNetwork = () => {
           height: 7px;
           border-radius: 50%;
           background: #16a34a;
-          box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1);
+          box-shadow:
+            0 0 0 4px
+            rgba(22, 163, 74, 0.1);
         }
 
         .ln-title {
@@ -385,6 +891,11 @@ const LinkNetwork = () => {
           justify-content: center;
         }
 
+        .ln-live-icon.offline {
+          background: #fef2f2;
+          color: #dc2626;
+        }
+
         .ln-live-label {
           color: #858b9b;
           font-size: 10px;
@@ -396,6 +907,23 @@ const LinkNetwork = () => {
           font-size: 12px;
           font-weight: 750;
           margin-top: 2px;
+        }
+
+        .ln-live-value.offline {
+          color: #dc2626;
+        }
+
+        .ln-connection-error {
+          margin-bottom: 14px;
+          padding: 11px 13px;
+          border: 1px solid #fecaca;
+          border-radius: 9px;
+          background: #fef2f2;
+          color: #b91c1c;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .ln-stats {
@@ -462,7 +990,9 @@ const LinkNetwork = () => {
           border: 1px solid #252b3d;
           border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 12px 35px rgba(15, 18, 30, 0.13);
+          box-shadow:
+            0 12px 35px
+            rgba(15, 18, 30, 0.13);
         }
 
         .ln-console-top {
@@ -525,12 +1055,23 @@ const LinkNetwork = () => {
           font-size: 10px;
         }
 
+        .ln-console-live.offline {
+          color: #fca5a5;
+        }
+
         .ln-console-live-dot {
           width: 6px;
           height: 6px;
           border-radius: 50%;
           background: #22c55e;
-          box-shadow: 0 0 7px rgba(34, 197, 94, 0.7);
+          box-shadow:
+            0 0 7px
+            rgba(34, 197, 94, 0.7);
+        }
+
+        .ln-console-live-dot.offline {
+          background: #ef4444;
+          box-shadow: none;
         }
 
         .ln-console-actions {
@@ -564,6 +1105,11 @@ const LinkNetwork = () => {
           color: #a5b4fc;
           border-color: #444b72;
           background: #272b49;
+        }
+
+        .ln-tool-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .ln-toolbar {
@@ -656,7 +1202,11 @@ const LinkNetwork = () => {
           overflow-y: auto;
           padding: 14px 16px 20px;
           background: #0d111b;
-          font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+          font-family:
+            "SFMono-Regular",
+            Consolas,
+            "Liberation Mono",
+            monospace;
           font-size: 11px;
           line-height: 1.7;
         }
@@ -676,7 +1226,9 @@ const LinkNetwork = () => {
 
         .ln-log {
           display: grid;
-          grid-template-columns: 94px 74px 72px 135px minmax(0, 1fr);
+          grid-template-columns:
+            94px 74px 72px 145px
+            minmax(0, 1fr);
           gap: 8px;
           align-items: baseline;
           min-height: 25px;
@@ -685,7 +1237,8 @@ const LinkNetwork = () => {
         }
 
         .ln-log:hover {
-          background: rgba(255, 255, 255, 0.025);
+          background:
+            rgba(255, 255, 255, 0.025);
         }
 
         .ln-log-time {
@@ -784,6 +1337,10 @@ const LinkNetwork = () => {
           color: #6ee7b7;
         }
 
+        .ln-footer-red {
+          color: #fca5a5;
+        }
+
         .ln-footer-blue {
           color: #93c5fd;
         }
@@ -810,13 +1367,20 @@ const LinkNetwork = () => {
           color: #858ea3;
         }
 
+        .ln-command-text.offline {
+          color: #fca5a5;
+        }
+
         @media (max-width: 1000px) {
           .ln-stats {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
           }
 
           .ln-log {
-            grid-template-columns: 85px 70px 65px 115px minmax(0, 1fr);
+            grid-template-columns:
+              85px 70px 65px 115px
+              minmax(0, 1fr);
           }
         }
 
@@ -865,14 +1429,11 @@ const LinkNetwork = () => {
           }
 
           .ln-log {
-            min-width: 610px;
+            min-width: 620px;
           }
 
           .ln-terminal-footer {
-            min-width: 610px;
-          }
-
-          .ln-terminal-footer {
+            min-width: 620px;
             overflow-x: auto;
           }
 
@@ -916,6 +1477,10 @@ const LinkNetwork = () => {
       <main className="link-network-page">
         <div className="link-network-container">
 
+          {/* ==================================================
+              HEADER
+          ================================================== */}
+
           <header className="ln-header">
             <div className="ln-header-left">
               <div className="ln-eyebrow">
@@ -928,14 +1493,24 @@ const LinkNetwork = () => {
               </h1>
 
               <p className="ln-subtitle">
-                Monitor live connectivity events, gateways,
-                nodes and network traffic.
+                Monitor real-time connectivity events,
+                gateways, nodes and network traffic.
               </p>
             </div>
 
             <div className="ln-live-status">
-              <div className="ln-live-icon">
-                <Activity size={17} />
+              <div
+                className={`ln-live-icon ${
+                  socketConnected
+                    ? ""
+                    : "offline"
+                }`}
+              >
+                {socketConnected ? (
+                  <Activity size={17} />
+                ) : (
+                  <WifiOff size={17} />
+                )}
               </div>
 
               <div>
@@ -943,12 +1518,38 @@ const LinkNetwork = () => {
                   NETWORK
                 </div>
 
-                <div className="ln-live-value">
-                  LIVE
+                <div
+                  className={`ln-live-value ${
+                    socketConnected
+                      ? ""
+                      : "offline"
+                  }`}
+                >
+                  {socketConnected
+                    ? "LIVE"
+                    : "OFFLINE"}
                 </div>
               </div>
             </div>
           </header>
+
+          {/* ==================================================
+              CONNECTION ERROR
+          ================================================== */}
+
+          {connectionError && (
+            <div className="ln-connection-error">
+              <WifiOff size={14} />
+
+              <span>
+                {connectionError}
+              </span>
+            </div>
+          )}
+
+          {/* ==================================================
+              STATS
+          ================================================== */}
 
           <section className="ln-stats">
 
@@ -1018,11 +1619,20 @@ const LinkNetwork = () => {
 
           </section>
 
+          {/* ==================================================
+              CONSOLE
+          ================================================== */}
+
           <section className="ln-console">
+
+            {/* ------------------------------------------------
+                CONSOLE HEADER
+            ------------------------------------------------ */}
 
             <div className="ln-console-top">
 
               <div className="ln-console-title">
+
                 <div className="ln-terminal-dots">
                   <span className="ln-terminal-dot red" />
                   <span className="ln-terminal-dot yellow" />
@@ -1033,10 +1643,26 @@ const LinkNetwork = () => {
                   antimate-link-network
                 </span>
 
-                <span className="ln-console-live">
-                  <span className="ln-console-live-dot" />
-                  LIVE
+                <span
+                  className={`ln-console-live ${
+                    socketConnected
+                      ? ""
+                      : "offline"
+                  }`}
+                >
+                  <span
+                    className={`ln-console-live-dot ${
+                      socketConnected
+                        ? ""
+                        : "offline"
+                    }`}
+                  />
+
+                  {socketConnected
+                    ? "LIVE"
+                    : "OFFLINE"}
                 </span>
+
               </div>
 
               <div className="ln-console-actions">
@@ -1044,9 +1670,13 @@ const LinkNetwork = () => {
                 <button
                   type="button"
                   className={`ln-tool-button ${
-                    !paused ? "active" : ""
+                    !paused
+                      ? "active"
+                      : ""
                   }`}
-                  onClick={() => setPaused(false)}
+                  onClick={() =>
+                    setPaused(false)
+                  }
                 >
                   <Play size={12} />
                   Live
@@ -1055,9 +1685,13 @@ const LinkNetwork = () => {
                 <button
                   type="button"
                   className={`ln-tool-button ${
-                    paused ? "active" : ""
+                    paused
+                      ? "active"
+                      : ""
                   }`}
-                  onClick={() => setPaused(true)}
+                  onClick={() =>
+                    setPaused(true)
+                  }
                 >
                   <Pause size={12} />
                   Pause
@@ -1066,10 +1700,15 @@ const LinkNetwork = () => {
                 <button
                   type="button"
                   className={`ln-tool-button ${
-                    autoScroll ? "active" : ""
+                    autoScroll
+                      ? "active"
+                      : ""
                   }`}
                   onClick={() =>
-                    setAutoScroll((current) => !current)
+                    setAutoScroll(
+                      (current) =>
+                        !current
+                    )
                   }
                 >
                   <RefreshCw size={12} />
@@ -1080,27 +1719,59 @@ const LinkNetwork = () => {
                   type="button"
                   className="ln-tool-button"
                   onClick={copyLogs}
+                  disabled={
+                    filteredLogs.length ===
+                    0
+                  }
                 >
                   {copied ? (
                     <CheckCircle2 size={12} />
                   ) : (
                     <Copy size={12} />
                   )}
-                  {copied ? "Copied" : "Copy"}
+
+                  {copied
+                    ? "Copied"
+                    : "Copy"}
                 </button>
 
                 <button
                   type="button"
                   className="ln-tool-button"
                   onClick={clearLogs}
+                  disabled={
+                    logs.length === 0
+                  }
                 >
                   <Trash2 size={12} />
                   Clear
                 </button>
 
+                <button
+                  type="button"
+                  className="ln-tool-button"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  <RefreshCw
+                    size={12}
+                    style={{
+                      animation:
+                        refreshing
+                          ? "ln-spin 0.8s linear infinite"
+                          : "none",
+                    }}
+                  />
+                  Refresh
+                </button>
+
               </div>
 
             </div>
+
+            {/* ------------------------------------------------
+                FILTER TOOLBAR
+            ------------------------------------------------ */}
 
             <div className="ln-toolbar">
 
@@ -1111,22 +1782,27 @@ const LinkNetwork = () => {
                   LEVEL
                 </span>
 
-                {LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    className={`ln-filter-button ${
-                      levelFilter === level
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      setLevelFilter(level)
-                    }
-                  >
-                    {level}
-                  </button>
-                ))}
+                {LEVELS.map(
+                  (level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      className={`ln-filter-button ${
+                        levelFilter ===
+                        level
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setLevelFilter(
+                          level
+                        )
+                      }
+                    >
+                      {level}
+                    </button>
+                  )
+                )}
 
               </div>
 
@@ -1136,26 +1812,32 @@ const LinkNetwork = () => {
                   SOURCE
                 </span>
 
-                {sources.map((source) => (
-                  <button
-                    key={source}
-                    type="button"
-                    className={`ln-filter-button ${
-                      sourceFilter === source
-                        ? "active"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      setSourceFilter(source)
-                    }
-                  >
-                    {source}
-                  </button>
-                ))}
+                {sources.map(
+                  (source) => (
+                    <button
+                      key={source}
+                      type="button"
+                      className={`ln-filter-button ${
+                        sourceFilter ===
+                        source
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setSourceFilter(
+                          source
+                        )
+                      }
+                    >
+                      {source}
+                    </button>
+                  )
+                )}
 
               </div>
 
               <div className="ln-search">
+
                 <Search
                   size={12}
                   className="ln-search-icon"
@@ -1167,97 +1849,149 @@ const LinkNetwork = () => {
                   placeholder="Search logs..."
                   value={search}
                   onChange={(event) =>
-                    setSearch(event.target.value)
+                    setSearch(
+                      event.target.value
+                    )
                   }
                 />
+
               </div>
 
             </div>
+
+            {/* ------------------------------------------------
+                TERMINAL
+            ------------------------------------------------ */}
 
             <div
               className="ln-terminal"
               ref={terminalRef}
             >
-              {filteredLogs.length === 0 ? (
+
+              {filteredLogs.length ===
+              0 ? (
                 <div className="ln-terminal-empty">
-                  <WifiOff size={22} />
+
+                  {socketConnected ? (
+                    <Wifi size={22} />
+                  ) : (
+                    <WifiOff size={22} />
+                  )}
 
                   <strong>
-                    No network events
+                    {socketConnected
+                      ? "Waiting for network events"
+                      : "Network service offline"}
                   </strong>
 
                   <span>
-                    Clear filters or wait for new events.
+                    {socketConnected
+                      ? "Live events from the ANTIMATE backend will appear here."
+                      : "Reconnect to the ANTIMATE real-time service to receive events."}
                   </span>
 
-                  {logs.length === 0 && (
-                    <button
-                      type="button"
-                      className="ln-tool-button"
-                      onClick={restoreDemoLogs}
-                      style={{ marginTop: 8 }}
-                    >
-                      <RefreshCw size={12} />
-                      Restore demo logs
-                    </button>
-                  )}
                 </div>
               ) : (
-                filteredLogs.map((log) => (
-                  <div
-                    className="ln-log"
-                    key={log.id}
-                  >
-                    <span className="ln-log-time">
-                      {log.time}
-                    </span>
-
-                    <span
-                      className={`ln-log-level ${levelClass(
-                        log.level
-                      )}`}
+                filteredLogs.map(
+                  (log) => (
+                    <div
+                      className="ln-log"
+                      key={log.id}
                     >
-                      {levelIcon(log.level)}
-                      {log.level}
-                    </span>
+                      <span className="ln-log-time">
+                        {log.time}
+                      </span>
 
-                    <span className="ln-log-source">
-                      [{log.source}]
-                    </span>
+                      <span
+                        className={`ln-log-level ${levelClass(
+                          log.level
+                        )}`}
+                      >
+                        {levelIcon(
+                          log.level
+                        )}
 
-                    <span className="ln-log-device">
-                      {log.device}
-                    </span>
+                        {log.level}
+                      </span>
 
-                    <span className="ln-log-message">
-                      {log.message}
-                    </span>
-                  </div>
-                ))
+                      <span className="ln-log-source">
+                        [{log.source}]
+                      </span>
+
+                      <span
+                        className="ln-log-device"
+                        title={
+                          log.device
+                        }
+                      >
+                        {log.device}
+                      </span>
+
+                      <span
+                        className="ln-log-message"
+                        title={
+                          log.message
+                        }
+                      >
+                        {log.message}
+                      </span>
+                    </div>
+                  )
+                )
               )}
+
             </div>
+
+            {/* ------------------------------------------------
+                FOOTER
+            ------------------------------------------------ */}
 
             <div className="ln-terminal-footer">
 
               <div className="ln-footer-left">
 
                 <span className="ln-footer-item">
+
                   <Circle
                     size={7}
                     fill="currentColor"
-                    className="ln-footer-green"
+                    className={
+                      socketConnected
+                        ? "ln-footer-green"
+                        : "ln-footer-red"
+                    }
                   />
-                  Connection active
+
+                  {socketConnected
+                    ? "Connection active"
+                    : "Connection offline"}
+
                 </span>
 
                 <span className="ln-footer-item">
+
                   <Server size={10} />
-                  4 gateways
+
+                  Socket.IO
+
                 </span>
 
                 <span className="ln-footer-item">
+
                   <Radio size={10} />
-                  28 nodes
+
+                  Real-time
+
+                </span>
+
+                <span className="ln-footer-item">
+
+                  Last event:
+
+                  {" "}
+
+                  {lastEventLabel}
+
                 </span>
 
               </div>
@@ -1270,24 +2004,50 @@ const LinkNetwork = () => {
 
           </section>
 
+          {/* ==================================================
+              COMMAND STATUS
+          ================================================== */}
+
           <div className="ln-command">
+
             <span className="ln-command-prompt">
               antimate-link$
             </span>
 
-            <span className="ln-command-text">
-              listening for network events...
+            <span
+              className={`ln-command-text ${
+                socketConnected
+                  ? ""
+                  : "offline"
+              }`}
+            >
+              {socketConnected
+                ? "listening for real-time network events..."
+                : "real-time network connection unavailable"}
             </span>
 
             <Zap size={11} />
 
             <span>
-              SDK v1.0
+              Socket.IO
             </span>
+
           </div>
 
         </div>
       </main>
+
+      <style>{`
+        @keyframes ln-spin {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </>
   );
 };

@@ -27,6 +27,7 @@ import BroodingGuide from "./pages/BroodingGuide";
 import LinkProjects from "./pages/LinkProjects";
 import LinkDeveloper from "./pages/LinkDeveloper";
 import LinkNetwork from "./pages/LinkNetwork";
+import LinkLayout from "./layouts/LinkLayout";
 
 function App() {
   return (
@@ -173,33 +174,29 @@ function App() {
         {/* ======================================================
             ANTIMATE LINK
         ====================================================== */}
+<Route
+  path="/link"
+  element={
+    <ProtectedRoute>
+      <LinkLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route
+    path="projects"
+    element={<LinkProjects />}
+  />
 
-        <Route
-          path="/link/projects"
-          element={
-            <ProtectedRoute>
-              <LinkProjects />
-            </ProtectedRoute>
-          }
-        />
+  <Route
+    path="developer/:projectId"
+    element={<LinkDeveloper />}
+  />
 
-        <Route
-          path="/link/developer/:projectId"
-          element={
-            <ProtectedRoute>
-              <LinkDeveloper />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/link/network"
-          element={
-            <ProtectedRoute>
-              <LinkNetwork />
-            </ProtectedRoute>
-          }
-        />
+  <Route
+    path="network"
+    element={<LinkNetwork />}
+  />
+</Route>
 
         <Route
           path="/forgot-password"

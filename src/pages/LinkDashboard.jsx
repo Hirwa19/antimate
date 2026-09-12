@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -7,105 +7,685 @@ import {
   Circle,
   Cpu,
   FolderKanban,
-  Gateway,
   Radio,
   Server,
   Wifi,
   WifiOff,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://brooder-backend.onrender.com";
+
+const MAX_ACTIVITY = 20;
+const MAX_TERMINAL_LOGS = 30;
+
+// =====================================================
+// HELPERS
+// =====================================================
+
+const getToken = () => {
+  return localStorage.getItem("token");
+};
+
+const getTime = (value) => {
+  const date = value ? new Date(value) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+const getRelativeTime = (value) => {
+  if (!value) return "Unknown";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  const diff = Math.max(0, Date.now() - date.getTime());
+
+  const seconds = Math.floor(diff / 1000);
+
+  if (seconds < 10) return "Just now";
+
+  if (seconds < 60) {
+    return `${seconds} sec ago`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} hr ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  return `${days} day${days !== 1 ? "s" : ""} ago`;
+};
+
+const extractError = async (response) => {
+  try {
+    const data = await response.json();
+
+    return (
+      data?.message ||
+      data?.error ||
+      "Request failed"
+    );
+  } catch {
+    return `Request failed (${response.status})`;
+  }
+};
+
+const apiRequest = async (endpoint, options = {}) => {
+  const token = getToken();
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(
+    `${API_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await extractError(response)
+    );
+  }
+
+  return response.json();
+};
+
+const normalizeStatus = (status) => {
+  const value = String(status || "").toLowerCase();
+
+  if (
+    value === "active" ||
+    value === "online" ||
+    value === "connected" ||
+    value === "success"
+  ) {
+    return "success";
+  }
+
+  if (
+    value === "warning" ||
+    value === "pending" ||
+    value === "wait"
+  ) {
+    return "warning";
+  }
+
+  if (
+    value === "error" ||
+    value === "failed" ||
+    value === "offline" ||
+    value === "disconnected"
+  ) {
+    return "error";
+  }
+
+  return "info";
+};
+
+const getEventData = (payload) => {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    payload.data &&
+    typeof payload.data === "object"
+  ) {
+    return payload.data;
+  }
+
+  return payload || {};
+};
+
+const getProjectIdFromEvent = (payload) => {
+  const data = getEventData(payload);
+
+  return (
+    data.projectId ||
+    data.project?.projectId ||
+    data.project?.id ||
+    data.projectID ||
+    null
+  );
+};
+
+const getDeviceIdFromEvent = (payload) => {
+  const data = getEventData(payload);
+
+  return (
+    data.deviceId ||
+    data.gatewayId ||
+    data.nodeId ||
+    data.device?.deviceId ||
+    data.device?.id ||
+    data.gateway?.gatewayId ||
+    data.gateway?.id ||
+    data.node ||
+    data.id ||
+    "NETWORK"
+  );
+};
+
+const getEventMessage = (
+  payload,
+  eventName
+) => {
+  const data = getEventData(payload);
+
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  if (typeof data.description === "string") {
+    return data.description;
+  }
+
+  if (typeof data.reason === "string") {
+    return data.reason;
+  }
+
+  if (eventName === "telemetry:update") {
+    return "Telemetry update received";
+  }
+
+  if (eventName === "alert:new") {
+    return "Network alert received";
+  }
+
+  if (eventName === "dashboard:update") {
+    return "Network dashboard updated";
+  }
+
+  return "Network event received";
+};
+
+const normalizeEvent = (
+  payload,
+  eventName
+) => {
+  const data = getEventData(payload);
+
+  let level = "info";
+
+  if (eventName === "alert:new") {
+    level = normalizeStatus(
+      data.severity ||
+        data.level ||
+        data.status ||
+        "warning"
+    );
+
+    if (level === "info") {
+      level = "warning";
+    }
+  } else {
+    level = normalizeStatus(
+      data.level ||
+        data.status ||
+        data.connectionStatus
+    );
+  }
+
+  let source = "LINK";
+
+  if (eventName === "telemetry:update") {
+    source = "TELEMETRY";
+  }
+
+  if (eventName === "alert:new") {
+    source = "ALERT";
+  }
+
+  if (eventName === "dashboard:update") {
+    source = "NETWORK";
+  }
+
+  const timestamp =
+    data.timestamp ||
+    data.createdAt ||
+    data.updatedAt ||
+    new Date().toISOString();
+
+  return {
+    id: `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`,
+    timestamp,
+    time: getTime(timestamp),
+    relativeTime: getRelativeTime(timestamp),
+    level,
+    source,
+    device: String(
+      getDeviceIdFromEvent(payload)
+    ),
+    projectId:
+      getProjectIdFromEvent(payload),
+    message: getEventMessage(
+      payload,
+      eventName
+    ),
+  };
+};
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 const LinkDashboard = () => {
+  const navigate = useNavigate();
+
+  const [projects, setProjects] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [terminalLogs, setTerminalLogs] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] =
+    useState("");
+
+  const [socketStatus, setSocketStatus] =
+    useState("connecting");
+
+  const [lastEventAt, setLastEventAt] =
+    useState(null);
+
+  // ===================================================
+  // LOAD PROJECTS
+  // ===================================================
+
+  const loadProjects = useCallback(
+    async () => {
+      setLoading(true);
+      setLoadingError("");
+
+      try {
+        const data = await apiRequest(
+          "/api/link/projects"
+        );
+
+        const list =
+          Array.isArray(data)
+            ? data
+            : Array.isArray(data?.projects)
+            ? data.projects
+            : Array.isArray(data?.data)
+            ? data.data
+            : [];
+
+        setProjects(list);
+      } catch (error) {
+        console.error(
+          "LINK projects error:",
+          error
+        );
+
+        setLoadingError(
+          error.message ||
+            "Failed to load projects"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  // ===================================================
+  // SOCKET.IO NETWORK EVENTS
+  // ===================================================
+
+  useEffect(() => {
+    const token = getToken();
+
+    const socket = io(API_URL, {
+      transports: [
+        "websocket",
+        "polling",
+      ],
+      auth: {
+        token,
+      },
+      autoConnect: true,
+    });
+
+    const addEvent = (
+      eventName,
+      payload
+    ) => {
+      const event = normalizeEvent(
+        payload,
+        eventName
+      );
+
+      setLastEventAt(
+        event.timestamp
+      );
+
+      setActivities((previous) => {
+        const next = [
+          event,
+          ...previous,
+        ];
+
+        return next.slice(
+          0,
+          MAX_ACTIVITY
+        );
+      });
+
+      setTerminalLogs((previous) => {
+        const next = [
+          event,
+          ...previous,
+        ];
+
+        return next.slice(
+          0,
+          MAX_TERMINAL_LOGS
+        );
+      });
+    };
+
+    socket.on("connect", () => {
+      setSocketStatus("connected");
+    });
+
+    socket.on("disconnect", () => {
+      setSocketStatus("disconnected");
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error(
+        "LINK Socket error:",
+        error.message
+      );
+
+      setSocketStatus("error");
+    });
+
+    socket.on(
+      "telemetry:update",
+      (payload) => {
+        addEvent(
+          "telemetry:update",
+          payload
+        );
+      }
+    );
+
+    socket.on(
+      "alert:new",
+      (payload) => {
+        addEvent(
+          "alert:new",
+          payload
+        );
+      }
+    );
+
+    socket.on(
+      "dashboard:update",
+      (payload) => {
+        /*
+         * dashboard:update can contain different
+         * backend data depending on the event source.
+         *
+         * We only convert explicit event arrays
+         * into activity entries.
+         */
+        const data =
+          getEventData(payload);
+
+        const events =
+          data.networkLogs ||
+          data.logs ||
+          data.events;
+
+        if (Array.isArray(events)) {
+          events
+            .slice(-10)
+            .forEach((item) => {
+              addEvent(
+                "dashboard:update",
+                item
+              );
+            });
+        }
+      }
+    );
+
+    return () => {
+      socket.removeAllListeners();
+      socket.disconnect();
+    };
+  }, []);
+
+  // ===================================================
+  // PROJECT IDS
+  // ===================================================
+
+  const projectIds = useMemo(() => {
+    return new Set(
+      projects
+        .map(
+          (project) =>
+            project.projectId
+        )
+        .filter(Boolean)
+    );
+  }, [projects]);
+
+  /*
+   * IMPORTANT:
+   *
+   * The current backend Socket.IO events are not yet
+   * project-scoped.
+   *
+   * Therefore events carrying a projectId are checked
+   * against the user's projects.
+   *
+   * Events without projectId are displayed because the
+   * current backend may emit gateway/network events
+   * without project metadata.
+   */
+
+  const visibleActivities = useMemo(() => {
+    if (!projectIds.size) {
+      return activities;
+    }
+
+    return activities.filter((item) => {
+      if (!item.projectId) {
+        return true;
+      }
+
+      return projectIds.has(
+        item.projectId
+      );
+    });
+  }, [activities, projectIds]);
+
+  const visibleTerminalLogs =
+    useMemo(() => {
+      if (!projectIds.size) {
+        return terminalLogs;
+      }
+
+      return terminalLogs.filter(
+        (item) => {
+          if (!item.projectId) {
+            return true;
+          }
+
+          return projectIds.has(
+            item.projectId
+          );
+        }
+      );
+    }, [terminalLogs, projectIds]);
+
+  // ===================================================
+  // STATS
+  // ===================================================
+
+  const activeProjects = useMemo(() => {
+    return projects.filter(
+      (project) =>
+        String(
+          project.status || ""
+        ).toLowerCase() === "active"
+    ).length;
+  }, [projects]);
+
+  const networkStats = useMemo(() => {
+    let success = 0;
+    let warning = 0;
+    let error = 0;
+
+    visibleTerminalLogs.forEach(
+      (event) => {
+        if (event.level === "success") {
+          success += 1;
+        }
+
+        if (event.level === "warning") {
+          warning += 1;
+        }
+
+        if (event.level === "error") {
+          error += 1;
+        }
+      }
+    );
+
+    return {
+      total: visibleTerminalLogs.length,
+      success,
+      warning,
+      error,
+    };
+  }, [visibleTerminalLogs]);
+
+  // ===================================================
+  // PROJECT NAVIGATION
+  // ===================================================
+
+  const openProject = (projectId) => {
+    if (!projectId) return;
+
+    navigate(
+      `/link/developer/${projectId}`
+    );
+  };
+
+  const viewAllProjects = () => {
+    navigate("/link/projects");
+  };
+
+  // ===================================================
+  // STAT CARDS
+  // ===================================================
+
   const stats = useMemo(
     () => [
       {
         label: "Projects",
-        value: "3",
-        detail: "2 active",
+        value: projects.length,
+        detail: `${activeProjects} active`,
         icon: FolderKanban,
         type: "purple",
       },
       {
-        label: "Gateways",
-        value: "4",
-        detail: "3 online",
-        icon: Server,
+        label: "Network events",
+        value: networkStats.total,
+        detail:
+          "Received this session",
+        icon: Activity,
         type: "blue",
       },
       {
-        label: "Connected nodes",
-        value: "28",
-        detail: "26 online",
-        icon: Cpu,
+        label: "Successful events",
+        value: networkStats.success,
+        detail:
+          "Received successfully",
+        icon: CheckCircle2,
         type: "green",
       },
       {
         label: "Network status",
-        value: "Online",
-        detail: "All systems operational",
-        icon: Wifi,
+        value:
+          socketStatus === "connected"
+            ? "Online"
+            : "Offline",
+        detail:
+          socketStatus ===
+          "connected"
+            ? lastEventAt
+              ? `Last event ${getRelativeTime(
+                  lastEventAt
+                )}`
+              : "Connected to server"
+            : "Connection unavailable",
+        icon:
+          socketStatus ===
+          "connected"
+            ? Wifi
+            : WifiOff,
         type: "cyan",
       },
     ],
-    []
+    [
+      projects.length,
+      activeProjects,
+      networkStats,
+      socketStatus,
+      lastEventAt,
+    ]
   );
 
-  const activity = useMemo(
-    () => [
-      {
-        type: "success",
-        title: "Gateway connected",
-        description: "GTW-26-86FD75 is now online",
-        time: "Just now",
-      },
-      {
-        type: "info",
-        title: "Data received",
-        description: "New packet received from DEV-339CD8",
-        time: "2 min ago",
-      },
-      {
-        type: "success",
-        title: "Project active",
-        description: "ANTIMATE Farm Network is operational",
-        time: "8 min ago",
-      },
-      {
-        type: "warning",
-        title: "Gateway heartbeat",
-        description: "Heartbeat received successfully",
-        time: "12 min ago",
-      },
-    ],
-    []
-  );
-
-  const projects = useMemo(
-    () => [
-      {
-        name: "Farm Network",
-        id: "ANT-LK-8F29",
-        status: "Active",
-        gateways: 2,
-        nodes: 14,
-      },
-      {
-        name: "Smart Home",
-        id: "ANT-LK-31AC",
-        status: "Active",
-        gateways: 1,
-        nodes: 8,
-      },
-      {
-        name: "Test Network",
-        id: "ANT-LK-74BD",
-        status: "Inactive",
-        gateways: 1,
-        nodes: 6,
-      },
-    ],
-    []
-  );
+  // ===================================================
+  // RENDER
+  // ===================================================
 
   return (
     <>
@@ -191,8 +771,16 @@ const LinkDashboard = () => {
           align-items: center;
           justify-content: center;
           border-radius: 9px;
+        }
+
+        .link-status-icon.online {
           background: #ecfdf3;
           color: #16a34a;
+        }
+
+        .link-status-icon.offline {
+          background: #fef2f2;
+          color: #dc2626;
         }
 
         .link-status-text {
@@ -208,9 +796,16 @@ const LinkDashboard = () => {
         }
 
         .link-status-value {
-          color: #15803d;
           font-size: 13px;
           font-weight: 700;
+        }
+
+        .link-status-value.online {
+          color: #15803d;
+        }
+
+        .link-status-value.offline {
+          color: #b91c1c;
         }
 
         .link-stats {
@@ -277,6 +872,7 @@ const LinkDashboard = () => {
           line-height: 1.1;
           font-weight: 750;
           letter-spacing: -0.4px;
+          word-break: break-word;
         }
 
         .link-stat-detail {
@@ -400,6 +996,7 @@ const LinkDashboard = () => {
           color: #858b9b;
           font-size: 11px;
           font-family: monospace;
+          overflow-wrap: anywhere;
         }
 
         .link-project-meta {
@@ -436,6 +1033,164 @@ const LinkDashboard = () => {
           border-color: #cdd1dc;
           color: #4f46e5;
           background: #fafaff;
+        }
+
+        .link-empty {
+          padding: 34px 20px;
+          text-align: center;
+        }
+
+        .link-empty-icon {
+          width: 42px;
+          height: 42px;
+          margin: 0 auto 12px;
+          border-radius: 11px;
+          background: #f3f4f6;
+          color: #7b8191;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .link-empty-title {
+          margin: 0;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .link-empty-text {
+          margin: 6px auto 0;
+          max-width: 400px;
+          color: #858b9b;
+          font-size: 11px;
+          line-height: 1.5;
+        }
+
+        .link-error {
+          padding: 18px 20px;
+          background: #fef2f2;
+          color: #b91c1c;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .link-network-box {
+          margin-top: 20px;
+          background: #151827;
+          border-radius: 14px;
+          overflow: hidden;
+          color: #d8dbea;
+        }
+
+        .link-network-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 13px 16px;
+          background: #1c2030;
+          border-bottom: 1px solid #292e40;
+        }
+
+        .link-network-header-left {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+        }
+
+        .link-terminal-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .link-terminal-dot.live {
+          background: #22c55e;
+          box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+        }
+
+        .link-terminal-dot.offline {
+          background: #ef4444;
+          box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+
+        .link-terminal-title {
+          font-size: 11px;
+          font-weight: 700;
+          color: #e8eaf2;
+        }
+
+        .link-terminal-status {
+          font-size: 10px;
+          font-family: monospace;
+        }
+
+        .link-terminal-status.live {
+          color: #6ee7b7;
+        }
+
+        .link-terminal-status.offline {
+          color: #fca5a5;
+        }
+
+        .link-terminal-body {
+          padding: 15px 16px;
+          font-family: monospace;
+          font-size: 11px;
+          line-height: 1.8;
+          max-height: 310px;
+          overflow-y: auto;
+        }
+
+        .link-terminal-line {
+          display: flex;
+          gap: 9px;
+          min-width: 0;
+        }
+
+        .link-terminal-prefix {
+          color: #81879b;
+          flex-shrink: 0;
+        }
+
+        .link-terminal-source {
+          flex-shrink: 0;
+          font-weight: 700;
+        }
+
+        .link-terminal-success {
+          color: #6ee7b7;
+        }
+
+        .link-terminal-info {
+          color: #93c5fd;
+        }
+
+        .link-terminal-warning {
+          color: #fdba74;
+        }
+
+        .link-terminal-error {
+          color: #fca5a5;
+        }
+
+        .link-terminal-command {
+          color: #a5b4fc;
+        }
+
+        .link-terminal-message {
+          color: #d8dbea;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .link-terminal-empty {
+          color: #81879b;
+          text-align: center;
+          padding: 12px 0;
         }
 
         .link-activity-list {
@@ -479,6 +1234,11 @@ const LinkDashboard = () => {
           color: #ea580c;
         }
 
+        .link-activity-icon.error {
+          background: #fef2f2;
+          color: #dc2626;
+        }
+
         .link-activity-content {
           min-width: 0;
         }
@@ -495,6 +1255,7 @@ const LinkDashboard = () => {
           color: #858b9b;
           font-size: 11px;
           line-height: 1.4;
+          overflow-wrap: anywhere;
         }
 
         .link-activity-time {
@@ -504,84 +1265,18 @@ const LinkDashboard = () => {
           padding-top: 2px;
         }
 
-        .link-network-box {
-          margin-top: 20px;
-          background: #151827;
-          border-radius: 14px;
-          overflow: hidden;
-          color: #d8dbea;
+        .link-loading {
+          padding: 30px 20px;
+          text-align: center;
+          color: #858b9b;
+          font-size: 12px;
         }
 
-        .link-network-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 13px 16px;
-          background: #1c2030;
-          border-bottom: 1px solid #292e40;
-        }
-
-        .link-network-header-left {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-        }
-
-        .link-terminal-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #22c55e;
-          box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-        }
-
-        .link-terminal-title {
-          font-size: 11px;
-          font-weight: 700;
-          color: #e8eaf2;
-        }
-
-        .link-terminal-status {
-          color: #6ee7b7;
+        .link-session-note {
+          margin-top: 10px;
+          color: #8a90a0;
           font-size: 10px;
-          font-family: monospace;
-        }
-
-        .link-terminal-body {
-          padding: 15px 16px;
-          font-family: monospace;
-          font-size: 11px;
-          line-height: 1.8;
-        }
-
-        .link-terminal-line {
-          display: flex;
-          gap: 9px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .link-terminal-prefix {
-          color: #81879b;
-          flex-shrink: 0;
-        }
-
-        .link-terminal-success {
-          color: #6ee7b7;
-        }
-
-        .link-terminal-info {
-          color: #93c5fd;
-        }
-
-        .link-terminal-warning {
-          color: #fdba74;
-        }
-
-        .link-terminal-command {
-          color: #a5b4fc;
+          line-height: 1.5;
         }
 
         @media (max-width: 1100px) {
@@ -658,11 +1353,20 @@ const LinkDashboard = () => {
           .link-project-meta {
             gap: 9px;
           }
+
+          .link-terminal-body {
+            padding: 12px;
+            font-size: 10px;
+          }
         }
       `}</style>
 
       <main className="link-dashboard">
         <div className="link-dashboard-container">
+
+          {/* =================================================
+              HEADER
+          ================================================= */}
 
           <header className="link-header">
             <div className="link-title-area">
@@ -676,13 +1380,25 @@ const LinkDashboard = () => {
               </h1>
 
               <p className="link-subtitle">
-                Monitor your connectivity, projects and network infrastructure.
+                Monitor your projects and live
+                ANTIMATE LINK network activity.
               </p>
             </div>
 
             <div className="link-status">
-              <div className="link-status-icon">
-                <Wifi size={18} />
+              <div
+                className={`link-status-icon ${
+                  socketStatus === "connected"
+                    ? "online"
+                    : "offline"
+                }`}
+              >
+                {socketStatus ===
+                "connected" ? (
+                  <Wifi size={18} />
+                ) : (
+                  <WifiOff size={18} />
+                )}
               </div>
 
               <div className="link-status-text">
@@ -690,21 +1406,40 @@ const LinkDashboard = () => {
                   Network status
                 </span>
 
-                <span className="link-status-value">
-                  All systems operational
+                <span
+                  className={`link-status-value ${
+                    socketStatus ===
+                    "connected"
+                      ? "online"
+                      : "offline"
+                  }`}
+                >
+                  {socketStatus ===
+                  "connected"
+                    ? "Live connection"
+                    : "Connection unavailable"}
                 </span>
               </div>
             </div>
           </header>
+
+          {/* =================================================
+              STATS
+          ================================================= */}
 
           <section className="link-stats">
             {stats.map((stat) => {
               const Icon = stat.icon;
 
               return (
-                <div className="link-stat" key={stat.label}>
+                <div
+                  className="link-stat"
+                  key={stat.label}
+                >
                   <div className="link-stat-top">
-                    <div className={`link-stat-icon ${stat.type}`}>
+                    <div
+                      className={`link-stat-icon ${stat.type}`}
+                    >
                       <Icon size={19} />
                     </div>
 
@@ -730,9 +1465,19 @@ const LinkDashboard = () => {
             })}
           </section>
 
+          {/* =================================================
+              MAIN GRID
+          ================================================= */}
+
           <section className="link-main-grid">
 
+            {/* =================================================
+                LEFT
+            ================================================= */}
+
             <div>
+
+              {/* PROJECTS */}
 
               <div className="link-panel">
                 <div className="link-panel-header">
@@ -749,165 +1494,257 @@ const LinkDashboard = () => {
                   <button
                     className="link-panel-action"
                     type="button"
+                    onClick={
+                      viewAllProjects
+                    }
                   >
                     View all
-                    <ArrowUpRight size={14} />
+                    <ArrowUpRight
+                      size={14}
+                    />
                   </button>
                 </div>
 
-                <div className="link-projects">
-                  {projects.map((project) => (
-                    <div
-                      className="link-project"
-                      key={project.id}
-                    >
-                      <div className="link-project-main">
-
-                        <div className="link-project-name-row">
-                          <h3 className="link-project-name">
-                            {project.name}
-                          </h3>
-
-                          <span
-                            className={`link-project-status ${
-                              project.status === "Active"
-                                ? "active"
-                                : "inactive"
-                            }`}
-                          >
-                            <Circle
-                              size={6}
-                              fill="currentColor"
-                            />
-                            {project.status}
-                          </span>
-                        </div>
-
-                        <p className="link-project-id">
-                          {project.id}
-                        </p>
-
-                        <div className="link-project-meta">
-                          <span className="link-project-meta-item">
-                            <Server size={13} />
-                            {project.gateways} gateway
-                            {project.gateways !== 1 ? "s" : ""}
-                          </span>
-
-                          <span className="link-project-meta-item">
-                            <Radio size={13} />
-                            {project.nodes} nodes
-                          </span>
-
-                          <span className="link-project-meta-item">
-                            <Zap size={13} />
-                            Link SDK
-                          </span>
-                        </div>
-
-                      </div>
-
-                      <button
-                        className="link-project-open"
-                        type="button"
-                        aria-label={`Open ${project.name}`}
-                      >
-                        <ChevronRight size={17} />
-                      </button>
+                {loading ? (
+                  <div className="link-loading">
+                    Loading projects...
+                  </div>
+                ) : loadingError ? (
+                  <div className="link-error">
+                    {loadingError}
+                  </div>
+                ) : projects.length ===
+                  0 ? (
+                  <div className="link-empty">
+                    <div className="link-empty-icon">
+                      <FolderKanban
+                        size={19}
+                      />
                     </div>
-                  ))}
-                </div>
+
+                    <h3 className="link-empty-title">
+                      No projects yet
+                    </h3>
+
+                    <p className="link-empty-text">
+                      Create an ANTIMATE LINK
+                      project to start
+                      connecting your devices
+                      through the network.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="link-projects">
+                    {projects
+                      .slice(0, 5)
+                      .map((project) => {
+                        const isActive =
+                          String(
+                            project.status ||
+                              ""
+                          ).toLowerCase() ===
+                          "active";
+
+                        return (
+                          <div
+                            className="link-project"
+                            key={
+                              project.projectId ||
+                              project._id
+                            }
+                          >
+                            <div className="link-project-main">
+
+                              <div className="link-project-name-row">
+                                <h3 className="link-project-name">
+                                  {project.projectName ||
+                                    "Unnamed project"}
+                                </h3>
+
+                                <span
+                                  className={`link-project-status ${
+                                    isActive
+                                      ? "active"
+                                      : "inactive"
+                                  }`}
+                                >
+                                  <Circle
+                                    size={6}
+                                    fill="currentColor"
+                                  />
+
+                                  {isActive
+                                    ? "Active"
+                                    : project.status ||
+                                      "Inactive"}
+                                </span>
+                              </div>
+
+                              <p className="link-project-id">
+                                {project.projectId ||
+                                  "No Project ID"}
+                              </p>
+
+                              <div className="link-project-meta">
+
+                                <span className="link-project-meta-item">
+                                  <Server
+                                    size={13}
+                                  />
+                                  {project.authorizedDestinations
+                                    ?.length ??
+                                    "—"}{" "}
+                                  authorized
+                                </span>
+
+                                <span className="link-project-meta-item">
+                                  <Radio
+                                    size={13}
+                                  />
+                                  Protocol{" "}
+                                  {project.protocolVersion ||
+                                    "1.0"}
+                                </span>
+
+                                <span className="link-project-meta-item">
+                                  <Zap
+                                    size={13}
+                                  />
+                                  Edge SDK{" "}
+                                  {project.sdkVersion ||
+                                    "1.0.0"}
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <button
+                              className="link-project-open"
+                              type="button"
+                              aria-label={`Open ${
+                                project.projectName ||
+                                "project"
+                              }`}
+                              onClick={() =>
+                                openProject(
+                                  project.projectId
+                                )
+                              }
+                            >
+                              <ChevronRight
+                                size={17}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
+
+              {/* NETWORK TERMINAL */}
 
               <div className="link-network-box">
                 <div className="link-network-header">
+
                   <div className="link-network-header-left">
-                    <span className="link-terminal-dot" />
+                    <span
+                      className={`link-terminal-dot ${
+                        socketStatus ===
+                        "connected"
+                          ? "live"
+                          : "offline"
+                      }`}
+                    />
 
                     <span className="link-terminal-title">
                       ANTIMATE LINK NETWORK
                     </span>
                   </div>
 
-                  <span className="link-terminal-status">
-                    LIVE
+                  <span
+                    className={`link-terminal-status ${
+                      socketStatus ===
+                      "connected"
+                        ? "live"
+                        : "offline"
+                    }`}
+                  >
+                    {socketStatus ===
+                    "connected"
+                      ? "LIVE"
+                      : "OFFLINE"}
                   </span>
                 </div>
 
                 <div className="link-terminal-body">
-                  <div className="link-terminal-line">
-                    <span className="link-terminal-prefix">
-                      17:48:21
-                    </span>
+                  {visibleTerminalLogs.length ===
+                  0 ? (
+                    <div className="link-terminal-empty">
+                      {socketStatus ===
+                      "connected"
+                        ? "Listening for live network events..."
+                        : "Waiting for network connection..."}
+                    </div>
+                  ) : (
+                    visibleTerminalLogs.map(
+                      (event) => (
+                        <div
+                          className="link-terminal-line"
+                          key={event.id}
+                        >
+                          <span className="link-terminal-prefix">
+                            {event.time}
+                          </span>
 
-                    <span className="link-terminal-success">
-                      [SUCCESS]
-                    </span>
+                          <span
+                            className={`link-terminal-source ${
+                              event.level ===
+                              "success"
+                                ? "link-terminal-success"
+                                : event.level ===
+                                  "warning"
+                                ? "link-terminal-warning"
+                                : event.level ===
+                                  "error"
+                                ? "link-terminal-error"
+                                : event.source ===
+                                  "LINK"
+                                ? "link-terminal-command"
+                                : "link-terminal-info"
+                            }`}
+                          >
+                            [
+                            {event.source}
+                            ]
+                          </span>
 
-                    <span>
-                      Gateway GTW-26-86FD75 connected
-                    </span>
-                  </div>
-
-                  <div className="link-terminal-line">
-                    <span className="link-terminal-prefix">
-                      17:48:25
-                    </span>
-
-                    <span className="link-terminal-info">
-                      [INFO]
-                    </span>
-
-                    <span>
-                      Data packet received
-                    </span>
-                  </div>
-
-                  <div className="link-terminal-line">
-                    <span className="link-terminal-prefix">
-                      17:48:27
-                    </span>
-
-                    <span className="link-terminal-success">
-                      [SUCCESS]
-                    </span>
-
-                    <span>
-                      Packet forwarded successfully
-                    </span>
-                  </div>
-
-                  <div className="link-terminal-line">
-                    <span className="link-terminal-prefix">
-                      17:48:31
-                    </span>
-
-                    <span className="link-terminal-command">
-                      [LINK]
-                    </span>
-
-                    <span>
-                      Network heartbeat received
-                    </span>
-                  </div>
-
-                  <div className="link-terminal-line">
-                    <span className="link-terminal-prefix">
-                      17:48:35
-                    </span>
-
-                    <span className="link-terminal-warning">
-                      [WAIT]
-                    </span>
-
-                    <span>
-                      Listening for new events...
-                    </span>
-                  </div>
+                          <span className="link-terminal-message">
+                            {event.device !==
+                              "NETWORK" &&
+                              `${event.device}: `}
+                            {event.message}
+                          </span>
+                        </div>
+                      )
+                    )
+                  )}
                 </div>
               </div>
 
+              <div className="link-session-note">
+                Network events shown here are
+                received from the ANTIMATE backend
+                during the current dashboard
+                session.
+              </div>
+
             </div>
+
+            {/* =================================================
+                RIGHT — RECENT ACTIVITY
+            ================================================= */}
 
             <div className="link-panel">
               <div className="link-panel-header">
@@ -928,42 +1765,94 @@ const LinkDashboard = () => {
               </div>
 
               <div className="link-activity-list">
-                {activity.map((item, index) => (
-                  <div
-                    className="link-activity"
-                    key={`${item.title}-${index}`}
-                  >
-                    <div
-                      className={`link-activity-icon ${item.type}`}
-                    >
-                      {item.type === "success" && (
-                        <CheckCircle2 size={14} />
-                      )}
-
-                      {item.type === "info" && (
-                        <Radio size={14} />
-                      )}
-
-                      {item.type === "warning" && (
-                        <Zap size={14} />
-                      )}
+                {visibleActivities.length ===
+                0 ? (
+                  <div className="link-empty">
+                    <div className="link-empty-icon">
+                      <Activity
+                        size={19}
+                      />
                     </div>
 
-                    <div className="link-activity-content">
-                      <h3 className="link-activity-title">
-                        {item.title}
-                      </h3>
+                    <h3 className="link-empty-title">
+                      No recent activity
+                    </h3>
 
-                      <p className="link-activity-description">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    <span className="link-activity-time">
-                      {item.time}
-                    </span>
+                    <p className="link-empty-text">
+                      Live network events will
+                      appear here when your
+                      ANTIMATE LINK backend
+                      receives them.
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  visibleActivities.map(
+                    (item) => (
+                      <div
+                        className="link-activity"
+                        key={item.id}
+                      >
+                        <div
+                          className={`link-activity-icon ${item.level}`}
+                        >
+                          {item.level ===
+                            "success" && (
+                            <CheckCircle2
+                              size={14}
+                            />
+                          )}
+
+                          {item.level ===
+                            "warning" && (
+                            <AlertTriangle
+                              size={14}
+                            />
+                          )}
+
+                          {item.level ===
+                            "error" && (
+                            <WifiOff
+                              size={14}
+                            />
+                          )}
+
+                          {item.level ===
+                            "info" && (
+                            <Radio
+                              size={14}
+                            />
+                          )}
+                        </div>
+
+                        <div className="link-activity-content">
+                          <h3 className="link-activity-title">
+                            {item.source}
+                            {" "}
+                            event
+                          </h3>
+
+                          <p className="link-activity-description">
+                            {item.device !==
+                              "NETWORK" &&
+                              `${item.device}: `}
+                            {item.message}
+                          </p>
+
+                          {item.projectId && (
+                            <p className="link-activity-description">
+                              Project:{" "}
+                              {item.projectId}
+                            </p>
+                          )}
+                        </div>
+
+                        <span className="link-activity-time">
+                          {item.relativeTime}
+                        </span>
+                      </div>
+                    )
+                  )
+                )}
               </div>
             </div>
 

@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import BottomNav from "../components/BottomNav";
-import PageLoader from "../components/PageLoader";
 import { useAppSettings } from "../context/AppSettingsContext";
 import SuccessModal from "../components/SuccessModal";
 import PaymentModal from "../components/PaymentModal";
@@ -15,13 +14,20 @@ export default function Plan() {
   const { isDark } = useAppSettings();
   const navigate = useNavigate();
 
-  const [currentPayment, setCurrentPayment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [currentPayment, setCurrentPayment] =
+    useState(null);
 
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [updating, setUpdating] =
+    useState(false);
+
+  const [successOpen, setSuccessOpen] =
+    useState(false);
+
+  const [paymentOpen, setPaymentOpen] =
+    useState(false);
+
+  const [selectedPlan, setSelectedPlan] =
+    useState(null);
 
   // =====================================================
   // PLANS
@@ -34,7 +40,8 @@ export default function Plan() {
       displayPrice: "0 FRW",
       paymentLink: null,
       tag: "Starter",
-      description: "For testing Smart Brooder features.",
+      description:
+        "For testing Smart Brooder features.",
       features: [
         "Live dashboard",
         "Basic temperature view",
@@ -50,7 +57,8 @@ export default function Plan() {
       paymentLink:
         "https://payments.paypack.rw/link/plink_Pr1eEHnvXFWRFYb80bmR",
       tag: "Recommended",
-      description: "Best for small poultry farmers.",
+      description:
+        "Best for small poultry farmers.",
       features: [
         "Push notifications",
         "Temperature alerts",
@@ -66,7 +74,8 @@ export default function Plan() {
       paymentLink:
         "https://payments.paypack.rw/link/plink_6LIEZWtJQSg6GgScYG14",
       tag: "Smart",
-      description: "For farmers managing multiple brooders.",
+      description:
+        "For farmers managing multiple brooders.",
       features: [
         "Everything in Basic",
         "Multiple brooders",
@@ -82,7 +91,8 @@ export default function Plan() {
       paymentLink:
         "https://payments.paypack.rw/link/plink_aOyQzpAVFiEHPSlecei5",
       tag: "Business",
-      description: "For commercial farms.",
+      description:
+        "For commercial farms.",
       features: [
         "Everything in Pro",
         "AI recommendations",
@@ -93,124 +103,234 @@ export default function Plan() {
   ];
 
   // =====================================================
-  // FETCH LATEST/CURRENT PAYMENT
+  // DATE HELPERS
   // =====================================================
 
-  const fetchCurrentPayment = useCallback(async () => {
-    try {
-      setLoading(true);
+  const getPaymentDate = useCallback(
+    (payment) => {
+      if (!payment) {
+        return null;
+      }
 
-      const token = localStorage.getItem("token");
+      const possibleDates = [
+        payment.paidAt,
+        payment.paymentDate,
+        payment.paidDate,
+        payment.transactionDate,
+        payment.createdAt,
+      ];
 
-      if (!token) {
-        navigate("/login");
-        return;
+      for (const value of possibleDates) {
+        if (!value) continue;
+
+        const date = new Date(value);
+
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      return null;
+    },
+    []
+  );
+
+  const getEndDate = useCallback(
+    (payment) => {
+      if (!payment) {
+        return null;
       }
 
       /*
        * IMPORTANT:
        *
-       * This endpoint must return the user's latest/current
-       * payment from the Payment collection.
+       * End date is based on the actual PAID DATE.
        *
-       * GET /api/payments/current
+       * Example:
+       * Paid date = 12 September 2026
+       * End date  = 12 October 2026
        */
 
-      const res = await fetch(
-        `${API_URL}/api/payments/current`,
-        {
-          method: "GET",
+      const paidDate =
+        getPaymentDate(payment);
 
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      if (paidDate) {
+        const endDate =
+          new Date(paidDate);
 
-      const data = await res.json();
-
-      console.log("💳 CURRENT PAYMENT:", data);
-
-      if (!res.ok) {
-        console.error(
-          "Current payment error:",
-          data?.message
+        endDate.setMonth(
+          endDate.getMonth() + 1
         );
 
-        setCurrentPayment(null);
-        return;
+        return endDate;
       }
 
       /*
-       * Support different backend response formats.
+       * Fallback for old payments that don't
+       * contain paidAt/paymentDate.
        */
 
-      const payment =
-        data?.payment ||
-        data?.currentPayment ||
-        data?.latestPayment ||
-        null;
+      if (payment.expiryDate) {
+        const expiry = new Date(
+          payment.expiryDate
+        );
 
-      setCurrentPayment(payment);
-    } catch (error) {
-      console.error(
-        "FETCH CURRENT PAYMENT ERROR:",
-        error
-      );
+        if (
+          !Number.isNaN(
+            expiry.getTime()
+          )
+        ) {
+          return expiry;
+        }
+      }
 
-      setCurrentPayment(null);
-    } finally {
-      setLoading(false);
+      return null;
+    },
+    [getPaymentDate]
+  );
+
+  const formatDate = (date) => {
+    if (!date) {
+      return "—";
     }
-  }, [navigate]);
+
+    return new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }
+    ).format(date);
+  };
+
+  const formatDateTime = (date) => {
+    if (!date) {
+      return "—";
+    }
+
+    return new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    ).format(date);
+  };
 
   // =====================================================
-  // CHECK IF PAYMENT IS ACTIVE
+  // FETCH CURRENT PAYMENT
   // =====================================================
 
-  function isPaymentActive(payment) {
+  const fetchCurrentPayment =
+    useCallback(async () => {
+      try {
+        const token =
+          localStorage.getItem(
+            "token"
+          );
+
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const res = await fetch(
+          `${API_URL}/api/payments/current`,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "application/json",
+            },
+          }
+        );
+
+        const data =
+          await res.json();
+
+        console.log(
+          "💳 CURRENT PAYMENT:",
+          data
+        );
+
+        if (!res.ok) {
+          console.error(
+            "Current payment error:",
+            data?.message
+          );
+
+          setCurrentPayment(null);
+          return;
+        }
+
+        const payment =
+          data?.payment ||
+          data?.currentPayment ||
+          data?.latestPayment ||
+          null;
+
+        setCurrentPayment(payment);
+      } catch (error) {
+        console.error(
+          "FETCH CURRENT PAYMENT ERROR:",
+          error
+        );
+
+        setCurrentPayment(null);
+      }
+    }, [navigate]);
+
+  // =====================================================
+  // CHECK PAYMENT ACTIVE
+  // =====================================================
+
+  function isPaymentActive(
+    payment
+  ) {
     if (!payment) {
       return false;
     }
 
     const planName =
-      payment.planName || "Free";
+      payment.planName ||
+      payment.plan ||
+      "Free";
 
-    if (planName === "Free") {
+    if (
+      String(planName)
+        .toLowerCase() ===
+      "free"
+    ) {
       return false;
     }
 
-    const status =
-      String(payment.status || "")
-        .toLowerCase()
-        .trim();
-
-    /*
-     * Payment collection:
-     *
-     * pending
-     * paid
-     * failed
-     * cancelled
-     */
+    const status = String(
+      payment.status || ""
+    )
+      .toLowerCase()
+      .trim();
 
     if (status !== "paid") {
       return false;
     }
 
-    // -----------------------------------------------
-    // EXPIRY
-    // -----------------------------------------------
+    /*
+     * Calculate expiry from PAID DATE.
+     */
 
-    if (payment.expiryDate) {
-      const expiry =
-        new Date(payment.expiryDate);
+    const endDate =
+      getEndDate(payment);
 
-      if (
-        !Number.isNaN(expiry.getTime()) &&
-        expiry <= new Date()
-      ) {
+    if (endDate) {
+      const now = new Date();
+
+      if (endDate <= now) {
         return false;
       }
     }
@@ -223,23 +343,23 @@ export default function Plan() {
   // =====================================================
 
   function getCurrentPlanName() {
-    /*
-     * Only a PAID and non-expired payment
-     * is considered an active subscription.
-     */
-
-    if (!isPaymentActive(currentPayment)) {
+    if (
+      !isPaymentActive(
+        currentPayment
+      )
+    ) {
       return "Free";
     }
 
     return (
-      currentPayment.planName ||
+      currentPayment?.planName ||
+      currentPayment?.plan ||
       "Free"
     );
   }
 
   // =====================================================
-  // CURRENT PAYMENT STATUS
+  // PAYMENT STATUS
   // =====================================================
 
   function getPaymentStatus() {
@@ -262,14 +382,6 @@ export default function Plan() {
   }, [fetchCurrentPayment]);
 
   // =====================================================
-  // LOADING
-  // =====================================================
-
-  if (loading) {
-    return <PageLoader />;
-  }
-
-  // =====================================================
   // CURRENT VALUES
   // =====================================================
 
@@ -277,505 +389,852 @@ export default function Plan() {
     getCurrentPlanName();
 
   const paidPlanRunning =
-    isPaymentActive(currentPayment);
+    isPaymentActive(
+      currentPayment
+    );
 
   const paymentStatus =
     getPaymentStatus();
+
+  const paymentDate =
+    paidPlanRunning
+      ? getPaymentDate(
+          currentPayment
+        )
+      : null;
+
+  const endDate =
+    paidPlanRunning
+      ? getEndDate(
+          currentPayment
+        )
+      : null;
 
   // =====================================================
   // RENDER
   // =====================================================
 
   return (
-    <div
-      style={{
-        ...styles.page,
-
-        background: isDark
-          ? "linear-gradient(135deg, #07111f, #0f2537)"
-          : "linear-gradient(135deg, #f8fafc, #e2e8f0)",
-
-        color: isDark
-          ? "#fff"
-          : "#0f172a",
-      }}
-    >
+    <>
       {/* =================================================
-          HERO
+          RESPONSIVE CSS
       ================================================= */}
 
-      <div style={styles.hero}>
-        <span
-          style={{
-            ...styles.heroBadge,
-
-            background: isDark
-              ? "rgba(45,212,191,0.12)"
-              : "rgba(15,118,110,0.09)",
-
-            color: isDark
-              ? "#5eead4"
-              : "#0f766e",
-          }}
-        >
-          Smart Brooder Plans
-        </span>
-
-        <h1 style={styles.title}>
-          Choose your brooder plan
-        </h1>
-
-        <p
-          style={{
-            ...styles.subtitle,
-
-            color: isDark
-              ? "#a9b7c6"
-              : "#64748b",
-          }}
-        >
-          Manage your subscription,
-          alerts, analytics, and
-          monitoring level.
-        </p>
-      </div>
-
-      {/* =================================================
-          CURRENT PLAN
-      ================================================= */}
-
-      <div style={styles.currentBox}>
-        <div>
-          <p
-            style={{
-              ...styles.smallText,
-
-              color: isDark
-                ? "#94a3b8"
-                : "#64748b",
-            }}
-          >
-            Current Plan
-          </p>
-
-          <h2 style={styles.currentTitle}>
-            {currentPlanName}
-          </h2>
-
-          <p
-            style={{
-              ...styles.expiry,
-
-              color: isDark
-                ? "#cbd5e1"
-                : "#475569",
-            }}
-          >
-            {currentPlanName !== "Free" &&
-            currentPayment?.expiryDate
-              ? `Expires: ${new Date(
-                  currentPayment.expiryDate
-                ).toLocaleDateString()}`
-              : currentPlanName !== "Free"
-              ? "Active subscription"
-              : "No active paid subscription"}
-          </p>
-
-          {/* PAYMENT STATUS */}
-
-          <p
-            style={{
-              ...styles.paymentStatus,
-
-              color:
-                paymentStatus === "paid"
-                  ? "#22c55e"
-                  : paymentStatus ===
-                    "pending"
-                  ? "#f59e0b"
-                  : "#94a3b8",
-            }}
-          >
-            Payment status:{" "}
-            <strong>
-              {paymentStatus.toUpperCase()}
-            </strong>
-          </p>
-        </div>
-
-        <span
-          style={{
-            ...styles.activePill,
-
-            background:
-              currentPlanName === "Free"
-                ? "rgba(148,163,184,0.16)"
-                : "rgba(34,197,94,0.16)",
-
-            color:
-              currentPlanName === "Free"
-                ? "#94a3b8"
-                : "#22c55e",
-          }}
-        >
-          {currentPlanName === "Free"
-            ? "free"
-            : "active"}
-        </span>
-      </div>
-
-      {/* =================================================
-          PAYMENT HISTORY
-      ================================================= */}
-
-      <Link
-        to="/payment"
-        style={styles.paymentStatusLink}
-      >
-        💳 Payment History →
-      </Link>
-
-      {/* =================================================
-          PLANS
-      ================================================= */}
-
-      <div style={styles.grid}>
-        {plans.map((plan) => {
-          const active =
-            currentPlanName === plan.name;
-
-          const highlighted =
-            plan.name === "Basic";
-
-          const isFreePlan =
-            plan.name === "Free";
-
-          /*
-           * If a paid plan is currently active,
-           * don't allow another paid plan until
-           * current subscription expires.
-           */
-
-          const blockedByActivePlan =
-            paidPlanRunning &&
-            !active &&
-            !isFreePlan;
-
-          return (
-            <div
-              key={plan.name}
-              style={{
-                ...styles.card,
-
-                background: isDark
-                  ? "rgba(255,255,255,0.08)"
-                  : "rgba(255,255,255,0.78)",
-
-                border: active
-                  ? "1px solid #2dd4bf"
-                  : isDark
-                  ? "1px solid rgba(255,255,255,0.12)"
-                  : "1px solid rgba(15,23,42,0.08)",
-
-                transform: highlighted
-                  ? "translateY(-6px)"
-                  : "none",
-              }}
-            >
-              {/* CARD HEADER */}
-
-              <div style={styles.cardTop}>
-                <div>
-                  <h2 style={styles.planName}>
-                    {plan.name}
-                  </h2>
-
-                  <p
-                    style={{
-                      ...styles.description,
-
-                      color: isDark
-                        ? "#a9b7c6"
-                        : "#64748b",
-                    }}
-                  >
-                    {plan.description}
-                  </p>
-                </div>
-
-                <span style={styles.tag}>
-                  {plan.tag}
-                </span>
-              </div>
-
-              {/* PRICE */}
-
-              <div style={styles.priceBox}>
-                <strong style={styles.price}>
-                  {plan.displayPrice}
-                </strong>
-
-                <span
-                  style={{
-                    ...styles.perMonth,
-
-                    color: isDark
-                      ? "#94a3b8"
-                      : "#64748b",
-                  }}
-                >
-                  / month
-                </span>
-              </div>
-
-              {/* FEATURES */}
-
-              <div style={styles.features}>
-                {plan.features.map(
-                  (feature) => (
-                    <div
-                      key={feature}
-                      style={
-                        styles.featureItem
-                      }
-                    >
-                      <span
-                        style={styles.check}
-                      >
-                        ✓
-                      </span>
-
-                      <span>
-                        {feature}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-
-              {/* =================================================
-                  FREE
-              ================================================= */}
-
-              {isFreePlan ? (
-                <button
-                  disabled
-                  style={{
-                    ...styles.button,
-
-                    background: active
-                      ? "rgba(34,197,94,0.18)"
-                      : "rgba(148,163,184,0.18)",
-
-                    color: active
-                      ? "#22c55e"
-                      : "#94a3b8",
-
-                    cursor:
-                      "not-allowed",
-                  }}
-                >
-                  {active
-                    ? "Current Free Plan"
-                    : "Free Plan"}
-                </button>
-              ) : (
-                /* =================================================
-                   PAID PLAN
-                ================================================= */
-
-                <button
-                  disabled={
-                    active ||
-                    updating ||
-                    blockedByActivePlan
-                  }
-                  onClick={() => {
-                    if (
-                      active ||
-                      blockedByActivePlan ||
-                      updating
-                    ) {
-                      return;
-                    }
-
-                    setSelectedPlan(
-                      plan
-                    );
-
-                    setPaymentOpen(true);
-                  }}
-                  style={{
-                    ...styles.button,
-
-                    opacity:
-                      updating ||
-                      blockedByActivePlan
-                        ? 0.65
-                        : 1,
-
-                    background: active
-                      ? "rgba(34,197,94,0.18)"
-                      : blockedByActivePlan
-                      ? "rgba(148,163,184,0.18)"
-                      : "linear-gradient(135deg, #7c3aed, #2563eb)",
-
-                    color: active
-                      ? "#22c55e"
-                      : blockedByActivePlan
-                      ? "#94a3b8"
-                      : "#fff",
-
-                    cursor:
-                      active ||
-                      blockedByActivePlan
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
-                >
-                  {active
-                    ? "Current Plan"
-                    : blockedByActivePlan
-                    ? "Active Plan Running"
-                    : updating
-                    ? "Starting Payment..."
-                    : "Choose Plan"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* =================================================
-          NAVIGATION
-      ================================================= */}
-
-      <BottomNav />
-
-      {/* =================================================
-          SUCCESS MODAL
-      ================================================= */}
-
-      <SuccessModal
-        open={successOpen}
-        title="Plan Activated"
-        message={`Your ${currentPlanName} plan is now active.`}
-        onClose={() =>
-          setSuccessOpen(false)
-        }
-      />
-
-      {/* =================================================
-          PAYMENT MODAL
-      ================================================= */}
-
-      <PaymentModal
-        open={paymentOpen}
-        plan={selectedPlan}
-        onClose={() =>
-          setPaymentOpen(false)
-        }
-        onConfirm={async ({
-          plan,
-        }) => {
-          const token =
-            localStorage.getItem(
-              "token"
-            );
-
-          if (!token) {
-            navigate("/login");
-            return;
+      <style>
+        {`
+          .plan-page {
+            width: 100%;
+            box-sizing: border-box;
           }
 
-          setUpdating(true);
+          .plan-container {
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+          }
 
-          try {
-            /*
-             * CREATE PENDING PAYMENT
-             */
+          .plan-hero {
+            width: 100%;
+            max-width: 850px;
+          }
 
-            const res =
-              await fetch(
-                `${API_URL}/api/payments/start`,
-                {
-                  method: "POST",
+          .plan-current-box {
+            width: 100%;
+            max-width: 850px;
+            box-sizing: border-box;
+          }
 
-                  headers: {
-                    "Content-Type":
-                      "application/json",
-
-                    Authorization: `Bearer ${token}`,
-                  },
-
-                  body: JSON.stringify({
-                    planName:
-                      plan.name,
-                  }),
-                }
-              );
-
-            const data =
-              await res.json();
-
-            console.log(
-              "💳 PAYMENT START:",
-              data
+          .plan-grid {
+            display: grid;
+            grid-template-columns: repeat(
+              4,
+              minmax(0, 1fr)
             );
+            gap: 20px;
+            width: 100%;
+          }
 
-            if (!res.ok) {
-              throw new Error(
-                data?.message ||
-                  "Failed to start payment"
+          .plan-card {
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+          }
+
+          .plan-card-top {
+            min-width: 0;
+          }
+
+          .plan-description {
+            min-height: 42px;
+          }
+
+          .payment-info-grid {
+            display: grid;
+            grid-template-columns: repeat(
+              2,
+              minmax(0, 1fr)
+            );
+            gap: 10px;
+            margin-top: 14px;
+          }
+
+          .payment-info-item {
+            min-width: 0;
+            box-sizing: border-box;
+          }
+
+          @media (max-width: 1050px) {
+            .plan-grid {
+              grid-template-columns: repeat(
+                2,
+                minmax(0, 1fr)
               );
             }
+          }
 
-            /*
-             * PAYPACK PAYMENT LINK
-             */
+          @media (max-width: 720px) {
+            .plan-page {
+              padding-left: 15px !important;
+              padding-right: 15px !important;
+              padding-top: 20px !important;
+            }
 
-            if (
-              data.paymentLink
-            ) {
+            .plan-title {
+              font-size: 30px !important;
+            }
+
+            .plan-subtitle {
+              font-size: 14px !important;
+            }
+
+            .plan-current-box {
+              flex-direction: column;
+              align-items: flex-start !important;
+              gap: 14px;
+              padding: 17px !important;
+              border-radius: 20px !important;
+            }
+
+            .plan-current-pill {
+              align-self: flex-start;
+            }
+
+            .payment-info-grid {
+              width: 100%;
+            }
+
+            .plan-grid {
+              grid-template-columns: 1fr;
+              gap: 16px;
+            }
+
+            .plan-card {
+              transform: none !important;
+              padding: 20px !important;
+              border-radius: 22px !important;
+            }
+
+            .plan-card-top {
+              gap: 10px !important;
+            }
+
+            .plan-name {
+              font-size: 22px !important;
+            }
+
+            .plan-price {
+              font-size: 27px !important;
+            }
+          }
+
+          @media (max-width: 430px) {
+            .plan-page {
+              padding-left: 12px !important;
+              padding-right: 12px !important;
+            }
+
+            .plan-title {
+              font-size: 27px !important;
+            }
+
+            .plan-hero-badge {
+              font-size: 11px !important;
+              padding: 7px 10px !important;
+            }
+
+            .payment-info-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .plan-current-title {
+              font-size: 21px !important;
+            }
+
+            .plan-card-top {
+              flex-direction: column;
+            }
+
+            .plan-tag {
+              align-self: flex-start;
+            }
+          }
+        `}
+      </style>
+
+      <div
+        className="plan-page"
+        style={{
+          ...styles.page,
+
+          background: isDark
+            ? "linear-gradient(135deg, #07111f, #0f2537)"
+            : "linear-gradient(135deg, #f8fafc, #e2e8f0)",
+
+          color: isDark
+            ? "#fff"
+            : "#0f172a",
+        }}
+      >
+        <div className="plan-container">
+          {/* =================================================
+              HERO
+          ================================================= */}
+
+          <div
+            className="plan-hero"
+            style={styles.hero}
+          >
+            <span
+              className="plan-hero-badge"
+              style={{
+                ...styles.heroBadge,
+
+                background: isDark
+                  ? "rgba(45,212,191,0.12)"
+                  : "rgba(15,118,110,0.09)",
+
+                color: isDark
+                  ? "#5eead4"
+                  : "#0f766e",
+              }}
+            >
+              Smart Brooder Plans
+            </span>
+
+            <h1
+              className="plan-title"
+              style={styles.title}
+            >
+              Choose your brooder plan
+            </h1>
+
+            <p
+              className="plan-subtitle"
+              style={{
+                ...styles.subtitle,
+
+                color: isDark
+                  ? "#a9b7c6"
+                  : "#64748b",
+              }}
+            >
+              Choose the monitoring,
+              alerts, analytics, and
+              AI features that fit your
+              poultry operation.
+            </p>
+          </div>
+
+          {/* =================================================
+              CURRENT PLAN
+          ================================================= */}
+
+          <div
+            className="plan-current-box"
+            style={{
+              ...styles.currentBox,
+
+              background: isDark
+                ? "linear-gradient(135deg, rgba(45,212,191,0.13), rgba(59,130,246,0.10))"
+                : "linear-gradient(135deg, rgba(45,212,191,0.10), rgba(59,130,246,0.08))",
+
+              border:
+                "1px solid rgba(45,212,191,0.25)",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                minWidth: 0,
+              }}
+            >
+              <p
+                style={{
+                  ...styles.smallText,
+
+                  color: isDark
+                    ? "#94a3b8"
+                    : "#64748b",
+                }}
+              >
+                Current Plan
+              </p>
+
+              <h2
+                className="plan-current-title"
+                style={
+                  styles.currentTitle
+                }
+              >
+                {currentPlanName}
+              </h2>
+
+              {/* =============================================
+                  PAID PLAN INFORMATION
+              ============================================= */}
+
+              {paidPlanRunning ? (
+                <div className="payment-info-grid">
+                  <div
+                    className="payment-info-item"
+                    style={{
+                      ...styles.paymentInfoItem,
+
+                      background: isDark
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(255,255,255,0.60)",
+
+                      borderColor:
+                        isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(15,23,42,0.07)",
+                    }}
+                  >
+                    <span
+                      style={
+                        styles.paymentInfoLabel
+                      }
+                    >
+                      Paid date
+                    </span>
+
+                    <strong
+                      style={{
+                        ...styles.paymentInfoValue,
+
+                        color: isDark
+                          ? "#f8fafc"
+                          : "#0f172a",
+                      }}
+                    >
+                      {formatDate(
+                        paymentDate
+                      )}
+                    </strong>
+                  </div>
+
+                  <div
+                    className="payment-info-item"
+                    style={{
+                      ...styles.paymentInfoItem,
+
+                      background: isDark
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(255,255,255,0.60)",
+
+                      borderColor:
+                        isDark
+                          ? "rgba(255,255,255,0.08)"
+                          : "rgba(15,23,42,0.07)",
+                    }}
+                  >
+                    <span
+                      style={
+                        styles.paymentInfoLabel
+                      }
+                    >
+                      End date
+                    </span>
+
+                    <strong
+                      style={{
+                        ...styles.paymentInfoValue,
+
+                        color: "#22c55e",
+                      }}
+                    >
+                      {formatDate(
+                        endDate
+                      )}
+                    </strong>
+                  </div>
+                </div>
+              ) : (
+                <p
+                  style={{
+                    ...styles.expiry,
+
+                    color: isDark
+                      ? "#cbd5e1"
+                      : "#475569",
+                  }}
+                >
+                  No active paid
+                  subscription
+                </p>
+              )}
+
+              {/* =============================================
+                  PAYMENT STATUS
+              ============================================= */}
+
+              <p
+                style={{
+                  ...styles.paymentStatus,
+
+                  color:
+                    paymentStatus ===
+                    "paid"
+                      ? "#22c55e"
+                      : paymentStatus ===
+                        "pending"
+                      ? "#f59e0b"
+                      : "#94a3b8",
+                }}
+              >
+                Payment status:{" "}
+                <strong>
+                  {String(
+                    paymentStatus
+                  ).toUpperCase()}
+                </strong>
+              </p>
+            </div>
+
+            <span
+              className="plan-current-pill"
+              style={{
+                ...styles.activePill,
+
+                background:
+                  currentPlanName ===
+                  "Free"
+                    ? "rgba(148,163,184,0.16)"
+                    : "rgba(34,197,94,0.16)",
+
+                color:
+                  currentPlanName ===
+                  "Free"
+                    ? "#94a3b8"
+                    : "#22c55e",
+              }}
+            >
+              {currentPlanName ===
+              "Free"
+                ? "Free"
+                : "Active"}
+            </span>
+          </div>
+
+          {/* =================================================
+              PAYMENT HISTORY
+          ================================================= */}
+
+          <Link
+            to="/payment"
+            style={
+              styles.paymentStatusLink
+            }
+          >
+            💳 Payment History →
+          </Link>
+
+          {/* =================================================
+              PLANS
+          ================================================= */}
+
+          <div className="plan-grid">
+            {plans.map((plan) => {
+              const active =
+                currentPlanName ===
+                plan.name;
+
+              const highlighted =
+                plan.name ===
+                "Basic";
+
+              const isFreePlan =
+                plan.name ===
+                "Free";
+
               /*
-               * We intentionally don't mark
-               * the payment as paid here.
-               *
-               * Backend must verify payment
-               * before status becomes "paid".
+               * Prevent buying another paid
+               * plan while current paid plan
+               * is still active.
                */
 
-              window.location.href =
-                data.paymentLink;
+              const blockedByActivePlan =
+                paidPlanRunning &&
+                !active &&
+                !isFreePlan;
 
+              return (
+                <div
+                  key={plan.name}
+                  className="plan-card"
+                  style={{
+                    ...styles.card,
+
+                    background: isDark
+                      ? "rgba(255,255,255,0.08)"
+                      : "rgba(255,255,255,0.82)",
+
+                    border: active
+                      ? "1px solid #2dd4bf"
+                      : isDark
+                      ? "1px solid rgba(255,255,255,0.12)"
+                      : "1px solid rgba(15,23,42,0.08)",
+
+                    transform:
+                      highlighted
+                        ? "translateY(-6px)"
+                        : "none",
+                  }}
+                >
+                  {/* =========================================
+                      CARD HEADER
+                  ========================================= */}
+
+                  <div
+                    className="plan-card-top"
+                    style={
+                      styles.cardTop
+                    }
+                  >
+                    <div
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
+                      <h2
+                        className="plan-name"
+                        style={
+                          styles.planName
+                        }
+                      >
+                        {plan.name}
+                      </h2>
+
+                      <p
+                        className="plan-description"
+                        style={{
+                          ...styles.description,
+
+                          color: isDark
+                            ? "#a9b7c6"
+                            : "#64748b",
+                        }}
+                      >
+                        {
+                          plan.description
+                        }
+                      </p>
+                    </div>
+
+                    <span
+                      className="plan-tag"
+                      style={
+                        styles.tag
+                      }
+                    >
+                      {plan.tag}
+                    </span>
+                  </div>
+
+                  {/* =========================================
+                      PRICE
+                  ========================================= */}
+
+                  <div
+                    style={
+                      styles.priceBox
+                    }
+                  >
+                    <strong
+                      className="plan-price"
+                      style={
+                        styles.price
+                      }
+                    >
+                      {
+                        plan.displayPrice
+                      }
+                    </strong>
+
+                    <span
+                      style={{
+                        ...styles.perMonth,
+
+                        color: isDark
+                          ? "#94a3b8"
+                          : "#64748b",
+                      }}
+                    >
+                      / month
+                    </span>
+                  </div>
+
+                  {/* =========================================
+                      FEATURES
+                  ========================================= */}
+
+                  <div
+                    style={
+                      styles.features
+                    }
+                  >
+                    {plan.features.map(
+                      (feature) => (
+                        <div
+                          key={feature}
+                          style={
+                            styles.featureItem
+                          }
+                        >
+                          <span
+                            style={
+                              styles.check
+                            }
+                          >
+                            ✓
+                          </span>
+
+                          <span>
+                            {feature}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  {/* =========================================
+                      FREE PLAN
+                  ========================================= */}
+
+                  {isFreePlan ? (
+                    <button
+                      disabled
+                      style={{
+                        ...styles.button,
+
+                        background: active
+                          ? "rgba(34,197,94,0.18)"
+                          : "rgba(148,163,184,0.18)",
+
+                        color: active
+                          ? "#22c55e"
+                          : "#94a3b8",
+
+                        cursor:
+                          "not-allowed",
+                      }}
+                    >
+                      {active
+                        ? "Current Free Plan"
+                        : "Free Plan"}
+                    </button>
+                  ) : (
+                    /* =========================================
+                       PAID PLAN
+                    ========================================= */
+
+                    <button
+                      disabled={
+                        active ||
+                        updating ||
+                        blockedByActivePlan
+                      }
+                      onClick={() => {
+                        if (
+                          active ||
+                          blockedByActivePlan ||
+                          updating
+                        ) {
+                          return;
+                        }
+
+                        setSelectedPlan(
+                          plan
+                        );
+
+                        setPaymentOpen(
+                          true
+                        );
+                      }}
+                      style={{
+                        ...styles.button,
+
+                        opacity:
+                          updating ||
+                          blockedByActivePlan
+                            ? 0.65
+                            : 1,
+
+                        background: active
+                          ? "rgba(34,197,94,0.18)"
+                          : blockedByActivePlan
+                          ? "rgba(148,163,184,0.18)"
+                          : "linear-gradient(135deg, #7c3aed, #2563eb)",
+
+                        color: active
+                          ? "#22c55e"
+                          : blockedByActivePlan
+                          ? "#94a3b8"
+                          : "#fff",
+
+                        cursor:
+                          active ||
+                          blockedByActivePlan
+                            ? "not-allowed"
+                            : "pointer",
+                      }}
+                    >
+                      {active
+                        ? "Current Plan"
+                        : blockedByActivePlan
+                        ? "Active Plan Running"
+                        : updating
+                        ? "Starting Payment..."
+                        : "Choose Plan"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =================================================
+            NAVIGATION
+        ================================================= */}
+
+        <BottomNav />
+
+        {/* =================================================
+            SUCCESS MODAL
+        ================================================= */}
+
+        <SuccessModal
+          open={successOpen}
+          title="Plan Activated"
+          message={`Your ${currentPlanName} plan is now active.`}
+          onClose={() =>
+            setSuccessOpen(false)
+          }
+        />
+
+        {/* =================================================
+            PAYMENT MODAL
+        ================================================= */}
+
+        <PaymentModal
+          open={paymentOpen}
+          plan={selectedPlan}
+          onClose={() =>
+            setPaymentOpen(false)
+          }
+          onConfirm={async ({
+            plan,
+          }) => {
+            const token =
+              localStorage.getItem(
+                "token"
+              );
+
+            if (!token) {
+              navigate("/login");
               return;
             }
 
-            /*
-             * FREE PLAN / INTERNAL
-             */
+            setUpdating(true);
 
-            setPaymentOpen(false);
+            try {
+              /*
+               * CREATE PENDING PAYMENT
+               */
 
-            await fetchCurrentPayment();
+              const res =
+                await fetch(
+                  `${API_URL}/api/payments/start`,
+                  {
+                    method: "POST",
 
-          } catch (error) {
-            console.error(
-              "PAYMENT START ERROR:",
-              error
-            );
+                    headers: {
+                      "Content-Type":
+                        "application/json",
 
-            alert(
-              error.message ||
-                "Failed to start payment"
-            );
-          } finally {
-            setUpdating(false);
-          }
-        }}
-      />
-    </div>
+                      Authorization: `Bearer ${token}`,
+                    },
+
+                    body: JSON.stringify({
+                      planName:
+                        plan.name,
+                    }),
+                  }
+                );
+
+              const data =
+                await res.json();
+
+              console.log(
+                "💳 PAYMENT START:",
+                data
+              );
+
+              if (!res.ok) {
+                throw new Error(
+                  data?.message ||
+                    "Failed to start payment"
+                );
+              }
+
+              /*
+               * PAYPACK PAYMENT LINK
+               */
+
+              if (
+                data.paymentLink
+              ) {
+                window.location.href =
+                  data.paymentLink;
+
+                return;
+              }
+
+              /*
+               * INTERNAL / FREE PLAN
+               */
+
+              setPaymentOpen(false);
+
+              await fetchCurrentPayment();
+            } catch (error) {
+              console.error(
+                "PAYMENT START ERROR:",
+                error
+              );
+
+              alert(
+                error.message ||
+                  "Failed to start payment"
+              );
+            } finally {
+              setUpdating(false);
+            }
+          }}
+        />
+      </div>
+    </>
   );
 }
 
@@ -786,6 +1245,8 @@ export default function Plan() {
 const styles = {
   page: {
     minHeight: "100vh",
+    width: "100%",
+    boxSizing: "border-box",
     padding: "30px",
     paddingBottom: "120px",
     fontFamily:
@@ -793,7 +1254,6 @@ const styles = {
   },
 
   hero: {
-    maxWidth: "850px",
     marginBottom: "26px",
   },
 
@@ -810,11 +1270,13 @@ const styles = {
     margin: 0,
     fontSize: "38px",
     lineHeight: "1.1",
+    letterSpacing: "-0.03em",
   },
 
   subtitle: {
     maxWidth: "680px",
     marginTop: "12px",
+    marginBottom: 0,
     fontSize: "15px",
     lineHeight: "1.7",
   },
@@ -824,16 +1286,10 @@ const styles = {
     justifyContent:
       "space-between",
     alignItems: "center",
-    maxWidth: "850px",
     padding: "18px 20px",
     borderRadius: "24px",
     marginBottom: "18px",
-
-    background:
-      "linear-gradient(135deg, rgba(45,212,191,0.15), rgba(59,130,246,0.12))",
-
-    border:
-      "1px solid rgba(45,212,191,0.25)",
+    gap: "20px",
   },
 
   smallText: {
@@ -845,16 +1301,41 @@ const styles = {
   currentTitle: {
     margin: "4px 0 0",
     fontSize: "24px",
+    letterSpacing: "-0.02em",
   },
 
   expiry: {
-    margin: "6px 0 0",
+    margin: "8px 0 0",
     fontSize: "13px",
   },
 
   paymentStatus: {
-    margin: "7px 0 0",
+    margin: "10px 0 0",
     fontSize: "13px",
+  },
+
+  paymentInfoItem: {
+    minWidth: 0,
+    padding: "10px 12px",
+    borderRadius: "13px",
+    border: "1px solid",
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
+  },
+
+  paymentInfoLabel: {
+    color: "#94a3b8",
+    fontSize: "10px",
+    fontWeight: "700",
+    textTransform:
+      "uppercase",
+    letterSpacing: "0.05em",
+  },
+
+  paymentInfoValue: {
+    fontSize: "13px",
+    lineHeight: "1.3",
   },
 
   activePill: {
@@ -864,6 +1345,8 @@ const styles = {
     fontSize: "13px",
     textTransform:
       "capitalize",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
   },
 
   paymentStatusLink: {
@@ -873,13 +1356,6 @@ const styles = {
     fontWeight: 700,
     fontSize: "14px",
     textDecoration: "none",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "22px",
   },
 
   card: {
@@ -905,10 +1381,12 @@ const styles = {
   planName: {
     margin: 0,
     fontSize: "25px",
+    letterSpacing: "-0.02em",
   },
 
   description: {
     marginTop: "8px",
+    marginBottom: 0,
     lineHeight: "1.5",
     fontSize: "14px",
   },
@@ -923,8 +1401,7 @@ const styles = {
       "linear-gradient(135deg, #2dd4bf, #38bdf8)",
 
     color: "#06221f",
-    whiteSpace:
-      "nowrap",
+    whiteSpace: "nowrap",
   },
 
   priceBox: {
@@ -937,6 +1414,7 @@ const styles = {
 
   price: {
     fontSize: "30px",
+    letterSpacing: "-0.03em",
   },
 
   perMonth: {
@@ -956,6 +1434,7 @@ const styles = {
       "center",
     gap: "10px",
     fontSize: "14px",
+    lineHeight: "1.4",
   },
 
   check: {
@@ -982,5 +1461,6 @@ const styles = {
     fontWeight: "900",
     border: "none",
     fontSize: "14px",
+    minHeight: "48px",
   },
 };

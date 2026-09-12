@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Menu,
+  X,
+  Settings,
+  LogOut,
+  LayoutDashboard,
+  Radio,
+  CreditCard,
+  Plus,
+  ChevronRight,
+  UserRound,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+
 import BottomNav from "../components/BottomNav";
 import { useAppSettings } from "../context/AppSettingsContext";
 
@@ -13,7 +28,6 @@ export default function Profile() {
 
   const [profile, setProfile] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   // =====================================================
   // FETCH PROFILE
@@ -28,27 +42,32 @@ export default function Profile() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/profile/me`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      const res = await fetch(
+        `${API_URL}/api/profile/me`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(
-          data.message || "Failed to load profile"
+          data.message ||
+            "Failed to load profile"
         );
       }
 
       setProfile(data);
     } catch (err) {
-      console.error("❌ Profile error:", err);
-    } finally {
-      setLoading(false);
+      console.error(
+        "❌ Profile error:",
+        err
+      );
     }
   }
 
@@ -63,6 +82,7 @@ export default function Profile() {
   function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
     navigate("/login");
   }
 
@@ -72,7 +92,9 @@ export default function Profile() {
 
   const user = profile?.user;
 
-  const devices = Array.isArray(profile?.devices)
+  const devices = Array.isArray(
+    profile?.devices
+  )
     ? profile.devices
     : [];
 
@@ -83,80 +105,77 @@ export default function Profile() {
   const payment = profile?.payment;
   const fallbackPlan = profile?.plan;
 
-  // Plan name from active payment or fallback payload
   const currentPlan =
     payment?.planName ||
     fallbackPlan?.planName ||
     "Free";
 
-  // Status
   const paymentStatus =
     payment?.status ||
     fallbackPlan?.status ||
     "none";
 
-  // Expiry date
   const expiryDate =
     payment?.expiryDate ||
     fallbackPlan?.expiryDate ||
     null;
 
-  // Check Expiry
   const isExpired =
     expiryDate &&
     new Date(expiryDate) <= new Date();
 
-  // Display Plan String
-  const displayPlan = isExpired ? "Expired" : currentPlan;
+  const displayPlan = isExpired
+    ? "Expired"
+    : currentPlan;
 
-  const hasDevice = devices.length > 0;
+  const hasDevice =
+    devices.length > 0;
 
   // =====================================================
   // THEME
   // =====================================================
 
   const background = isDark
-    ? "linear-gradient(135deg,#07111f,#0f2537)"
-    : "linear-gradient(135deg,#f8fafc,#e2e8f0)";
+    ? "#07111f"
+    : "#ffffff";
 
-  const text = isDark
-    ? "#ffffff"
+  const textColor = isDark
+    ? "#f8fafc"
     : "#0f172a";
 
   const muted = isDark
     ? "#94a3b8"
     : "#64748b";
 
-  const cardBackground = isDark
-    ? "rgba(255,255,255,0.08)"
-    : "rgba(255,255,255,0.78)";
+  const line = isDark
+    ? "rgba(148,163,184,0.16)"
+    : "rgba(15,23,42,0.10)";
 
-  const border = isDark
-    ? "1px solid rgba(255,255,255,0.10)"
-    : "1px solid rgba(15,23,42,0.08)";
+  const softBackground = isDark
+    ? "rgba(255,255,255,0.035)"
+    : "#f8fafc";
 
   // =====================================================
-  // LOADING
+  // USER AVATAR
   // =====================================================
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          ...styles.page,
-          background,
-          color: text,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={styles.loading}>
-          {t?.loading || "Loading profile..."}
-        </div>
-      </div>
-    );
-  }
+  const initials =
+    user?.fullName
+      ?.trim()
+      ?.charAt(0)
+      ?.toUpperCase() || "U";
+
+  // =====================================================
+  // PAYMENT COLOR
+  // =====================================================
+
+  const paymentColor = isExpired
+    ? "#ef4444"
+    : paymentStatus === "paid" ||
+      paymentStatus === "completed" ||
+      paymentStatus === "active"
+    ? "#22c55e"
+    : muted;
 
   // =====================================================
   // UI
@@ -167,308 +186,556 @@ export default function Profile() {
       style={{
         ...styles.page,
         background,
-        color: text,
+        color: textColor,
       }}
     >
-      {/* TOP BAR */}
-      <div style={styles.topBar}>
-        <div>
-          <h2 style={styles.title}>
-            {t?.profile || "Profile"}
-          </h2>
+      {/* =================================================
+          TOP BAR
+      ================================================= */}
 
-          <p
-            style={{
-              ...styles.subtitle,
-              color: muted,
-            }}
-          >
-            {t?.accountOverview ||
-              "Account overview"}
-          </p>
-        </div>
-
+      <header
+        style={{
+          ...styles.topBar,
+          borderBottom: `1px solid ${line}`,
+        }}
+      >
         <button
+          type="button"
           onClick={() =>
-            setMenuOpen(!menuOpen)
+            setMenuOpen(
+              (previous) => !previous
+            )
           }
+          aria-label="Menu"
           style={{
-            ...styles.menuBtn,
-            background: cardBackground,
-            color: text,
-            border,
+            ...styles.iconButton,
+            color: textColor,
           }}
         >
-          ☰
+          {menuOpen ? (
+            <X size={22} />
+          ) : (
+            <Menu size={22} />
+          )}
         </button>
-      </div>
 
-      {/* MENU */}
+        <h1 style={styles.topTitle}>
+          {t?.profile || "Profile"}
+        </h1>
+
+        <button
+          type="button"
+          onClick={() =>
+            navigate("/settings")
+          }
+          aria-label="Settings"
+          style={{
+            ...styles.iconButton,
+            color: textColor,
+          }}
+        >
+          <Settings size={20} />
+        </button>
+      </header>
+
+      {/* =================================================
+          MENU
+      ================================================= */}
+
       {menuOpen && (
         <div
           style={{
             ...styles.menu,
             background: isDark
-              ? "#111c2c"
+              ? "#101b2d"
               : "#ffffff",
-            border,
-            boxShadow:
-              "0 18px 40px rgba(0,0,0,0.18)",
+            borderColor: line,
           }}
         >
-          <MenuButton
-            label={t?.dashboard || "Dashboard"}
-            icon="⌂"
-            onClick={() => navigate("/dashboard")}
-            color={text}
+          <MenuItem
+            icon={<LayoutDashboard size={18} />}
+            label={
+              t?.dashboard ||
+              "Dashboard"
+            }
+            color={textColor}
+            onClick={() =>
+              navigate("/dashboard")
+            }
           />
 
-          <MenuButton
-            label={t?.system || t?.brSystem || "BR System"}
-            icon="🐔"
-            onClick={() => navigate("/systems")}
-            color={text}
+          <MenuItem
+            icon={<Radio size={18} />}
+            label={
+              t?.system ||
+              t?.brSystem ||
+              "BR System"
+            }
+            color={textColor}
+            onClick={() =>
+              navigate("/systems")
+            }
           />
 
-          <MenuButton
-            label={t?.deviceManagement || "Device Management"}
-            icon="📡"
-            onClick={() => navigate("/device-management")}
-            color={text}
+          <MenuItem
+            icon={<Wifi size={18} />}
+            label={
+              t?.deviceManagement ||
+              "Device Management"
+            }
+            color={textColor}
+            onClick={() =>
+              navigate(
+                "/device-management"
+              )
+            }
           />
 
-          <MenuButton
-            label={t?.plans || "Plans"}
-            icon="💳"
-            onClick={() => navigate("/plans")}
-            color={text}
+          <MenuItem
+            icon={<CreditCard size={18} />}
+            label={
+              t?.plans || "Plans"
+            }
+            color={textColor}
+            onClick={() =>
+              navigate("/plans")
+            }
           />
 
-          <MenuButton
-            label={t?.settings || "Settings"}
-            icon="⚙"
-            onClick={() => navigate("/settings")}
-            color={text}
+          <MenuItem
+            icon={<Settings size={18} />}
+            label={
+              t?.settings || "Settings"
+            }
+            color={textColor}
+            onClick={() =>
+              navigate("/settings")
+            }
           />
 
           <div
             style={{
               height: "1px",
-              background: isDark
-                ? "rgba(255,255,255,0.10)"
-                : "rgba(15,23,42,0.08)",
-              margin: "4px 0",
+              background: line,
+              margin: "5px 0",
             }}
           />
 
-          <button
+          <MenuItem
+            icon={<LogOut size={18} />}
+            label={
+              t?.logout || "Logout"
+            }
+            color="#ef4444"
             onClick={logout}
-            style={{
-              ...styles.menuItem,
-              color: "#ef4444",
-            }}
-          >
-            <span style={styles.menuIcon}>↪</span>
-            <span>{t?.logout || "Logout"}</span>
-          </button>
+          />
         </div>
       )}
 
-      {/* PROFILE CARD */}
-      <div
-        style={{
-          ...styles.card,
-          background: cardBackground,
-          border,
-        }}
-      >
-        <div style={styles.avatar}>
-          {user?.fullName
-            ?.charAt(0)
-            ?.toUpperCase() || "U"}
-        </div>
+      {/* =================================================
+          PROFILE HEADER
+      ================================================= */}
 
-        <h3 style={styles.name}>
-          {user?.fullName || "User"}
-        </h3>
+      <main style={styles.content}>
+        <section style={styles.profileHeader}>
+          {/* AVATAR */}
 
-        <p
+          <div style={styles.avatarOuter}>
+            <div style={styles.avatarInner}>
+              {initials}
+            </div>
+          </div>
+
+          {/* NAME */}
+
+          <h2 style={styles.name}>
+            {user?.fullName ||
+              "User"}
+          </h2>
+
+          <p
+            style={{
+              ...styles.username,
+              color: muted,
+            }}
+          >
+            @{user?.username ||
+              "username"}
+          </p>
+
+          {/* =================================================
+              STATS - SOCIAL MEDIA STYLE
+          ================================================= */}
+
+          <div
+            style={{
+              ...styles.stats,
+              borderTop: `1px solid ${line}`,
+              borderBottom: `1px solid ${line}`,
+            }}
+          >
+            <Stat
+              value={devices.length}
+              label={
+                t?.devices ||
+                "Devices"
+              }
+              color={textColor}
+            />
+
+            <Stat
+              value={displayPlan}
+              label={
+                t?.plan || "Plan"
+              }
+              color={textColor}
+            />
+
+            <Stat
+              value={
+                hasDevice
+                  ? "Active"
+                  : "None"
+              }
+              label={
+                t?.status ||
+                "Status"
+              }
+              color={textColor}
+            />
+          </div>
+        </section>
+
+        {/* =================================================
+            ACTIONS
+        ================================================= */}
+
+        <section
           style={{
-            ...styles.username,
-            color: muted,
+            ...styles.actions,
+            borderBottom: `1px solid ${line}`,
           }}
         >
-          @{user?.username || "username"}
-        </p>
+          <ActionButton
+            icon={<Radio size={17} />}
+            label={
+              t?.system ||
+              t?.brSystem ||
+              "BR System"
+            }
+            onClick={() =>
+              navigate("/systems")
+            }
+            background={
+              "linear-gradient(135deg,#06b6d4,#2563eb)"
+            }
+          />
 
-        {/* STATS */}
-        <div style={styles.stats}>
-          <div style={styles.statItem}>
-            <strong style={styles.statValue}>
-              {devices.length}
-            </strong>
-            <span
-              style={{
-                ...styles.statLabel,
-                color: muted,
-              }}
-            >
-              {t?.devices || "Devices"}
-            </span>
-          </div>
+          <ActionButton
+            icon={
+              <CreditCard size={17} />
+            }
+            label={
+              t?.viewPlans ||
+              "View Plans"
+            }
+            onClick={() =>
+              navigate("/plans")
+            }
+            background={
+              "linear-gradient(135deg,#2563eb,#7c3aed)"
+            }
+          />
+        </section>
 
-          <div style={styles.statDivider} />
+        {/* =================================================
+            SUBSCRIPTION STATUS
+        ================================================= */}
 
-          <div style={styles.statItem}>
-            <strong style={styles.statValue}>
-              {displayPlan}
-            </strong>
-            <span
-              style={{
-                ...styles.statLabel,
-                color: muted,
-              }}
-            >
-              {t?.plan || "Plan"}
-            </span>
-          </div>
-        </div>
-
-        {/* PAYMENT STATUS */}
         {currentPlan !== "Free" && (
-          <div
+          <section
             style={{
-              marginTop: "14px",
-              fontSize: "11px",
-              color: isExpired
-                ? "#ef4444"
-                : paymentStatus === "paid" ||
-                  paymentStatus === "completed" ||
-                  paymentStatus === "active"
-                ? "#22c55e"
-                : muted,
+              ...styles.subscriptionLine,
+              borderBottom: `1px solid ${line}`,
             }}
           >
-            {isExpired
-              ? "⚠ Subscription expired"
-              : `● ${paymentStatus.toUpperCase()}`}
-          </div>
+            <div
+              style={
+                styles.subscriptionLeft
+              }
+            >
+              <div
+                style={{
+                  ...styles.subscriptionDot,
+                  background:
+                    paymentColor,
+                }}
+              />
+
+              <div>
+                <strong
+                  style={{
+                    fontSize: "13px",
+                  }}
+                >
+                  {displayPlan}
+                </strong>
+
+                <p
+                  style={{
+                    margin:
+                      "3px 0 0",
+                    color: muted,
+                    fontSize: "11px",
+                  }}
+                >
+                  {isExpired
+                    ? "Subscription expired"
+                    : paymentStatus.toUpperCase()}
+                </p>
+              </div>
+            </div>
+
+            {expiryDate &&
+              !isExpired && (
+                <span
+                  style={{
+                    color: muted,
+                    fontSize: "11px",
+                  }}
+                >
+                  {new Date(
+                    expiryDate
+                  ).toLocaleDateString()}
+                </span>
+              )}
+          </section>
         )}
 
-        {/* BR SYSTEM BUTTON */}
-        <button
-          onClick={() => navigate("/systems")}
-          style={styles.systemButton}
-        >
-          🐔 {t?.system || t?.brSystem || "BR System"}
-        </button>
+        {/* =================================================
+            DEVICES
+        ================================================= */}
 
-        {/* PLANS BUTTON */}
-        <button
-          onClick={() => navigate("/plans")}
-          style={styles.planButton}
-        >
-          💳 {t?.viewPlans || "View Plans"}
-        </button>
-      </div>
-
-      {/* DEVICES */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <div>
-            <h3 style={{ margin: 0 }}>
-              {t?.devices || "Devices"}
-            </h3>
-
-            <p
-              style={{
-                ...styles.sectionSubtitle,
-                color: muted,
-              }}
-            >
-              {t?.connectedAntimateDevices ||
-                "Connected ANTIMATE devices"}
-            </p>
-          </div>
-
-          <button
-            onClick={() => navigate("/device-management")}
-            style={styles.addBtn}
+        <section style={styles.deviceSection}>
+          <div
+            style={
+              styles.sectionHeader
+            }
           >
-            + {t?.add || "Add"}
-          </button>
-        </div>
-
-        {hasDevice ? (
-          <div>
-            {devices.map((device) => (
-              <div
-                key={device._id || device.deviceId}
+            <div>
+              <h3
                 style={{
-                  ...styles.deviceCard,
-                  background: cardBackground,
-                  border,
+                  ...styles.sectionTitle,
+                  color: textColor,
                 }}
               >
-                <div style={styles.deviceInfo}>
-                  <div style={styles.deviceIcon}>📡</div>
+                {t?.devices ||
+                  "Devices"}
+              </h3>
 
-                  <div>
-                    <strong>{device.deviceId}</strong>
-                    <p
-                      style={{
-                        ...styles.deviceStatus,
-                        color: muted,
-                      }}
-                    >
-                      {t?.status || "Status"}:{" "}
-                      {device.activationStatus || "UNKNOWN"}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => navigate("/device-management")}
-                  style={styles.smallBtn}
-                >
-                  {t?.manage || "Manage"}
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            style={{
-              ...styles.emptyDevice,
-              background: cardBackground,
-              border,
-            }}
-          >
-            <div style={styles.emptyIcon}>📡</div>
-
-            <strong>
-              {t?.noDeviceLinked || "No device linked"}
-            </strong>
-
-            <p
-              style={{
-                color: muted,
-                margin: "6px 0 14px",
-              }}
-            >
-              {t?.connectAntimateDevice ||
-                "Connect your ANTIMATE device to start monitoring your brooder."}
-            </p>
+              <p
+                style={{
+                  ...styles.sectionSubtitle,
+                  color: muted,
+                }}
+              >
+                {t?.connectedAntimateDevices ||
+                  "Connected ANTIMATE devices"}
+              </p>
+            </div>
 
             <button
-              onClick={() => navigate("/device-management")}
-              style={styles.primaryBtn}
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/device-management"
+                )
+              }
+              style={{
+                ...styles.addButton,
+                color: "#2563eb",
+              }}
             >
-              {t?.deviceManagement || "Device Management"}
+              <Plus size={16} />
+
+              {t?.add || "Add"}
             </button>
           </div>
-        )}
-      </div>
+
+          {/* =================================================
+              DEVICE LIST
+          ================================================= */}
+
+          {hasDevice ? (
+            <div>
+              {devices.map(
+                (device, index) => {
+                  const deviceId =
+                    device._id ||
+                    device.deviceId ||
+                    index;
+
+                  const active =
+                    String(
+                      device.activationStatus ||
+                        ""
+                    ).toUpperCase() ===
+                    "ACTIVE";
+
+                  return (
+                    <div
+                      key={deviceId}
+                      style={{
+                        ...styles.deviceRow,
+                        borderBottom:
+                          `1px solid ${line}`,
+                      }}
+                    >
+                      <div
+                        style={
+                          styles.deviceLeft
+                        }
+                      >
+                        <div
+                          style={
+                            styles.deviceAvatar
+                          }
+                        >
+                          <Radio
+                            size={18}
+                          />
+                        </div>
+
+                        <div
+                          style={
+                            styles.deviceText
+                          }
+                        >
+                          <strong
+                            style={{
+                              color:
+                                textColor,
+                              fontSize:
+                                "13px",
+                            }}
+                          >
+                            {device.deviceId ||
+                              "ANTIMATE Device"}
+                          </strong>
+
+                          <div
+                            style={
+                              styles.deviceMeta
+                            }
+                          >
+                            <span
+                              style={{
+                                ...styles.statusDot,
+                                background:
+                                  active
+                                    ? "#22c55e"
+                                    : "#94a3b8",
+                              }}
+                            />
+
+                            <span
+                              style={{
+                                color:
+                                  muted,
+                              }}
+                            >
+                              {device.activationStatus ||
+                                "UNKNOWN"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            "/device-management"
+                          )
+                        }
+                        aria-label="Manage device"
+                        style={{
+                          ...styles.chevronButton,
+                          color:
+                            muted,
+                        }}
+                      >
+                        <ChevronRight
+                          size={19}
+                        />
+                      </button>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          ) : (
+            <div
+              style={{
+                ...styles.emptyState,
+                borderTop:
+                  `1px solid ${line}`,
+                borderBottom:
+                  `1px solid ${line}`,
+              }}
+            >
+              <div
+                style={{
+                  ...styles.emptyIcon,
+                  color: muted,
+                }}
+              >
+                <WifiOff size={28} />
+              </div>
+
+              <strong
+                style={{
+                  fontSize: "14px",
+                }}
+              >
+                {t?.noDeviceLinked ||
+                  "No device linked"}
+              </strong>
+
+              <p
+                style={{
+                  margin:
+                    "6px 0 16px",
+                  color: muted,
+                  fontSize: "12px",
+                  lineHeight: 1.5,
+                  maxWidth: "360px",
+                }}
+              >
+                {t?.connectAntimateDevice ||
+                  "Connect your ANTIMATE device to start monitoring your brooder."}
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/device-management"
+                  )
+                }
+                style={
+                  styles.connectButton
+                }
+              >
+                <Plus size={17} />
+
+                {t?.deviceManagement ||
+                  "Device Management"}
+              </button>
+            </div>
+          )}
+        </section>
+      </main>
 
       <BottomNav />
     </div>
@@ -476,19 +743,82 @@ export default function Profile() {
 }
 
 // =====================================================
-// MENU BUTTON
+// MENU ITEM
 // =====================================================
 
-function MenuButton({ label, icon, onClick, color }) {
+function MenuItem({
+  icon,
+  label,
+  color,
+  onClick,
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
       style={{
         ...styles.menuItem,
         color,
       }}
     >
-      <span style={styles.menuIcon}>{icon}</span>
+      <span
+        style={styles.menuItemIcon}
+      >
+        {icon}
+      </span>
+
+      <span>{label}</span>
+    </button>
+  );
+}
+
+// =====================================================
+// STAT
+// =====================================================
+
+function Stat({
+  value,
+  label,
+  color,
+}) {
+  return (
+    <div style={styles.stat}>
+      <strong
+        style={{
+          ...styles.statValue,
+          color,
+        }}
+      >
+        {value}
+      </strong>
+
+      <span style={styles.statLabel}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// =====================================================
+// ACTION BUTTON
+// =====================================================
+
+function ActionButton({
+  icon,
+  label,
+  onClick,
+  background,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        ...styles.actionButton,
+        background,
+      }}
+    >
+      {icon}
       <span>{label}</span>
     </button>
   );
@@ -501,249 +831,365 @@ function MenuButton({ label, icon, onClick, color }) {
 const styles = {
   page: {
     minHeight: "100vh",
-    padding: "20px",
-    paddingBottom: "110px",
-    fontFamily: "Inter, Arial, sans-serif",
+    paddingBottom: "105px",
+    fontFamily:
+      "Inter, Arial, sans-serif",
     position: "relative",
-  },
-
-  loading: {
-    fontSize: "14px",
-    fontWeight: 600,
+    overflowX: "hidden",
   },
 
   topBar: {
+    height: "62px",
+    padding:
+      "0 18px",
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent:
+      "space-between",
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    backdropFilter:
+      "blur(18px)",
   },
 
-  title: {
+  topTitle: {
     margin: 0,
-    fontSize: "24px",
+    fontSize: "16px",
     fontWeight: 750,
   },
 
-  subtitle: {
-    margin: "5px 0 0",
-    fontSize: "12px",
-  },
-
-  menuBtn: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "14px",
-    fontSize: "21px",
+  iconButton: {
+    width: "38px",
+    height: "38px",
+    padding: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    background:
+      "transparent",
+    border: "none",
+    borderRadius: "12px",
     cursor: "pointer",
   },
 
   menu: {
     position: "absolute",
-    right: "20px",
-    top: "72px",
-    width: "220px",
-    padding: "8px",
-    borderRadius: "18px",
+    top: "58px",
+    right: "16px",
+    width: "230px",
+    padding: "7px",
+    border: "1px solid",
+    borderRadius: "16px",
     zIndex: 100,
-    display: "flex",
-    flexDirection: "column",
-    gap: "2px",
+    boxShadow:
+      "0 18px 45px rgba(0,0,0,0.18)",
   },
 
   menuItem: {
     width: "100%",
-    border: "none",
-    background: "transparent",
-    padding: "12px",
-    borderRadius: "12px",
+    minHeight: "44px",
+    padding:
+      "8px 10px",
     display: "flex",
     alignItems: "center",
-    gap: "12px",
-    fontSize: "14px",
+    gap: "11px",
+    border: "none",
+    background:
+      "transparent",
+    borderRadius: "11px",
+    fontSize: "13px",
     fontWeight: 600,
     textAlign: "left",
     cursor: "pointer",
   },
 
-  menuIcon: {
-    width: "25px",
+  menuItemIcon: {
+    width: "28px",
+    height: "28px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+  },
+
+  content: {
+    width: "100%",
+    maxWidth: "620px",
+    margin: "0 auto",
+    padding:
+      "18px 18px 0",
+  },
+
+  profileHeader: {
     textAlign: "center",
   },
 
-  card: {
-    marginTop: "22px",
-    padding: "24px 20px",
-    borderRadius: "26px",
-    textAlign: "center",
-    backdropFilter: "blur(14px)",
-    boxShadow: "0 18px 40px rgba(0,0,0,0.12)",
+  avatarOuter: {
+    width: "92px",
+    height: "92px",
+    margin:
+      "8px auto 13px",
+    padding: "3px",
+    borderRadius: "50%",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed,#ec4899)",
+    boxShadow:
+      "0 10px 28px rgba(37,99,235,0.22)",
   },
 
-  avatar: {
-    width: "76px",
-    height: "76px",
-    borderRadius: "24px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+  avatarInner: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    background:
+      "linear-gradient(145deg,#0f172a,#1e293b)",
     color: "#ffffff",
     display: "flex",
-    justifyContent: "center",
     alignItems: "center",
-    fontSize: "28px",
-    fontWeight: 700,
-    margin: "0 auto 12px",
-    boxShadow: "0 12px 28px rgba(37,99,235,0.25)",
+    justifyContent:
+      "center",
+    fontSize: "31px",
+    fontWeight: 800,
   },
 
   name: {
     margin: 0,
-    fontSize: "20px",
+    fontSize: "21px",
+    fontWeight: 750,
+    letterSpacing:
+      "-0.02em",
   },
 
   username: {
-    margin: "5px 0 0",
-    fontSize: "13px",
+    margin:
+      "4px 0 0",
+    fontSize: "12px",
   },
 
   stats: {
-    display: "flex",
-    justifyContent: "center",
+    marginTop: "19px",
+    minHeight: "68px",
+    display: "grid",
+    gridTemplateColumns:
+      "1fr 1fr 1fr",
     alignItems: "center",
-    marginTop: "22px",
-    gap: "35px",
   },
 
-  statItem: {
+  stat: {
     display: "flex",
-    flexDirection: "column",
-    gap: "4px",
+    flexDirection:
+      "column",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    gap: "3px",
+    minWidth: 0,
   },
 
   statValue: {
-    fontSize: "17px",
+    fontSize: "14px",
+    fontWeight: 750,
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow:
+      "ellipsis",
+    whiteSpace: "nowrap",
   },
 
   statLabel: {
-    fontSize: "11px",
+    color: "#64748b",
+    fontSize: "10px",
   },
 
-  statDivider: {
-    width: "1px",
-    height: "34px",
-    background: "rgba(148,163,184,0.25)",
+  actions: {
+    display: "grid",
+    gridTemplateColumns:
+      "1fr 1fr",
+    gap: "9px",
+    padding:
+      "15px 0",
   },
 
-  systemButton: {
-    width: "100%",
-    marginTop: "20px",
-    padding: "12px",
+  actionButton: {
+    minHeight: "42px",
     border: "none",
-    borderRadius: "15px",
-    background: "linear-gradient(135deg,#06b6d4,#2563eb)",
+    borderRadius: "13px",
     color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    gap: "7px",
+    fontSize: "12px",
     fontWeight: 700,
     cursor: "pointer",
-    fontSize: "13px",
+    boxShadow:
+      "0 7px 18px rgba(37,99,235,0.16)",
   },
 
-  planButton: {
-    width: "100%",
-    marginTop: "10px",
-    padding: "12px",
-    border: "none",
-    borderRadius: "15px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-    color: "#ffffff",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontSize: "13px",
+  subscriptionLine: {
+    minHeight: "62px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "space-between",
+    gap: "15px",
   },
 
-  section: {
-    marginTop: "24px",
+  subscriptionLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+
+  subscriptionDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+  },
+
+  deviceSection: {
+    marginTop: "22px",
   },
 
   sectionHeader: {
+    minHeight: "48px",
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "12px",
+    justifyContent:
+      "space-between",
+    gap: "12px",
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: "17px",
+    fontWeight: 750,
   },
 
   sectionSubtitle: {
-    margin: "4px 0 0",
+    margin:
+      "3px 0 0",
     fontSize: "11px",
   },
 
-  addBtn: {
+  addButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    padding:
+      "8px 10px",
     border: "none",
-    borderRadius: "12px",
-    padding: "9px 13px",
-    background: "linear-gradient(135deg,#22c55e,#14b8a6)",
-    color: "#ffffff",
-    fontWeight: 700,
+    background:
+      "transparent",
+    fontSize: "12px",
+    fontWeight: 750,
     cursor: "pointer",
   },
 
-  deviceCard: {
-    marginTop: "10px",
-    padding: "14px",
-    borderRadius: "19px",
+  deviceRow: {
+    minHeight: "70px",
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-    backdropFilter: "blur(12px)",
+    justifyContent:
+      "space-between",
+    gap: "12px",
   },
 
-  deviceInfo: {
+  deviceLeft: {
+    minWidth: 0,
     display: "flex",
     alignItems: "center",
     gap: "11px",
   },
 
-  deviceIcon: {
+  deviceAvatar: {
     width: "42px",
     height: "42px",
-    borderRadius: "14px",
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(37,99,235,0.12)",
-    fontSize: "19px",
+    flexShrink: 0,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    color: "#2563eb",
+    background:
+      "rgba(37,99,235,0.10)",
   },
 
-  deviceStatus: {
-    margin: "4px 0 0",
-    fontSize: "11px",
+  deviceText: {
+    minWidth: 0,
   },
 
-  smallBtn: {
+  deviceMeta: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    marginTop: "4px",
+    fontSize: "10px",
+  },
+
+  statusDot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+  },
+
+  chevronButton: {
+    width: "35px",
+    height: "35px",
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    background:
+      "transparent",
     border: "none",
-    borderRadius: "11px",
-    padding: "8px 11px",
-    background: "#22c55e",
-    color: "#ffffff",
-    fontWeight: 700,
     cursor: "pointer",
-    fontSize: "11px",
   },
 
-  emptyDevice: {
-    padding: "30px 20px",
-    borderRadius: "22px",
+  emptyState: {
+    marginTop: "8px",
+    padding:
+      "30px 15px",
+    display: "flex",
+    flexDirection:
+      "column",
+    alignItems: "center",
     textAlign: "center",
-    backdropFilter: "blur(12px)",
   },
 
   emptyIcon: {
-    fontSize: "32px",
-    marginBottom: "8px",
+    width: "56px",
+    height: "56px",
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    marginBottom: "11px",
+    background:
+      "rgba(148,163,184,0.10)",
   },
 
-  primaryBtn: {
+  connectButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent:
+      "center",
+    gap: "7px",
+    minHeight: "40px",
+    padding:
+      "0 15px",
     border: "none",
-    borderRadius: "13px",
-    padding: "11px 15px",
-    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+    borderRadius: "12px",
+    background:
+      "linear-gradient(135deg,#2563eb,#7c3aed)",
     color: "#ffffff",
+    fontSize: "12px",
     fontWeight: 700,
     cursor: "pointer",
   },

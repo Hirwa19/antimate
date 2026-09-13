@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   checkUsername,
@@ -11,53 +11,29 @@ import {
 function Signup() {
   const navigate = useNavigate();
 
-  // ==========================================================
-  // FORM
-  // ==========================================================
-
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState(null);
+
   const [email, setEmail] = useState("");
+
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
 
-  // ==========================================================
-  // USERNAME
-  // ==========================================================
-
-  const [usernameStatus, setUsernameStatus] =
-    useState(null);
-
-  const [checkingUsername, setCheckingUsername] =
-    useState(false);
-
-  // ==========================================================
-  // PHONE OTP
-  // ==========================================================
-
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [phoneVerified, setPhoneVerified] =
-    useState(false);
-
-  // ==========================================================
-  // UI
-  // ==========================================================
-
   const [loading, setLoading] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] =
-    useState("info");
-
-  // ==========================================================
-  // USERNAME CHECK
-  // ==========================================================
+  const [messageType, setMessageType] = useState("");
 
   useEffect(() => {
     if (!username || username.length < 3) {
       setUsernameStatus(null);
+      setCheckingUsername(false);
       return;
     }
 
@@ -65,14 +41,10 @@ function Signup() {
       try {
         setCheckingUsername(true);
 
-        const res = await checkUsername(
-          username
-        );
+        const res = await checkUsername(username);
 
         setUsernameStatus(
-          res.data.available
-            ? "available"
-            : "taken"
+          res.data.available ? "available" : "taken"
         );
       } catch {
         setUsernameStatus("error");
@@ -84,18 +56,17 @@ function Signup() {
     return () => clearTimeout(timer);
   }, [username]);
 
-  // ==========================================================
-  // SEND OTP
-  // ==========================================================
+  function showMessage(text, type = "info") {
+    setMessage(text);
+    setMessageType(type);
+  }
 
   async function handleSendOtp() {
-    const cleanPhone = phone.trim();
-
-    if (!cleanPhone) {
-      setMessage(
-        "Please enter your phone number first."
+    if (!phone.trim()) {
+      showMessage(
+        "Please enter your phone number first.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
@@ -103,42 +74,33 @@ function Signup() {
       setLoading(true);
       setMessage("");
 
-      const res =
-        await sendPhoneOtp(cleanPhone);
+      const res = await sendPhoneOtp(phone.trim());
 
       setOtpSent(true);
-      setPhoneVerified(false);
       setOtp("");
+      setPhoneVerified(false);
 
-      setMessage(
-        res.data.devOtp
-          ? `OTP sent. Dev OTP: ${res.data.devOtp}`
-          : "OTP sent to your phone."
+      showMessage(
+        res.data.message || "OTP sent to your phone.",
+        "success"
       );
-
-      setMessageType("success");
     } catch (err) {
-      setMessage(
+      showMessage(
         err.response?.data?.message ||
-          "Failed to send OTP."
+          "Failed to send OTP. Please try again.",
+        "error"
       );
-
-      setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
 
-  // ==========================================================
-  // VERIFY OTP
-  // ==========================================================
-
   async function handleVerifyOtp() {
     if (!otp.trim()) {
-      setMessage(
-        "Please enter the OTP you received."
+      showMessage(
+        "Please enter the OTP sent to your phone.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
@@ -153,107 +115,82 @@ function Signup() {
 
       setPhoneVerified(true);
 
-      setMessage(
-        "Phone number verified successfully."
+      showMessage(
+        "Phone number verified successfully.",
+        "success"
       );
-
-      setMessageType("success");
     } catch (err) {
       setPhoneVerified(false);
 
-      setMessage(
+      showMessage(
         err.response?.data?.message ||
-          "OTP verification failed."
+          "OTP verification failed.",
+        "error"
       );
-
-      setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
-
-  // ==========================================================
-  // PHONE CHANGE
-  // ==========================================================
 
   function handlePhoneChange(e) {
     const value = e.target.value;
 
     setPhone(value);
 
-    // Changing phone invalidates previous verification.
+    // Changing the phone invalidates previous verification.
     setPhoneVerified(false);
     setOtpSent(false);
     setOtp("");
-
-    if (messageType === "success") {
-      setMessage("");
-    }
   }
-
-  // ==========================================================
-  // SIGNUP
-  // ==========================================================
 
   async function handleSignup(e) {
     e.preventDefault();
 
     if (!fullName.trim()) {
-      setMessage("Please enter your full name.");
-      setMessageType("error");
+      showMessage(
+        "Please enter your full name.",
+        "error"
+      );
       return;
     }
 
-    if (
-      !username.trim() ||
-      username.trim().length < 3
-    ) {
-      setMessage(
-        "Please choose a valid username."
+    if (usernameStatus !== "available") {
+      showMessage(
+        "Please choose an available username.",
+        "error"
       );
-      setMessageType("error");
-      return;
-    }
-
-    if (
-      usernameStatus !== "available"
-    ) {
-      setMessage(
-        "Please choose an available username."
-      );
-      setMessageType("error");
       return;
     }
 
     if (!phone.trim()) {
-      setMessage(
-        "Phone number is required."
+      showMessage(
+        "Phone number is required.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
     if (!phoneVerified) {
-      setMessage(
-        "Please verify your phone number first."
+      showMessage(
+        "Please verify your phone number first.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
     if (!password) {
-      setMessage(
-        "Please enter a password."
+      showMessage(
+        "Please enter a password.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
     if (password !== repeatPassword) {
-      setMessage(
-        "Passwords do not match."
+      showMessage(
+        "Passwords do not match.",
+        "error"
       );
-      setMessageType("error");
       return;
     }
 
@@ -261,23 +198,14 @@ function Signup() {
       setLoading(true);
       setMessage("");
 
-      const userData = {
+      const res = await registerUser({
         fullName: fullName.trim(),
-        username: username.trim(),
+        username: username.trim().toLowerCase(),
+        email: email.trim() || null,
         phone: phone.trim(),
         password,
         repeatPassword,
-      };
-
-      // Email is optional.
-      // Only send it when the user actually entered one.
-      if (email.trim()) {
-        userData.email =
-          email.trim().toLowerCase();
-      }
-
-      const res =
-        await registerUser(userData);
+      });
 
       localStorage.setItem(
         "token",
@@ -291,916 +219,731 @@ function Signup() {
 
       navigate("/home");
     } catch (err) {
-      setMessage(
+      showMessage(
         err.response?.data?.message ||
           err.message ||
-          "Signup failed."
+          "Account creation failed.",
+        "error"
       );
-
-      setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
 
-  // ==========================================================
-  // USERNAME INDICATOR
-  // ==========================================================
+  const canCreateAccount =
+    fullName.trim() &&
+    usernameStatus === "available" &&
+    phone.trim() &&
+    phoneVerified &&
+    password &&
+    repeatPassword &&
+    password === repeatPassword;
 
   function usernameIndicator() {
     if (checkingUsername) {
       return (
-        <span className="statusDot yellow" />
+        <span
+          style={styles.dotYellow}
+          aria-label="Checking username"
+        />
+      );
+    }
+
+    if (usernameStatus === "available") {
+      return (
+        <span
+          style={styles.dotGreen}
+          aria-label="Username available"
+        />
       );
     }
 
     if (
-      usernameStatus === "available"
+      usernameStatus === "taken" ||
+      usernameStatus === "error"
     ) {
       return (
-        <span className="statusDot green" />
-      );
-    }
-
-    if (
-      usernameStatus === "taken"
-    ) {
-      return (
-        <span className="statusDot red" />
+        <span
+          style={styles.dotRed}
+          aria-label="Username unavailable"
+        />
       );
     }
 
     return null;
   }
 
-  // ==========================================================
-  // RENDER
-  // ==========================================================
-
   return (
-    <>
-      <style>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        .signup-page {
-          min-height: 100vh;
-          min-height: 100dvh;
-          width: 100%;
-          background:
-            radial-gradient(
-              circle at top left,
-              rgba(45, 212, 191, 0.12),
-              transparent 35%
-            ),
-            radial-gradient(
-              circle at bottom right,
-              rgba(56, 189, 248, 0.10),
-              transparent 35%
-            ),
-            linear-gradient(
-              160deg,
-              #020617,
-              #0f172a
-            );
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          padding: 24px 16px;
-
-          color: #ffffff;
-
-          font-family:
-            Inter,
-            Arial,
-            sans-serif;
-        }
-
-        .signup-card {
-          width: 100%;
-          max-width: 450px;
-
-          background:
-            rgba(30, 41, 59, 0.92);
-
-          border:
-            1px solid
-            rgba(255, 255, 255, 0.08);
-
-          border-radius: 28px;
-
-          padding: 30px;
-
-          box-shadow:
-            0 25px 70px
-            rgba(0, 0, 0, 0.42);
-
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-        }
-
-        .signup-header {
-          text-align: center;
-          margin-bottom: 24px;
-        }
-
-        .signup-logo {
-          width: 70px;
-          height: 70px;
-
-          margin: 0 auto 18px;
-
-          border-radius: 22px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          background:
-            linear-gradient(
-              135deg,
-              #2dd4bf,
-              #38bdf8
-            );
-
-          color: #0f172a;
-
-          font-size: 34px;
-
-          box-shadow:
-            0 12px 35px
-            rgba(45, 212, 191, 0.18);
-        }
-
-        .signup-title {
-          margin: 0 0 7px;
-
-          font-size: 29px;
-          line-height: 1.2;
-          font-weight: 800;
-
-          letter-spacing: -0.4px;
-        }
-
-        .signup-subtitle {
-          margin: 0;
-
-          color: #94a3b8;
-
-          font-size: 14px;
-          line-height: 1.5;
-        }
-
-        .form-group {
-          margin-bottom: 13px;
-        }
-
-        .input {
-          width: 100%;
-
-          padding: 14px 15px;
-
-          border:
-            1px solid #334155;
-
-          border-radius: 15px;
-
-          background: #0f172a;
-
-          color: #ffffff;
-
-          font-size: 15px;
-
-          outline: none;
-
-          transition:
-            border-color 0.2s ease,
-            box-shadow 0.2s ease;
-        }
-
-        .input::placeholder {
-          color: #64748b;
-        }
-
-        .input:focus {
-          border-color: #2dd4bf;
-
-          box-shadow:
-            0 0 0 3px
-            rgba(45, 212, 191, 0.10);
-        }
-
-        .input:disabled {
-          opacity: 0.65;
-          cursor: not-allowed;
-        }
-
-        .input-wrap {
-          position: relative;
-        }
-
-        .username-input {
-          padding-right: 45px;
-        }
-
-        .indicator {
-          position: absolute;
-
-          right: 15px;
-          top: 50%;
-
-          transform:
-            translateY(-50%);
-        }
-
-        .statusDot {
-          display: block;
-
-          width: 11px;
-          height: 11px;
-
-          border-radius: 50%;
-        }
-
-        .statusDot.green {
-          background: #22c55e;
-
-          box-shadow:
-            0 0 12px
-            rgba(34, 197, 94, 0.75);
-        }
-
-        .statusDot.red {
-          background: #ef4444;
-
-          box-shadow:
-            0 0 12px
-            rgba(239, 68, 68, 0.75);
-        }
-
-        .statusDot.yellow {
-          background: #f59e0b;
-
-          box-shadow:
-            0 0 12px
-            rgba(245, 158, 11, 0.75);
-        }
-
-        .field-hint {
-          margin:
-            -5px 0
-            11px;
-
-          font-size: 12px;
-
-          color: #64748b;
-
-          text-align: left;
-        }
-
-        .success-text {
-          margin:
-            -5px 0
-            12px;
-
-          color: #86efac;
-
-          font-size: 13px;
-
-          text-align: left;
-        }
-
-        .error-text {
-          margin:
-            -5px 0
-            12px;
-
-          color: #fca5a5;
-
-          font-size: 13px;
-
-          text-align: left;
-        }
-
-        .phone-section {
-          margin-top: 4px;
-          margin-bottom: 15px;
-        }
-
-        .section-label {
-          display: block;
-
-          margin-bottom: 7px;
-
-          color: #cbd5e1;
-
-          font-size: 13px;
-
-          font-weight: 700;
-
-          text-align: left;
-        }
-
-        .required {
-          color: #f87171;
-        }
-
-        .optional {
-          color: #64748b;
-
-          font-weight: 500;
-        }
-
-        .phone-row {
-          display: grid;
-
-          grid-template-columns:
-            minmax(0, 1fr)
-            105px;
-
-          gap: 9px;
-        }
-
-        .otp-row {
-          display: grid;
-
-          grid-template-columns:
-            minmax(0, 1fr)
-            105px;
-
-          gap: 9px;
-
-          margin-top: 9px;
-        }
-
-        .small-button {
-          min-height: 48px;
-
-          border: none;
-
-          border-radius: 15px;
-
-          background: #2dd4bf;
-
-          color: #06221f;
-
-          font-size: 14px;
-
-          font-weight: 800;
-
-          cursor: pointer;
-
-          transition:
-            transform 0.15s ease,
-            opacity 0.15s ease;
-        }
-
-        .small-button:hover:not(:disabled) {
-          transform: translateY(-1px);
-        }
-
-        .small-button:disabled {
-          opacity: 0.45;
-
-          cursor: not-allowed;
-
-          transform: none;
-        }
-
-        .verified-box {
-          margin-top: 9px;
-
-          padding: 11px 13px;
-
-          border-radius: 13px;
-
-          background:
-            rgba(34, 197, 94, 0.08);
-
-          border:
-            1px solid
-            rgba(34, 197, 94, 0.20);
-
-          color: #86efac;
-
-          font-size: 13px;
-
-          text-align: left;
-        }
-
-        .message {
-          margin:
-            3px 0
-            13px;
-
-          padding: 11px 13px;
-
-          border-radius: 12px;
-
-          font-size: 13px;
-
-          line-height: 1.45;
-
-          text-align: left;
-        }
-
-        .message.success {
-          color: #bbf7d0;
-
-          background:
-            rgba(34, 197, 94, 0.08);
-
-          border:
-            1px solid
-            rgba(34, 197, 94, 0.18);
-        }
-
-        .message.error {
-          color: #fecaca;
-
-          background:
-            rgba(239, 68, 68, 0.08);
-
-          border:
-            1px solid
-            rgba(239, 68, 68, 0.18);
-        }
-
-        .message.info {
-          color: #fde68a;
-
-          background:
-            rgba(245, 158, 11, 0.08);
-
-          border:
-            1px solid
-            rgba(245, 158, 11, 0.18);
-        }
-
-        .create-button {
-          width: 100%;
-
-          min-height: 50px;
-
-          padding: 14px 16px;
-
-          border: none;
-
-          border-radius: 15px;
-
-          background:
-            linear-gradient(
-              135deg,
-              #22c55e,
-              #2dd4bf
-            );
-
-          color: #06221f;
-
-          font-size: 16px;
-
-          font-weight: 900;
-
-          cursor: pointer;
-
-          transition:
-            transform 0.15s ease,
-            opacity 0.15s ease,
-            filter 0.15s ease;
-
-          margin-top: 3px;
-        }
-
-        .create-button:hover:not(:disabled) {
-          transform: translateY(-1px);
-          filter: brightness(1.04);
-        }
-
-        .create-button:disabled {
-          opacity: 0.35;
-
-          cursor: not-allowed;
-
-          filter: grayscale(0.35);
-
-          transform: none;
-        }
-
-        .verification-required {
-          margin:
-            8px 0
-            0;
-
-          color: #94a3b8;
-
-          font-size: 11px;
-
-          text-align: center;
-        }
-
-        .login-text {
-          margin:
-            18px 0
-            0;
-
-          color: #94a3b8;
-
-          font-size: 14px;
-
-          text-align: center;
-        }
-
-        .login-link {
-          color: #2dd4bf;
-
-          font-weight: 800;
-
-          text-decoration: none;
-        }
-
-        .login-link:hover {
-          text-decoration: underline;
-        }
-
-        .footer {
-          margin:
-            20px 0
-            0;
-
-          color: #64748b;
-
-          font-size: 12px;
-
-          font-weight: 700;
-
-          letter-spacing: 0.4px;
-
-          text-align: center;
-        }
-
-        @media (max-width: 520px) {
-          .signup-page {
-            padding:
-              16px 12px;
-          }
-
-          .signup-card {
-            padding: 23px 18px;
-
-            border-radius: 23px;
-          }
-
-          .signup-logo {
-            width: 62px;
-            height: 62px;
-
-            border-radius: 19px;
-
-            font-size: 30px;
-
-            margin-bottom: 15px;
-          }
-
-          .signup-title {
-            font-size: 25px;
-          }
-
-          .signup-subtitle {
-            font-size: 13px;
-          }
-
-          .phone-row,
-          .otp-row {
-            grid-template-columns:
-              minmax(0, 1fr)
-              92px;
-          }
-
-          .input {
-            padding:
-              13px 14px;
-          }
-
-          .small-button {
-            min-height: 46px;
-          }
-
-          .create-button {
-            min-height: 48px;
-          }
-        }
-
-        @media (max-width: 360px) {
-          .signup-card {
-            padding:
-              20px 14px;
-          }
-
-          .phone-row,
-          .otp-row {
-            grid-template-columns:
-              1fr;
-          }
-
-          .small-button {
-            width: 100%;
-          }
-        }
-      `}</style>
-
-      <div className="signup-page">
-        <div className="signup-card">
-
-          {/* ==================================================
-              HEADER
-          ================================================== */}
-
-          <div className="signup-header">
-            <div className="signup-logo">
-              🐣
-            </div>
-
-            <h1 className="signup-title">
-              Create Account
-            </h1>
-
-            <p className="signup-subtitle">
-              Start monitoring your Smart Brooder
-            </p>
+    <main style={styles.page}>
+      <section style={styles.container}>
+        {/* BRAND */}
+        <div style={styles.brand}>
+          <span style={styles.brandMain}>
+            ANTIMATE
+          </span>
+
+          <span style={styles.brandLine} />
+        </div>
+
+        {/* HEADER */}
+        <header style={styles.header}>
+          <h1 style={styles.title}>
+            Create your account
+          </h1>
+
+          <p style={styles.subtitle}>
+            Join ANTIMATE and connect your smart
+            devices securely.
+          </p>
+        </header>
+
+        {/* FORM */}
+        <form
+          onSubmit={handleSignup}
+          style={styles.form}
+        >
+          {/* FULL NAME */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Full name
+            </label>
+
+            <input
+              style={styles.input}
+              type="text"
+              placeholder="Enter your full name"
+              value={fullName}
+              onChange={(e) =>
+                setFullName(e.target.value)
+              }
+              autoComplete="name"
+            />
           </div>
 
-          {/* ==================================================
-              FORM
-          ================================================== */}
+          {/* USERNAME */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Username
+            </label>
 
-          <form onSubmit={handleSignup}>
-
-            {/* FULL NAME */}
-
-            <div className="form-group">
+            <div style={styles.inputWrap}>
               <input
-                className="input"
+                style={{
+                  ...styles.input,
+                  marginBottom: 0,
+                  paddingRight: "46px",
+                }}
                 type="text"
-                placeholder="Full name"
-                value={fullName}
+                placeholder="Choose a username"
+                value={username}
                 onChange={(e) =>
-                  setFullName(
+                  setUsername(
                     e.target.value
+                      .toLowerCase()
+                      .replace(/\s/g, "")
                   )
                 }
-                autoComplete="name"
+                autoComplete="username"
               />
-            </div>
 
-            {/* USERNAME */}
-
-            <div className="form-group">
-              <div className="input-wrap">
-                <input
-                  className="input username-input"
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) =>
-                    setUsername(
-                      e.target.value
-                        .toLowerCase()
-                        .replace(/\s/g, "")
-                    )
-                  }
-                  autoComplete="username"
-                />
-
-                <div className="indicator">
-                  {usernameIndicator()}
-                </div>
+              <div style={styles.indicator}>
+                {usernameIndicator()}
               </div>
             </div>
 
-            {usernameStatus ===
-              "available" && (
-              <p className="success-text">
-                Username is available.
+            {usernameStatus === "available" && (
+              <p style={styles.successText}>
+                Username is available
               </p>
             )}
 
-            {usernameStatus ===
-              "taken" && (
-              <p className="error-text">
-                Username is already taken.
+            {usernameStatus === "taken" && (
+              <p style={styles.errorText}>
+                Username is already taken
               </p>
             )}
 
-            {/* EMAIL */}
+            {usernameStatus === "error" && (
+              <p style={styles.errorText}>
+                Unable to check username
+              </p>
+            )}
+          </div>
 
-            <div className="form-group">
-              <label className="section-label">
-                Email{" "}
-                <span className="optional">
-                  (optional)
-                </span>
-              </label>
+          {/* EMAIL */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Email
+              <span style={styles.optional}>
+                Optional
+              </span>
+            </label>
 
+            <input
+              style={styles.input}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              autoComplete="email"
+            />
+          </div>
+
+          {/* PHONE */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Phone number
+              <span style={styles.required}>
+                Required
+              </span>
+            </label>
+
+            <div style={styles.actionRow}>
               <input
-                className="input"
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) =>
-                  setEmail(
-                    e.target.value
-                  )
-                }
-                autoComplete="email"
+                style={{
+                  ...styles.input,
+                  marginBottom: 0,
+                }}
+                type="tel"
+                placeholder="Enter your phone number"
+                value={phone}
+                onChange={handlePhoneChange}
+                autoComplete="tel"
+                disabled={phoneVerified}
               />
 
-              <p className="field-hint">
-                You can leave this empty.
-              </p>
-            </div>
-
-            {/* PHONE */}
-
-            <div className="phone-section">
-              <label className="section-label">
-                Phone number{" "}
-                <span className="required">
-                  *
-                </span>
-              </label>
-
-              <div className="phone-row">
-                <input
-                  className="input"
-                  type="tel"
-                  placeholder="Phone number"
-                  value={phone}
-                  onChange={
-                    handlePhoneChange
-                  }
-                  disabled={
-                    phoneVerified
-                  }
-                  autoComplete="tel"
-                />
-
+              {!phoneVerified && (
                 <button
                   type="button"
-                  className="small-button"
-                  onClick={
-                    handleSendOtp
-                  }
+                  style={{
+                    ...styles.secondaryButton,
+                    opacity: loading ? 0.65 : 1,
+                  }}
+                  onClick={handleSendOtp}
                   disabled={
                     loading ||
-                    !phone.trim() ||
-                    phoneVerified
+                    !phone.trim()
                   }
                 >
-                  {phoneVerified
-                    ? "Verified"
+                  {loading && !otpSent
+                    ? "Sending..."
                     : otpSent
                     ? "Resend OTP"
                     : "Send OTP"}
                 </button>
-              </div>
-
-              {/* OTP */}
-
-              {otpSent &&
-                !phoneVerified && (
-                  <div className="otp-row">
-                    <input
-                      className="input"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="Enter OTP"
-                      value={otp}
-                      onChange={(e) =>
-                        setOtp(
-                          e.target.value.replace(
-                            /\D/g,
-                            ""
-                          )
-                        )
-                      }
-                      autoComplete="one-time-code"
-                    />
-
-                    <button
-                      type="button"
-                      className="small-button"
-                      onClick={
-                        handleVerifyOtp
-                      }
-                      disabled={
-                        loading ||
-                        otp.length === 0
-                      }
-                    >
-                      Verify
-                    </button>
-                  </div>
-                )}
+              )}
 
               {phoneVerified && (
-                <div className="verified-box">
-                  ✓ Phone number verified
+                <div style={styles.verifiedBadge}>
+                  ✓ Verified
                 </div>
               )}
             </div>
+          </div>
 
-            {/* PASSWORD */}
+          {/* OTP */}
+          {otpSent && !phoneVerified && (
+            <div style={styles.field}>
+              <label style={styles.label}>
+                Verification code
+              </label>
 
-            <div className="form-group">
-              <input
-                className="input"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) =>
-                  setPassword(
-                    e.target.value
-                  )
-                }
-                autoComplete="new-password"
-              />
-            </div>
+              <div style={styles.actionRow}>
+                <input
+                  style={{
+                    ...styles.input,
+                    marginBottom: 0,
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(
+                      e.target.value
+                        .replace(/\D/g, "")
+                    )
+                  }
+                  autoComplete="one-time-code"
+                />
 
-            {/* REPEAT PASSWORD */}
+                <button
+                  type="button"
+                  style={{
+                    ...styles.secondaryButton,
+                    opacity: loading ? 0.65 : 1,
+                  }}
+                  onClick={handleVerifyOtp}
+                  disabled={
+                    loading ||
+                    otp.trim().length < 4
+                  }
+                >
+                  {loading
+                    ? "Checking..."
+                    : "Verify"}
+                </button>
+              </div>
 
-            <div className="form-group">
-              <input
-                className="input"
-                type="password"
-                placeholder="Repeat password"
-                value={repeatPassword}
-                onChange={(e) =>
-                  setRepeatPassword(
-                    e.target.value
-                  )
-                }
-                autoComplete="new-password"
-              />
-            </div>
-
-            {/* MESSAGE */}
-
-            {message && (
-              <p
-                className={`message ${messageType}`}
-              >
-                {message}
+              <p style={styles.helperText}>
+                Enter the verification code sent
+                to your phone.
               </p>
-            )}
+            </div>
+          )}
 
-            {/* CREATE ACCOUNT */}
+          {/* PASSWORD */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Password
+            </label>
 
-            <button
-              className="create-button"
-              type="submit"
-              disabled={
-                loading ||
-                !phoneVerified ||
-                usernameStatus !==
-                  "available"
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="Create a password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
               }
+              autoComplete="new-password"
+            />
+          </div>
+
+          {/* REPEAT PASSWORD */}
+          <div style={styles.field}>
+            <label style={styles.label}>
+              Repeat password
+            </label>
+
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="Repeat your password"
+              value={repeatPassword}
+              onChange={(e) =>
+                setRepeatPassword(
+                  e.target.value
+                )
+              }
+              autoComplete="new-password"
+            />
+
+            {repeatPassword &&
+              password !== repeatPassword && (
+                <p style={styles.errorText}>
+                  Passwords do not match
+                </p>
+              )}
+
+            {repeatPassword &&
+              password === repeatPassword && (
+                <p style={styles.successText}>
+                  Passwords match
+                </p>
+              )}
+          </div>
+
+          {/* MESSAGE */}
+          {message && (
+            <div
+              style={{
+                ...styles.message,
+                ...(messageType === "success"
+                  ? styles.messageSuccess
+                  : messageType === "error"
+                  ? styles.messageError
+                  : styles.messageInfo),
+              }}
             >
-              {loading
-                ? "Please wait..."
-                : "Create Account"}
-            </button>
+              {message}
+            </div>
+          )}
 
-            {!phoneVerified && (
-              <p className="verification-required">
-                Verify your phone number to create
-                your account.
-              </p>
-            )}
-          </form>
+          {/* CREATE ACCOUNT */}
+          <button
+            type="submit"
+            style={{
+              ...styles.createButton,
+              ...(canCreateAccount
+                ? styles.createButtonEnabled
+                : styles.createButtonDisabled),
+            }}
+            disabled={
+              loading || !canCreateAccount
+            }
+          >
+            {loading
+              ? "Creating account..."
+              : "Create Account"}
+          </button>
 
-          {/* LOGIN */}
+          {!phoneVerified && (
+            <p style={styles.verificationNotice}>
+              Verify your phone number to enable
+              account creation.
+            </p>
+          )}
+        </form>
 
-          <p className="login-text">
-            Already have an account?{" "}
-            <Link
-              className="login-link"
-              to="/login"
-            >
-              Sign In
-            </Link>
-          </p>
+        {/* LOGIN */}
+        <div style={styles.loginSection}>
+          <span style={styles.loginText}>
+            Already have an account?
+          </span>
 
-          <p className="footer">
-            ANTIMATE EDGE
-          </p>
+          <Link
+            to="/login"
+            style={styles.loginLink}
+          >
+            Sign In
+          </Link>
         </div>
-      </div>
-    </>
+
+        {/* FOOTER */}
+        <footer style={styles.footer}>
+          ANTIMATE · SMART CONNECTED SYSTEMS
+        </footer>
+      </section>
+    </main>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    width: "100%",
+    boxSizing: "border-box",
+    background:
+      "linear-gradient(135deg, #07111f 0%, #0b1220 48%, #10142a 100%)",
+    color: "#f8fafc",
+    fontFamily:
+      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    padding: "40px 20px",
+    overflowX: "hidden",
+  },
+
+  container: {
+    width: "100%",
+    maxWidth: "520px",
+    boxSizing: "border-box",
+  },
+
+  brand: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    marginBottom: "42px",
+  },
+
+  brandMain: {
+    fontSize: "25px",
+    fontWeight: "900",
+    letterSpacing: "5px",
+    lineHeight: 1,
+    background:
+      "linear-gradient(90deg, #38bdf8, #818cf8, #c084fc)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  },
+
+  brandLine: {
+    width: "52px",
+    height: "3px",
+    borderRadius: "999px",
+    marginTop: "9px",
+    background:
+      "linear-gradient(90deg, #38bdf8, #a78bfa)",
+  },
+
+  header: {
+    marginBottom: "30px",
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "32px",
+    lineHeight: 1.15,
+    fontWeight: "800",
+    letterSpacing: "-0.8px",
+  },
+
+  subtitle: {
+    margin:
+      "10px 0 0",
+    color: "#94a3b8",
+    fontSize: "15px",
+    lineHeight: 1.6,
+    maxWidth: "450px",
+  },
+
+  form: {
+    width: "100%",
+  },
+
+  field: {
+    width: "100%",
+    marginBottom: "20px",
+  },
+
+  label: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "8px",
+    color: "#cbd5e1",
+    fontSize: "13px",
+    fontWeight: "700",
+  },
+
+  optional: {
+    color: "#64748b",
+    fontWeight: "500",
+    fontSize: "12px",
+  },
+
+  required: {
+    color: "#94a3b8",
+    fontWeight: "500",
+    fontSize: "12px",
+  },
+
+  input: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    height: "50px",
+    padding: "0 15px",
+    borderRadius: "12px",
+    border:
+      "1px solid rgba(148, 163, 184, 0.22)",
+    background:
+      "rgba(15, 23, 42, 0.68)",
+    color: "#f8fafc",
+    fontSize: "15px",
+    outline: "none",
+    transition:
+      "border-color 0.2s ease, background 0.2s ease",
+  },
+
+  inputWrap: {
+    position: "relative",
+    width: "100%",
+  },
+
+  indicator: {
+    position: "absolute",
+    right: "16px",
+    top: "50%",
+    transform: "translateY(-50%)",
+    pointerEvents: "none",
+  },
+
+  dotGreen: {
+    display: "block",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    background: "#22c55e",
+    boxShadow:
+      "0 0 10px rgba(34, 197, 94, 0.65)",
+  },
+
+  dotRed: {
+    display: "block",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    background: "#ef4444",
+    boxShadow:
+      "0 0 10px rgba(239, 68, 68, 0.65)",
+  },
+
+  dotYellow: {
+    display: "block",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    background: "#f59e0b",
+    boxShadow:
+      "0 0 10px rgba(245, 158, 11, 0.65)",
+  },
+
+  actionRow: {
+    display: "grid",
+    gridTemplateColumns:
+      "minmax(0, 1fr) 118px",
+    gap: "10px",
+    alignItems: "stretch",
+  },
+
+  secondaryButton: {
+    minWidth: 0,
+    height: "50px",
+    padding: "0 12px",
+    border: "1px solid rgba(56, 189, 248, 0.35)",
+    borderRadius: "12px",
+    background:
+      "rgba(14, 165, 233, 0.12)",
+    color: "#7dd3fc",
+    fontSize: "13px",
+    fontWeight: "800",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+
+  verifiedBadge: {
+    height: "50px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 12px",
+    boxSizing: "border-box",
+    borderRadius: "12px",
+    border:
+      "1px solid rgba(34, 197, 94, 0.35)",
+    background:
+      "rgba(34, 197, 94, 0.10)",
+    color: "#86efac",
+    fontSize: "13px",
+    fontWeight: "800",
+    whiteSpace: "nowrap",
+  },
+
+  helperText: {
+    margin:
+      "8px 0 0",
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: 1.5,
+  },
+
+  successText: {
+    margin:
+      "7px 0 0",
+    color: "#86efac",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+
+  errorText: {
+    margin:
+      "7px 0 0",
+    color: "#fca5a5",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+
+  message: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px 14px",
+    margin:
+      "4px 0 16px",
+    borderRadius: "10px",
+    fontSize: "13px",
+    lineHeight: 1.5,
+  },
+
+  messageSuccess: {
+    color: "#86efac",
+    background:
+      "rgba(34, 197, 94, 0.08)",
+    border:
+      "1px solid rgba(34, 197, 94, 0.18)",
+  },
+
+  messageError: {
+    color: "#fca5a5",
+    background:
+      "rgba(239, 68, 68, 0.08)",
+    border:
+      "1px solid rgba(239, 68, 68, 0.18)",
+  },
+
+  messageInfo: {
+    color: "#cbd5e1",
+    background:
+      "rgba(148, 163, 184, 0.08)",
+    border:
+      "1px solid rgba(148, 163, 184, 0.15)",
+  },
+
+  createButton: {
+    width: "100%",
+    height: "52px",
+    borderRadius: "13px",
+    border: "none",
+    fontSize: "15px",
+    fontWeight: "800",
+    letterSpacing: "0.1px",
+    transition:
+      "opacity 0.2s ease, transform 0.2s ease",
+  },
+
+  createButtonEnabled: {
+    background:
+      "linear-gradient(90deg, #38bdf8, #818cf8)",
+    color: "#ffffff",
+    cursor: "pointer",
+    boxShadow:
+      "0 12px 30px rgba(59, 130, 246, 0.18)",
+  },
+
+  createButtonDisabled: {
+    background:
+      "rgba(71, 85, 105, 0.45)",
+    color: "#64748b",
+    cursor: "not-allowed",
+  },
+
+  verificationNotice: {
+    margin:
+      "10px 0 0",
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: 1.5,
+  },
+
+  loginSection: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "6px",
+    flexWrap: "wrap",
+    marginTop: "28px",
+  },
+
+  loginText: {
+    color: "#64748b",
+    fontSize: "13px",
+  },
+
+  loginLink: {
+    color: "#7dd3fc",
+    fontSize: "13px",
+    fontWeight: "800",
+    textDecoration: "none",
+  },
+
+  footer: {
+    marginTop: "36px",
+    paddingTop: "18px",
+    borderTop:
+      "1px solid rgba(148, 163, 184, 0.10)",
+    color: "#475569",
+    fontSize: "10px",
+    fontWeight: "700",
+    letterSpacing: "1.5px",
+    textAlign: "center",
+  },
+};
 
 export default Signup;

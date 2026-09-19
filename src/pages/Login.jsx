@@ -3897,7 +3897,7 @@ function Login() {
           <section className="vision-section">
             <div className="vision-image">
               <img
-                src="https://imgs.search.brave.com/buznGK2zueuSAa2RjqGE_Qjo5kHE954NSa1Y756ThjY/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzdhLzEw/LzQwLzdhMTA0MGMy/MzlkNjU3NzM4YzYw/ZDgyNjY5MDUxNzJl/LmpwZw"
+                src="https://imgs.search.brave.com/ytxWfDMSv1uwsCuwH2wDWFUsfluZPgXeSVPkphRDYbI/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9tLm1l/ZGlhLWFtYXpvbi5j/b20vaW1hZ2VzL1Mv/YXBsdXMtbWVkaWEt/bGlicmFyeS1zZXJ2/aWNlLW1lZGlhL2Jl/NTEyMGEzLTI4MDIt/NGQwNC1iOGM5LWIw/YmFjNzQ5ZjU3Yi5f/X0NSMCwwLDE0NjQs/NjAwX1BUMF9TWDE0/NjRfVjFfX18uanBn"
                 alt="ANTIMATE technology ecosystem"
               />
             </div>

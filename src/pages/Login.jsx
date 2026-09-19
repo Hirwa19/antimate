@@ -3681,7 +3681,7 @@ function Login() {
             <div className="hero-visual">
               <div className="farm-image">
                 <img
-                  src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=85"
+                  src="https://imgs.search.brave.com/oFIOI8B3e3CiRahWFss1Rmk_GoIHdQYRQDe0VzXRfFo/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2U2Lzdi/LzI3L2U2N2IyNzcz/MDAwZDRiNWEwYmZj/ODU0NTI3OWEzMTk2/LmpwZw"
                   alt="ANTIMATE technology"
                 />
               </div>

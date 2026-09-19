@@ -1900,31 +1900,6 @@ function Login() {
             );
         }
 
-        .antimate-plans-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 18px;
-          margin-top: 45px;
-        }
-
-        .antimate-plan-card {
-          position: relative;
-          padding: 29px 25px;
-          border-radius: 23px;
-
-          border:
-            1px solid
-            rgba(127,127,127,.14);
-
-          background:
-            rgba(127,127,127,.045);
-
-          transition:
-            transform .25s ease,
-            border-color .25s ease,
-            box-shadow .25s ease;
-        }
-
         .antimate-plan-card:hover {
           transform: translateY(-7px);
           border-color: rgba(0,217,255,.28);
@@ -1933,94 +1908,9 @@ function Login() {
             rgba(0,0,0,.11);
         }
 
-        .antimate-plan-card.popular {
-          border:
-            1px solid
-            rgba(0,217,255,.45);
-
-          background:
-            linear-gradient(
-              150deg,
-              rgba(0,217,255,.11),
-              rgba(37,99,235,.055)
-            );
-
-          transform: translateY(-8px);
-        }
-
-        .antimate-popular-badge {
-          position: absolute;
-          top: 15px;
-          right: 15px;
-
-          padding: 5px 9px;
-
-          border-radius: 999px;
-
-          background:
-            linear-gradient(
-              135deg,
-              #00bce7,
-              #2563eb
-            );
-
-          color: #fff;
-
-          font-size: 8px;
-          font-weight: 900;
-          letter-spacing: 1px;
-        }
-
-        .antimate-plan-icon {
-          width: 45px;
-          height: 45px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          border-radius: 14px;
-
-          color: #00bce7;
-
-          background:
-            rgba(0,217,255,.08);
-
-          margin-bottom: 19px;
-        }
-
         .antimate-plan-card h3 {
           margin: 0;
           font-size: 21px;
-        }
-
-        .antimate-plan-price {
-          margin: 13px 0 3px;
-          font-size: 27px;
-          font-weight: 900;
-          letter-spacing: -1px;
-        }
-
-        .antimate-plan-month {
-          font-size: 11px;
-          opacity: .55;
-        }
-
-        .antimate-plan-description {
-          min-height: 65px;
-          margin: 18px 0;
-          font-size: 13px;
-          line-height: 1.65;
-          opacity: .66;
-        }
-
-        .antimate-plan-features {
-          list-style: none;
-          padding: 0;
-          margin: 0 0 23px;
-
-          display: grid;
-          gap: 11px;
         }
 
         .antimate-plan-features li {
@@ -2901,7 +2791,6 @@ function Login() {
 
         .login-page .feature-card,
         .login-page .antimate-system-card,
-        .login-page .antimate-plan-card,
         .login-page .antimate-about-mini,
         .login-page .antimate-team-card,
         .login-page .antimate-faq-item,
@@ -2933,7 +2822,6 @@ function Login() {
         .login-page.light .join-content h2,
         .login-page.light .feature-card h3,
         .login-page.light .antimate-system-card h3,
-        .login-page.light .antimate-plan-card h3,
         .login-page.light .antimate-team-card h3,
         .login-page.light .antimate-faq-question {
           color: #0f172a;
@@ -2945,7 +2833,6 @@ function Login() {
         .login-page.dark .join-content h2,
         .login-page.dark .feature-card h3,
         .login-page.dark .antimate-system-card h3,
-        .login-page.dark .antimate-plan-card h3,
         .login-page.dark .antimate-team-card h3,
         .login-page.dark .antimate-faq-question {
           color: #f8fafc;
@@ -2962,10 +2849,6 @@ function Login() {
 
           .navigation > a {
             font-size: 11px;
-          }
-
-          .antimate-plans-grid {
-            grid-template-columns: repeat(2, 1fr);
           }
 
           .antimate-team-grid {
@@ -3139,7 +3022,6 @@ function Login() {
 
           .feature-grid,
           .antimate-system-grid,
-          .antimate-plans-grid,
           .antimate-support-grid,
           .antimate-team-grid {
             grid-template-columns: 1fr;
@@ -3147,10 +3029,6 @@ function Login() {
 
           .antimate-about-panel {
             grid-template-columns: 1fr;
-          }
-
-          .antimate-plan-card.popular {
-            transform: none;
           }
 
           .antimate-contact-strip {

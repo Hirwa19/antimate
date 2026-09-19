@@ -108,8 +108,6 @@ function Login() {
 
   const [openFaq, setOpenFaq] = useState(null);
 
-  const [showSystemSelection, setShowSystemSelection] =
-    useState(false);
 
   /* ==========================================================
      CONTENT
@@ -286,9 +284,14 @@ function Login() {
       teamCEO: "HIRWA Salem",
       teamAI: "CYUSA Chrispin",
       teamData: "DJUMA David",
+      teamBertin: "Bertin",
+      teamBertinRole: "Data Management",
       teamNetwork: "ANTIMATE Network & Communication",
       teamSystem: "MUGISHA Prince",
       teamMarketing: "KWIZERA J. Bosco",
+      teamNoella: "Noella",
+      teamNoellaRole: "Marketing",
+      teamNoellaWorksWith: "Akorana na Kwizera",
       teamBusiness: "MUGISHA Steven",
 
       faqTitle: "Ibibazo bikunze kubazwa",
@@ -335,21 +338,6 @@ function Login() {
       noAccount: "Nta konti ufite?",
       create: "Fungura konti",
 
-      selectionTitle: "Hitamo ANTIMATE System",
-      selectionSubtitle:
-        "Ni hehe ushaka kujya nyuma yo kwinjira?",
-
-      edgeTitle: "ANTIMATE Edge",
-      edgeDescription:
-        "Jya muri Edge environment aho ucunga devices, monitoring n'ibikorwa bya devices zawe.",
-      edgeButton: "Jya kuri Edge",
-
-      linkTitle: "ANTIMATE Link",
-      linkDescription:
-        "Jya muri Link environment aho ucunga projects, communication n'ibikoresho bya developer.",
-      linkButton: "Jya kuri Link",
-
-      cancel: "Subira",
 
       footer:
         "ANTIMATE © 2026 • Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem",
@@ -525,9 +513,14 @@ function Login() {
       teamCEO: "HIRWA Salem",
       teamAI: "CYUSA Chrispin",
       teamData: "DJUMA David",
+      teamBertin: "Bertin",
+      teamBertinRole: "Data Management",
       teamNetwork: "ANTIMATE Network & Communication",
       teamSystem: "MUGISHA Prince",
       teamMarketing: "KWIZERA J. Bosco",
+      teamNoella: "Noella",
+      teamNoellaRole: "Marketing",
+      teamNoellaWorksWith: "Akorana na Kwizera",
       teamBusiness: "MUGISHA Steven",
 
       faqTitle: "Frequently asked questions",
@@ -574,21 +567,6 @@ function Login() {
       noAccount: "Don't have an account?",
       create: "Create account",
 
-      selectionTitle: "Choose an ANTIMATE System",
-      selectionSubtitle:
-        "Where would you like to go after signing in?",
-
-      edgeTitle: "ANTIMATE Edge",
-      edgeDescription:
-        "Go to the Edge environment to manage devices, monitoring and device operations.",
-      edgeButton: "Go to Edge",
-
-      linkTitle: "ANTIMATE Link",
-      linkDescription:
-        "Go to the Link environment to manage projects, communication and developer services.",
-      linkButton: "Go to Link",
-
-      cancel: "Back",
 
       footer:
         "ANTIMATE © 2026 • Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem",
@@ -623,13 +601,9 @@ function Login() {
         JSON.stringify(res.data.user)
       );
 
-      /*
-       * IMPORTANT:
-       * Ntitujya kuri /home ako kanya.
-       * User abanza guhitamo Edge cyangwa Link.
-       */
       setShowLogin(false);
-      setShowSystemSelection(true);
+      setMessage("");
+      navigate("/home");
     } catch (err) {
       setMessage(
         err.response?.data?.message ||
@@ -639,20 +613,6 @@ function Login() {
       setLoading(false);
     }
   }
-
-  /* ==========================================================
-     SYSTEM SELECTION
-  ========================================================== */
-
-  const goToEdge = () => {
-    setShowSystemSelection(false);
-    navigate("/home");
-  };
-
-  const goToLink = () => {
-    setShowSystemSelection(false);
-    navigate("/link/projects");
-  };
 
   /* ==========================================================
      KNOWLEDGE
@@ -902,6 +862,12 @@ function Login() {
       department: "Data & Cloud",
     },
     {
+      icon: Database,
+      name: t.teamBertin,
+      role: t.teamBertinRole,
+      department: language === "rw" ? "Data Management" : "Data Management",
+    },
+    {
       icon: Wifi,
       name: t.teamNetwork,
       role: t.cio,
@@ -918,6 +884,12 @@ function Login() {
       name: t.teamMarketing,
       role: t.cmo,
       department: "Marketing & Brand",
+    },
+    {
+      icon: TrendingUp,
+      name: t.teamNoella,
+      role: t.teamNoellaRole,
+      department: t.teamNoellaWorksWith,
     },
     {
       icon: Target,
@@ -1045,6 +1017,7 @@ function Login() {
 
         .login-navbar {
           position: fixed;
+          isolation: isolate;
           top: 0;
           left: 0;
           right: 0;
@@ -2214,7 +2187,7 @@ function Login() {
 
         .antimate-team-grid {
           display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 15px;
           margin-top: 42px;
         }
@@ -2848,208 +2821,10 @@ function Login() {
         }
 
         /* ======================================================
-           SYSTEM SELECTION
-        ====================================================== */
-
-        .system-selection-overlay {
-          position: fixed;
-          inset: 0;
-
-          z-index: 100001;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          padding: 20px;
-
-          background:
-            rgba(3,8,18,.72);
-
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-        }
-
-        .system-selection {
-          width: min(100%, 760px);
-
-          padding: 34px;
-
-          border-radius: 28px;
-
-          color: #111827;
-          background: #fff;
-
-          box-shadow:
-            0 35px 100px
-            rgba(0,0,0,.32);
-        }
-
-        .system-selection-header {
-          text-align: center;
-          margin-bottom: 28px;
-        }
-
-        .system-selection-logo {
-          width: 54px;
-          height: 54px;
-
-          margin: 0 auto 15px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          border-radius: 16px;
-
-          background:
-            rgba(0,217,255,.08);
-        }
-
-        .system-selection-header h2 {
-          margin: 0;
-
-          font-size: 28px;
-          letter-spacing: -1px;
-        }
-
-        .system-selection-header p {
-          margin: 9px auto 0;
-
-          max-width: 520px;
-
-          font-size: 13px;
-          line-height: 1.65;
-
-          opacity: .58;
-        }
-
-        .system-selection-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 16px;
-        }
-
-        .system-selection-card {
-          position: relative;
-
-          padding: 25px;
-
-          border-radius: 21px;
-
-          border:
-            1px solid
-            rgba(127,127,127,.16);
-
-          background:
-            linear-gradient(
-              145deg,
-              rgba(0,217,255,.045),
-              rgba(37,99,235,.025)
-            );
-
-          text-align: left;
-
-          cursor: pointer;
-
-          transition:
-            transform .22s ease,
-            border-color .22s ease,
-            box-shadow .22s ease;
-        }
-
-        .system-selection-card:hover {
-          transform: translateY(-5px);
-
-          border-color:
-            rgba(37,99,235,.4);
-
-          box-shadow:
-            0 18px 45px
-            rgba(37,99,235,.1);
-        }
-
-        .system-selection-icon {
-          width: 50px;
-          height: 50px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          margin-bottom: 18px;
-
-          border-radius: 15px;
-
-          color: #2563eb;
-
-          background:
-            rgba(37,99,235,.08);
-        }
-
-        .system-selection-card.link-card
-        .system-selection-icon {
-          color: #00a8d6;
-          background:
-            rgba(0,217,255,.08);
-        }
-
-        .system-selection-card h3 {
-          margin: 0 0 9px;
-
-          font-size: 20px;
-        }
-
-        .system-selection-card p {
-          min-height: 68px;
-
-          margin: 0 0 20px;
-
-          font-size: 13px;
-          line-height: 1.65;
-
-          opacity: .62;
-        }
-
-        .system-selection-action {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-
-          color: #2563eb;
-
-          font-size: 12px;
-          font-weight: 850;
-        }
-
-        .link-card .system-selection-action {
-          color: #00a8d6;
-        }
-
-        .system-selection-cancel {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          margin: 22px auto 0;
-
-          border: 0;
-          background: transparent;
-
-          color: #64748b;
-
-          font-size: 12px;
-          font-weight: 750;
-
-          cursor: pointer;
-        }
-
-        /* ======================================================
            DARK MODAL SUPPORT
         ====================================================== */
 
-        .dark .login-modal,
-        .dark .system-selection {
+        .dark .login-modal {
           color: #f8fafc;
           background: #0f172a;
           border:
@@ -3071,17 +2846,109 @@ function Login() {
             rgba(255,255,255,.1);
         }
 
-        .dark .system-selection-card {
-          border:
-            1px solid
-            rgba(255,255,255,.09);
+        /* ======================================================
+           THEME / READABILITY
+        ====================================================== */
 
-          background:
-            linear-gradient(
-              145deg,
-              rgba(0,217,255,.07),
-              rgba(37,99,235,.045)
-            );
+        .login-page.light {
+          --text-main: #0f172a;
+          --text-muted: #475569;
+          --text-soft: #64748b;
+          --surface: rgba(255,255,255,.82);
+          --surface-soft: rgba(248,250,252,.92);
+          --border: rgba(15,23,42,.12);
+        }
+
+        .login-page.dark {
+          --text-main: #f8fafc;
+          --text-muted: #cbd5e1;
+          --text-soft: #94a3b8;
+          --surface: rgba(15,23,42,.72);
+          --surface-soft: rgba(15,23,42,.9);
+          --border: rgba(255,255,255,.12);
+        }
+
+        .login-page .hero-description,
+        .login-page .antimate-about-description,
+        .login-page .vision-content > p,
+        .login-page .antimate-section-subtitle,
+        .login-page .feature-card p,
+        .login-page .antimate-system-card p,
+        .login-page .antimate-about-mini p,
+        .login-page .antimate-support-card p,
+        .login-page .join-content p {
+          color: var(--text-muted);
+          opacity: 1;
+        }
+
+        .login-page .antimate-team-department,
+        .login-page .antimate-contact-item span,
+        .login-page .footer-info,
+        .login-page .login-footer p,
+        .login-page .modal-subtitle,
+        .login-page .antimate-faq-answer p {
+          color: var(--text-soft);
+          opacity: 1;
+        }
+
+        .login-page .navigation > a,
+        .login-page .brand span,
+        .login-page .animated-words span,
+        .login-page .hero-trust div {
+          color: var(--text-muted);
+          opacity: 1;
+        }
+
+        .login-page .feature-card,
+        .login-page .antimate-system-card,
+        .login-page .antimate-plan-card,
+        .login-page .antimate-about-mini,
+        .login-page .antimate-team-card,
+        .login-page .antimate-faq-item,
+        .login-page .antimate-contact-strip,
+        .login-page .animated-words span,
+        .login-page .antimate-company-badge {
+          border-color: var(--border);
+        }
+
+        .login-page.dark .nav-login {
+          color: #60a5fa;
+          border-color: rgba(96,165,250,.3);
+        }
+
+        .login-page.dark .secondary-button,
+        .login-page.dark .language-button,
+        .login-page.dark .theme-button,
+        .login-page.dark .mobile-menu-button {
+          color: #e2e8f0;
+        }
+
+        .login-page.light .nav-login {
+          color: #1d4ed8;
+        }
+
+        .login-page.light .section-heading h2,
+        .login-page.light .antimate-section-title,
+        .login-page.light .vision-content h2,
+        .login-page.light .join-content h2,
+        .login-page.light .feature-card h3,
+        .login-page.light .antimate-system-card h3,
+        .login-page.light .antimate-plan-card h3,
+        .login-page.light .antimate-team-card h3,
+        .login-page.light .antimate-faq-question {
+          color: #0f172a;
+        }
+
+        .login-page.dark .section-heading h2,
+        .login-page.dark .antimate-section-title,
+        .login-page.dark .vision-content h2,
+        .login-page.dark .join-content h2,
+        .login-page.dark .feature-card h3,
+        .login-page.dark .antimate-system-card h3,
+        .login-page.dark .antimate-plan-card h3,
+        .login-page.dark .antimate-team-card h3,
+        .login-page.dark .antimate-faq-question {
+          color: #f8fafc;
         }
 
         /* ======================================================
@@ -3311,23 +3178,6 @@ function Login() {
 
           .login-modal {
             padding: 28px 21px;
-          }
-
-          .system-selection {
-            padding: 25px 18px;
-            border-radius: 22px;
-          }
-
-          .system-selection-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .system-selection-card p {
-            min-height: auto;
-          }
-
-          .system-selection-header h2 {
-            font-size: 24px;
           }
 
           .login-footer {
@@ -4486,104 +4336,6 @@ function Login() {
           </div>
         )}
 
-        {/* ======================================================
-            SYSTEM SELECTION
-        ====================================================== */}
-
-        {showSystemSelection && (
-          <div className="system-selection-overlay">
-            <div className="system-selection">
-              <div className="system-selection-header">
-                <div className="system-selection-logo">
-                  <AntimateLogo size={42} />
-                </div>
-
-                <h2>
-                  {t.selectionTitle}
-                </h2>
-
-                <p>
-                  {t.selectionSubtitle}
-                </p>
-              </div>
-
-              <div className="system-selection-grid">
-                {/* EDGE */}
-
-                <button
-                  type="button"
-                  className="system-selection-card"
-                  onClick={goToEdge}
-                >
-                  <div className="system-selection-icon">
-                    <Cpu size={25} />
-                  </div>
-
-                  <h3>
-                    {t.edgeTitle}
-                  </h3>
-
-                  <p>
-                    {t.edgeDescription}
-                  </p>
-
-                  <div className="system-selection-action">
-                    <span>
-                      {t.edgeButton}
-                    </span>
-
-                    <ArrowRight size={17} />
-                  </div>
-                </button>
-
-                {/* LINK */}
-
-                <button
-                  type="button"
-                  className="system-selection-card link-card"
-                  onClick={goToLink}
-                >
-                  <div className="system-selection-icon">
-                    <Radio size={25} />
-                  </div>
-
-                  <h3>
-                    {t.linkTitle}
-                  </h3>
-
-                  <p>
-                    {t.linkDescription}
-                  </p>
-
-                  <div className="system-selection-action">
-                    <span>
-                      {t.linkButton}
-                    </span>
-
-                    <ArrowRight size={17} />
-                  </div>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                className="system-selection-cancel"
-                onClick={() =>
-                  setShowSystemSelection(false)
-                }
-              >
-                <X
-                  size={14}
-                  style={{
-                    marginRight: 5,
-                  }}
-                />
-
-                {t.cancel}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

@@ -3,14 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import {
   ArrowRight,
-  Brain,
   Eye,
   EyeOff,
-  Leaf,
   Menu,
   ShieldCheck,
   Sparkles,
-  Wifi,
   X,
   Sun,
   Moon,
@@ -33,12 +30,17 @@ import {
   Activity,
   BarChart3,
   Cpu,
-  Database,
+  Smartphone,
   Bot,
   ArrowUpRight,
   Layers,
-  Network,
-  Radio,
+  Thermometer,
+  Fan,
+  Bell,
+  History,
+  FileText,
+  Brain,
+  Wifi,
 } from "lucide-react";
 
 /* ============================================================
@@ -114,12 +116,11 @@ function Login() {
       navHome: "Ahabanza",
       navHow: "Uko ikora",
       navSystems: "Systems",
-      navPlans: "Pricing",
+      navPlans: "Plans",
       navAbout: "ANTIMATE",
       navSupport: "Support",
 
       knowledge: "ANTIMATE Knowledge",
-      trending: "NEW",
 
       login: "Injira",
       signup: "Tangira natwe",
@@ -130,80 +131,87 @@ function Login() {
       title2: "rihuza abantu, data n'ubwenge.",
 
       description:
-        "ANTIMATE ni ecosystem y'ikoranabuhanga ihuza devices, communication, cloud, data na Artificial Intelligence kugira ngo abantu n'ibikorwa babashe gukoresha amakuru neza, gukora automation no gufata ibyemezo bifite ishingiro.",
+        "ANTIMATE ni ecosystem y'ikoranabuhanga ihuza abantu, data, automation na Artificial Intelligence kugira ngo ibikorwa bikorwe neza kandi hafatwe ibyemezo bishingiye ku makuru.",
 
       start: "Tangira natwe",
       learn: "Menya ANTIMATE",
 
-      live: "Real-time data",
-      smart: "Intelligent technology",
+      live: "Real-time monitoring",
+      smart: "Intelligent assistance",
 
       featuresTitle:
         "Ikoranabuhanga ryubakiye ku buryo bwuzuye",
 
-      feature1Title: "Connect",
+      feature1Title: "Monitor",
       feature1Text:
-        "ANTIMATE ihuza devices, communication n'ibikorwa bitandukanye kugira ngo amakuru ashobore kugenda neza kandi mu buryo bwizewe.",
+        "BR System ikusanya amakuru y'ingenzi kandi igafasha gukurikirana imikorere y'ibikorwa byawe mu buryo bworoshye.",
 
       feature2Title: "Understand",
       feature2Text:
-        "Data ikusanywa kandi igatunganywa kugira ngo ibe amakuru ashobora gusobanuka no gukoreshwa mu gufata ibyemezo.",
+        "Data ikusanywa ihinduka amakuru afasha umukoresha kumenya uko system imeze no gufata ibyemezo bifite ishingiro.",
 
-      feature3Title: "Intelligence",
+      feature3Title: "Assist",
       feature3Text:
-        "Artificial Intelligence ifasha guhindura amakuru mo insights, guidance n'ubufasha bufatika.",
+        "ANTIMATE AI itanga recommendations, assistance n'ubufasha bushingiye ku makuru aboneka muri system.",
 
-      visionTitle:
-        "Kubaka ecosystem y'ikoranabuhanga ishobora gukorera ahantu hatandukanye",
-
-      visionText:
-        "ANTIMATE yubaka infrastructure ihuza devices, communication, cloud services, data na Artificial Intelligence. Intego ni ugukora technology ishobora gukoreshwa mu bworozi, agriculture, smart home, monitoring, automation n'izindi domains.",
-
-      systemsTitle: "ANTIMATE Systems",
+      systemsTitle: "BR Systems",
       systemsSubtitle:
-        "Systems zacu z'ingenzi zagenewe guhuza ubushobozi bwa system n'umubare w'ibikorwa bikenewe.",
+        "Hitamo system ijyanye n'ubushobozi bw'ibikorwa byawe.",
 
       system300: "BR System 300",
       system300Text:
-        "System yagenewe ibikorwa bito kandi biciriritse bigera kuri 300 chicks.",
+        "Yagenewe ibikorwa bito kandi icunga kugeza kuri 300 chicks.",
 
       system750: "BR System 750",
       system750Text:
-        "System yagenewe ibikorwa bigera kuri 750 chicks kandi ikenera ubushobozi bwagutse.",
+        "Yagenewe ibikorwa biciriritse kandi icunga kugeza kuri 750 chicks.",
 
       system1000: "BR System 1000",
       system1000Text:
-        "System yagenewe ibikorwa binini bigera kuri 1,000 chicks kandi ikora ku rwego rwagutse.",
+        "Yagenewe ibikorwa binini kandi icunga kugeza kuri 1,000 chicks.",
 
-      capacity: "Capacity",
-      chicks: "chicks",
+      capacity: "Ubushobozi",
 
-      plansTitle: "Pricing ijyanye na System yawe",
+      plansTitle: "Plans & Pricing",
       plansSubtitle:
-        "Hitamo BR System ijyanye n'ubushobozi bw'igikorwa cyawe. Installation na delivery ni ubuntu.",
+        "Buri BR System ifite Free, Basic, Pro na Premium. Installation na delivery ni ubuntu.",
 
+      free: "Free",
       basic: "Basic",
       pro: "Pro",
       premium: "Premium",
 
-      month: "/ ukwezi",
+      monthly: "/ ukwezi",
 
-      installation: "Installation & delivery",
-      freeInstallation: "Ubuntu",
+      freeDescription:
+        "Ku muntu ushaka gukoresha system mu buryo bwigenga.",
+
+      basicDescription:
+        "Ku muntu ushaka kongera monitoring n'amakuru aboneka kuri telefone.",
+
+      proDescription:
+        "Ku muntu ushaka monitoring yagutse, AI, SMS na reports.",
+
+      premiumDescription:
+        "Ku muntu ushaka full intelligence, history na reports zihariye.",
+
+      installation: "Installation",
+      delivery: "Delivery",
+      freeService: "Ubuntu",
 
       choosePlan: "Hitamo iyi plan",
 
       aboutTitle: "ANTIMATE ni iki?",
       aboutText:
-        "ANTIMATE ni Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem. Ni ecosystem ihuza hardware, networks, cloud, data na AI kugira ngo technology ibe yoroshye gukoresha kandi ibe useful mu bikorwa bitandukanye.",
+        "ANTIMATE ni Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem. Ni ecosystem yubaka technology ihuza devices, communication, data, automation na Artificial Intelligence kugira ngo ibikorwa bishobore gukoresha amakuru neza.",
 
       purposeTitle: "Intego yacu",
       purposeText:
-        "Kubaka technology yizewe, yoroshye kandi ishobora guhuza devices, data n'abantu.",
+        "Kubaka technology yizewe, yoroshye kandi ifasha abantu gukoresha data n'automation mu bikorwa byabo.",
 
       visionShortTitle: "Icyerekezo",
       visionShortText:
-        "Kuba ecosystem y'ikoranabuhanga ihuza communication, intelligence na automation mu buryo bushobora kwaguka.",
+        "Kubaka ecosystem y'ikoranabuhanga ishobora kwaguka mu nzego zitandukanye.",
 
       valuesTitle: "Ibyo twemera",
       value1: "Ubwizerwe",
@@ -217,7 +225,7 @@ function Login() {
 
       supportAI: "ANTIMATE AI",
       supportAIText:
-        "Baza AI ibibazo byawe kandi ubone ubufasha igihe cyose.",
+        "Baza AI ibibazo byawe kandi ubone assistance igihe cyose.",
 
       supportPhone: "Telefone",
       supportPhoneText:
@@ -225,7 +233,7 @@ function Login() {
 
       supportWhatsapp: "WhatsApp",
       supportWhatsappText:
-        "Twandikire kuri WhatsApp ubone ubufasha bworoshye.",
+        "Twandikire kuri WhatsApp ubone ubufasha.",
 
       supportEmail: "Email",
       supportEmailText:
@@ -261,35 +269,37 @@ function Login() {
       teamData: "DJUMA David",
       teamNetwork: "ANTIMATE Network & Communication",
       teamSystem: "MUGISHA Prince",
+      teamNoella: "NOELLA",
       teamMarketing: "KWIZERA J. Bosco",
       teamBusiness: "MUGISHA Steven",
-      teamNoella: "NOELLA",
+
+      marketingDepartment: "Marketing",
 
       faqTitle: "Ibibazo bikunze kubazwa",
 
       faq1Q: "ANTIMATE ikora iki?",
       faq1A:
-        "ANTIMATE ihuza devices, communication, cloud, data na AI kugira ngo ifashe abantu n'ibikorwa gukoresha technology neza.",
+        "ANTIMATE yubaka technology ihuza devices, data, automation na Artificial Intelligence kugira ngo ibikorwa bikoreshe amakuru neza.",
 
       faq2Q: "BR System ni iki?",
       faq2A:
-        "BR System ni systems za ANTIMATE zagenewe gukoresha technology mu micungire no gukurikirana ibikorwa by'ubworozi bw'inkoko, hakurikijwe ubushobozi bw'umubare w'inkoko.",
+        "BR System ni solution ya ANTIMATE yagenewe monitoring no gucunga ibikorwa by'ubworozi bw'inkoko, cyane cyane mu gukurikirana ibidukikije n'imikorere ya system.",
 
       faq3Q: "Ni izihe BR Systems zihari?",
       faq3A:
-        "Hari BR System 300, BR System 750 na BR System 1000.",
+        "Hari BR System 300, BR System 750 na BR System 1000, buri imwe ikagira Free, Basic, Pro na Premium.",
 
       faq4Q: "Installation na delivery birishyurwa?",
       faq4A:
-        "Oya. Installation na delivery ni ubuntu.",
+        "Oya. Installation na delivery bitangwa ku buntu.",
 
-      faq5Q: "Ni gute ninjiye muri ANTIMATE?",
+      faq5Q: "Nshobora gutangira ntaguze plan ihenze?",
       faq5A:
-        "Umaze gukora login, ANTIMATE izakubaza BR System ushaka gukoresha.",
+        "Yego. Free plan itanga full standalone system features hamwe na Phone App ifite local AI.",
 
       joinTitle: "Witeguye gutangira?",
       joinText:
-        "Injira muri ANTIMATE uhitemo BR System ijyanye n'ibyo ushaka gukora.",
+        "Hitamo BR System ijyanye n'ubushobozi bw'ibikorwa byawe hanyuma utangire gukoresha ANTIMATE.",
 
       loginTitle: "Murakaza neza",
       loginSubtitle:
@@ -311,11 +321,20 @@ function Login() {
 
       selectionTitle: "Hitamo BR System",
       selectionSubtitle:
-        "Ni iyihe system ushaka gukoresha nyuma yo kwinjira?",
+        "Ni iyihe BR System ushaka gukoresha?",
 
-      system300Button: "Jya kuri BR System 300",
-      system750Button: "Jya kuri BR System 750",
-      system1000Button: "Jya kuri BR System 1000",
+      system300Button: "BR System 300",
+      system750Button: "BR System 750",
+      system1000Button: "BR System 1000",
+
+      selection300:
+        "System yagenewe ibikorwa bigera kuri 300 chicks.",
+
+      selection750:
+        "System yagenewe ibikorwa bigera kuri 750 chicks.",
+
+      selection1000:
+        "System yagenewe ibikorwa bigera kuri 1,000 chicks.",
 
       cancel: "Subira",
 
@@ -327,12 +346,11 @@ function Login() {
       navHome: "Home",
       navHow: "How it works",
       navSystems: "Systems",
-      navPlans: "Pricing",
+      navPlans: "Plans",
       navAbout: "About",
       navSupport: "Support",
 
       knowledge: "ANTIMATE Knowledge",
-      trending: "NEW",
 
       login: "Login",
       signup: "Join us",
@@ -343,80 +361,87 @@ function Login() {
       title2: "that connects people, data and intelligence.",
 
       description:
-        "ANTIMATE is an intelligent technology ecosystem connecting devices, communication, cloud, data and Artificial Intelligence to help people and businesses use information, automation and intelligence more effectively.",
+        "ANTIMATE is an intelligent technology ecosystem connecting people, data, automation and Artificial Intelligence to help businesses operate efficiently and make informed decisions.",
 
       start: "Get started",
       learn: "Explore ANTIMATE",
 
-      live: "Real-time data",
-      smart: "Intelligent technology",
+      live: "Real-time monitoring",
+      smart: "Intelligent assistance",
 
       featuresTitle:
         "A complete technology ecosystem",
 
-      feature1Title: "Connect",
+      feature1Title: "Monitor",
       feature1Text:
-        "ANTIMATE connects devices, communication and different operations so information can move reliably.",
+        "BR System collects important information and helps users monitor their operations in a simple and reliable way.",
 
       feature2Title: "Understand",
       feature2Text:
-        "Data is collected and processed so it becomes useful information that can support better decisions.",
+        "Collected data becomes useful information that helps users understand system conditions and make informed decisions.",
 
-      feature3Title: "Intelligence",
+      feature3Title: "Assist",
       feature3Text:
-        "Artificial Intelligence turns information into insights, guidance and practical assistance.",
+        "ANTIMATE AI provides recommendations, assistance and guidance based on available system information.",
 
-      visionTitle:
-        "Building a technology ecosystem that can work across different environments",
-
-      visionText:
-        "ANTIMATE connects devices, communication, cloud services, data and Artificial Intelligence. The architecture is designed to expand across farming, agriculture, smart homes, monitoring, automation and other domains.",
-
-      systemsTitle: "ANTIMATE Systems",
+      systemsTitle: "BR Systems",
       systemsSubtitle:
-        "Our core systems are designed around the operational capacity required by each project.",
+        "Choose the system that matches the capacity of your operation.",
 
       system300: "BR System 300",
       system300Text:
-        "A system designed for small and medium operations of up to 300 chicks.",
+        "Designed for smaller operations and supports up to 300 chicks.",
 
       system750: "BR System 750",
       system750Text:
-        "A system designed for operations of up to 750 chicks with expanded capacity.",
+        "Designed for medium operations and supports up to 750 chicks.",
 
       system1000: "BR System 1000",
       system1000Text:
-        "A system designed for larger operations of up to 1,000 chicks.",
+        "Designed for larger operations and supports up to 1,000 chicks.",
 
       capacity: "Capacity",
-      chicks: "chicks",
 
-      plansTitle: "Pricing for your System",
+      plansTitle: "Plans & Pricing",
       plansSubtitle:
-        "Choose the BR System that matches your operation. Installation and delivery are free.",
+        "Every BR System has Free, Basic, Pro and Premium plans. Installation and delivery are free.",
 
+      free: "Free",
       basic: "Basic",
       pro: "Pro",
       premium: "Premium",
 
-      month: "/ month",
+      monthly: "/ month",
 
-      installation: "Installation & delivery",
-      freeInstallation: "Free",
+      freeDescription:
+        "For users who want a fully independent standalone system.",
+
+      basicDescription:
+        "For users who want additional monitoring and information through the phone app.",
+
+      proDescription:
+        "For users who need broader monitoring, AI, SMS and reports.",
+
+      premiumDescription:
+        "For users who need full intelligence, history and customized reports.",
+
+      installation: "Installation",
+      delivery: "Delivery",
+      freeService: "Free",
 
       choosePlan: "Choose this plan",
 
       aboutTitle: "What is ANTIMATE?",
       aboutText:
-        "ANTIMATE stands for Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem. It is an ecosystem connecting hardware, networks, cloud, data and AI to make technology easier to use across different environments.",
+        "ANTIMATE stands for Advanced Networked Technology With Intelligent Machines And Telemetry Ecosystem. It is an ecosystem that connects devices, communication, data, automation and Artificial Intelligence to make technology useful across different operations.",
 
       purposeTitle: "Our purpose",
       purposeText:
-        "To build reliable, simple and useful technology that connects devices, data and people.",
+        "To build reliable, simple and useful technology that helps people use data and automation in their operations.",
 
       visionShortTitle: "Our vision",
       visionShortText:
-        "To become an expandable technology ecosystem connecting communication, intelligence and automation.",
+        "To build an expandable technology ecosystem that can serve different domains.",
 
       valuesTitle: "What we value",
       value1: "Reliability",
@@ -430,7 +455,7 @@ function Login() {
 
       supportAI: "ANTIMATE AI",
       supportAIText:
-        "Ask AI questions and get assistance whenever you need it.",
+        "Ask AI questions and receive assistance whenever you need it.",
 
       supportPhone: "Phone",
       supportPhoneText:
@@ -474,35 +499,37 @@ function Login() {
       teamData: "DJUMA David",
       teamNetwork: "ANTIMATE Network & Communication",
       teamSystem: "MUGISHA Prince",
+      teamNoella: "NOELLA",
       teamMarketing: "KWIZERA J. Bosco",
       teamBusiness: "MUGISHA Steven",
-      teamNoella: "NOELLA",
+
+      marketingDepartment: "Marketing",
 
       faqTitle: "Frequently asked questions",
 
       faq1Q: "What does ANTIMATE do?",
       faq1A:
-        "ANTIMATE connects devices, communication, cloud, data and AI to help people and businesses use technology more effectively.",
+        "ANTIMATE builds technology connecting devices, data, automation and Artificial Intelligence to help operations use information more effectively.",
 
-      faq2Q: "What is a BR System?",
+      faq2Q: "What is BR System?",
       faq2A:
-        "A BR System is an ANTIMATE system designed for poultry operations according to the required flock capacity.",
+        "BR System is an ANTIMATE solution designed for poultry operations, especially for environmental monitoring and system management.",
 
       faq3Q: "Which BR Systems are available?",
       faq3A:
-        "The available systems are BR System 300, BR System 750 and BR System 1000.",
+        "ANTIMATE provides BR System 300, BR System 750 and BR System 1000, each with Free, Basic, Pro and Premium plans.",
 
-      faq4Q: "Is installation and delivery charged?",
+      faq4Q: "Are installation and delivery charged?",
       faq4A:
-        "No. Installation and delivery are free.",
+        "No. Installation and delivery are provided free of charge.",
 
-      faq5Q: "What happens after I log in?",
+      faq5Q: "Can I start without buying an expensive plan?",
       faq5A:
-        "After login, ANTIMATE asks you which BR System you want to use.",
+        "Yes. The Free plan provides full standalone system features together with a Phone App and local AI.",
 
       joinTitle: "Ready to get started?",
       joinText:
-        "Sign in to ANTIMATE and choose the BR System that matches your operation.",
+        "Choose the BR System that matches your operation and start using ANTIMATE.",
 
       loginTitle: "Welcome back",
       loginSubtitle:
@@ -524,11 +551,20 @@ function Login() {
 
       selectionTitle: "Choose a BR System",
       selectionSubtitle:
-        "Which system would you like to use after signing in?",
+        "Which BR System would you like to use?",
 
-      system300Button: "Go to BR System 300",
-      system750Button: "Go to BR System 750",
-      system1000Button: "Go to BR System 1000",
+      system300Button: "BR System 300",
+      system750Button: "BR System 750",
+      system1000Button: "BR System 1000",
+
+      selection300:
+        "Designed for operations supporting up to 300 chicks.",
+
+      selection750:
+        "Designed for operations supporting up to 750 chicks.",
+
+      selection1000:
+        "Designed for operations supporting up to 1,000 chicks.",
 
       cancel: "Back",
 
@@ -578,7 +614,7 @@ function Login() {
   }
 
   /* ==========================================================
-     SYSTEM SELECTION
+     BR SYSTEM SELECTION
   ========================================================== */
 
   const selectBRSystem = (system) => {
@@ -588,13 +624,6 @@ function Login() {
     );
 
     setShowSystemSelection(false);
-
-    /*
-     * Existing application route is preserved.
-     * The selected BR System is available through:
-     *
-     * localStorage.getItem("selectedBRSystem")
-     */
     navigate("/home");
   };
 
@@ -628,8 +657,7 @@ function Login() {
   };
 
   const openPhone = () => {
-    window.location.href =
-      "tel:+250798698431";
+    window.location.href = "tel:+250798698431";
   };
 
   const openEmail = () => {
@@ -638,124 +666,158 @@ function Login() {
   };
 
   /* ==========================================================
-     SYSTEMS
+     PLAN FEATURES
   ========================================================== */
+
+  const featureText = {
+    free:
+      language === "rw"
+        ? [
+            "Full system standalone features",
+            "Phone App",
+            "Local AI",
+          ]
+        : [
+            "Full system standalone features",
+            "Phone App",
+            "Local AI",
+          ],
+
+    basic:
+      language === "rw"
+        ? [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "Weekly analysis",
+            "Weekly history",
+          ]
+        : [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "Weekly analysis",
+            "Weekly history",
+          ],
+
+    pro:
+      language === "rw"
+        ? [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "2 monthly analyses",
+            "Monthly history",
+            "Phone SMS notifications",
+            "Full modular AI features",
+            "AI recommendations",
+            "AI assistance",
+            "Monthly report",
+          ]
+        : [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "2 monthly analyses",
+            "Monthly history",
+            "Phone SMS notifications",
+            "Full modular AI features",
+            "AI recommendations",
+            "AI assistance",
+            "Monthly report",
+          ],
+
+    premium:
+      language === "rw"
+        ? [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "Full analysis",
+            "Full history",
+            "Phone SMS notifications",
+            "Customized reports",
+            "Full AI features",
+            "AI recommendations",
+            "AI assistance",
+          ]
+        : [
+            "All Free features",
+            "App notifications",
+            "Dashboard",
+            "Full analysis",
+            "Full history",
+            "Phone SMS notifications",
+            "Customized reports",
+            "Full AI features",
+            "AI recommendations",
+            "AI assistance",
+          ],
+  };
 
   const systems = [
     {
-      icon: Cpu,
       name: t.system300,
       text: t.system300Text,
-      capacity: "300",
+      capacity: "Up to 300 chicks",
+      icon: Cpu,
+      prices: {
+        Free: "0 FRW",
+        Basic: "3,000 FRW",
+        Pro: "5,000 FRW",
+        Premium: "7,000 FRW",
+      },
     },
     {
-      icon: Activity,
       name: t.system750,
       text: t.system750Text,
-      capacity: "750",
+      capacity: "Up to 750 chicks",
+      icon: Activity,
+      prices: {
+        Free: "0 FRW",
+        Basic: "5,000 FRW",
+        Pro: "8,000 FRW",
+        Premium: "11,000 FRW",
+      },
     },
     {
-      icon: BarChart3,
       name: t.system1000,
       text: t.system1000Text,
-      capacity: "1,000",
+      capacity: "Up to 1,000 chicks",
+      icon: Layers,
+      prices: {
+        Free: "0 FRW",
+        Basic: "8,000 FRW",
+        Pro: "12,000 FRW",
+        Premium: "15,000 FRW",
+      },
     },
   ];
 
-  /* ==========================================================
-     PRICING
-  ========================================================== */
-
-  const pricingSystems = [
+  const plans = [
     {
-      name: t.system300,
-      capacity: "300",
-      plans: [
-        {
-          name: t.basic,
-          price: "3,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan y'ibanze ya BR System 300."
-              : "Entry plan for BR System 300.",
-        },
-        {
-          name: t.pro,
-          price: "5,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan yagenewe gukoresha ubushobozi bwagutse."
-              : "Plan for expanded system usage.",
-        },
-        {
-          name: t.premium,
-          price: "7,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan ifite services n'ubufasha bwagutse."
-              : "Plan with expanded services and support.",
-        },
-      ],
+      key: "free",
+      name: t.free,
+      description: t.freeDescription,
+      icon: Smartphone,
     },
     {
-      name: t.system750,
-      capacity: "750",
-      plans: [
-        {
-          name: t.basic,
-          price: "5,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan y'ibanze ya BR System 750."
-              : "Entry plan for BR System 750.",
-        },
-        {
-          name: t.pro,
-          price: "8,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan yagenewe ibikorwa bikenera ubushobozi bwagutse."
-              : "Plan for operations needing expanded capacity.",
-        },
-        {
-          name: t.premium,
-          price: "11,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan ifite services n'ubufasha bwagutse."
-              : "Plan with expanded services and support.",
-        },
-      ],
+      key: "basic",
+      name: t.basic,
+      description: t.basicDescription,
+      icon: Bell,
     },
     {
-      name: t.system1000,
-      capacity: "1,000",
-      plans: [
-        {
-          name: t.basic,
-          price: "8,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan y'ibanze ya BR System 1000."
-              : "Entry plan for BR System 1000.",
-        },
-        {
-          name: t.pro,
-          price: "12,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan yagenewe ibikorwa binini."
-              : "Plan for larger operations.",
-        },
-        {
-          name: t.premium,
-          price: "15,000 FRW",
-          description:
-            language === "rw"
-              ? "Plan yuzuye ifite services n'ubufasha bwagutse."
-              : "Full plan with expanded services and support.",
-        },
-      ],
+      key: "pro",
+      name: t.pro,
+      description: t.proDescription,
+      icon: Brain,
+    },
+    {
+      key: "premium",
+      name: t.premium,
+      description: t.premiumDescription,
+      icon: Sparkles,
     },
   ];
 
@@ -841,7 +903,7 @@ function Login() {
       department: "AI Division",
     },
     {
-      icon: Database,
+      icon: DatabaseIcon,
       name: t.teamData,
       role: t.dataOfficer,
       department: "Data & Cloud",
@@ -859,28 +921,24 @@ function Login() {
       department: "System Development",
     },
     {
+      icon: Users,
+      name: t.teamNoella,
+      role: t.cmo,
+      department: t.marketingDepartment,
+      marketing: true,
+    },
+    {
       icon: TrendingUp,
       name: t.teamMarketing,
       role: t.cmo,
-      department: "Marketing & Brand",
+      department: t.marketingDepartment,
+      marketing: true,
     },
     {
       icon: Target,
       name: t.teamBusiness,
       role: t.cbo,
       department: "Business Development",
-    },
-    {
-      icon: Users,
-      name: t.teamNoella,
-      role:
-        language === "rw"
-          ? "ANTIMATE Team"
-          : "ANTIMATE Team",
-      department:
-        language === "rw"
-          ? "ANTIMATE Team"
-          : "ANTIMATE Team",
     },
   ];
 
@@ -939,35 +997,16 @@ function Login() {
         }
 
         .login-page {
-          --text: #111827;
-          --muted: #64748b;
-          --soft-text: #475569;
-          --border: #e2e8f0;
-          --surface: #f8fafc;
-          --surface-strong: #ffffff;
-          --accent: #2563eb;
-          --accent-light: #00a8d6;
-
           min-height: 100vh;
           position: relative;
           overflow-x: hidden;
-
-          color: var(--text);
+          color: #172033;
           background: #ffffff;
         }
 
         .login-page.dark {
-          --text: #f8fafc;
-          --muted: #94a3b8;
-          --soft-text: #cbd5e1;
-          --border: #263449;
-          --surface: #101b2d;
-          --surface-strong: #0b1424;
-          --accent: #60a5fa;
-          --accent-light: #22d3ee;
-
-          color: var(--text);
-          background: #07111f;
+          color: #edf2f7;
+          background: #08111d;
         }
 
         /* ======================================================
@@ -981,7 +1020,7 @@ function Login() {
           right: 0;
           z-index: 99990;
 
-          height: 76px;
+          height: 74px;
 
           display: flex;
           align-items: center;
@@ -990,18 +1029,15 @@ function Login() {
           padding: 0 5.5%;
 
           border-bottom:
-            1px solid var(--border);
+            1px solid
+            #e6e9ee;
 
-          background:
-            rgba(255,255,255,.96);
-
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: #ffffff;
         }
 
         .dark .login-navbar {
-          background:
-            rgba(7,17,31,.96);
+          background: #08111d;
+          border-bottom-color: #1d2938;
         }
 
         .brand {
@@ -1038,7 +1074,7 @@ function Login() {
         .navigation {
           display: flex;
           align-items: center;
-          gap: 17px;
+          gap: 18px;
         }
 
         .navigation > a {
@@ -1046,7 +1082,7 @@ function Login() {
           text-decoration: none;
           font-size: 12px;
           font-weight: 700;
-          opacity: .75;
+          opacity: .72;
           transition: opacity .2s ease;
         }
 
@@ -1072,15 +1108,21 @@ function Login() {
           justify-content: center;
 
           border:
-            1px solid var(--border);
+            1px solid
+            #dfe4ea;
 
           border-radius: 10px;
 
-          background:
-            var(--surface);
-
+          background: #f7f8fa;
           color: inherit;
           cursor: pointer;
+        }
+
+        .dark .language-button,
+        .dark .theme-button,
+        .dark .mobile-menu-button {
+          border-color: #273547;
+          background: #101b2a;
         }
 
         .language-button {
@@ -1106,46 +1148,46 @@ function Login() {
           border-radius: 10px;
 
           cursor: pointer;
-
           font-size: 12px;
           font-weight: 800;
           text-decoration: none;
         }
 
         .nav-login {
-          color: var(--accent);
+          color: #2563eb;
           background: transparent;
-          border:
-            1px solid
-            rgba(37,99,235,.28);
+          border: 1px solid #cbd8ec;
         }
 
         .nav-signup {
-          color: #fff;
+          color: #ffffff;
           background: #2563eb;
-          border: 0;
+          border: 1px solid #2563eb;
         }
 
-        /* ======================================================
-           MAIN
-        ====================================================== */
-
-        main {
-          position: relative;
-          z-index: 1;
-          padding-top: 76px;
+        .nav-signup:hover,
+        .primary-button:hover,
+        .antimate-plan-button:hover,
+        .modal-login-button:hover {
+          background: #1d4ed8;
         }
 
         /* ======================================================
            HERO
         ====================================================== */
 
+        main {
+          position: relative;
+          z-index: 1;
+          padding-top: 74px;
+        }
+
         .hero-section {
-          min-height: 720px;
+          min-height: 700px;
           max-width: 1400px;
           margin: 0 auto;
 
-          padding: 100px 7% 90px;
+          padding: 95px 7% 85px;
 
           display: grid;
           grid-template-columns: 1.05fr .95fr;
@@ -1166,18 +1208,21 @@ function Login() {
           margin-bottom: 15px;
           padding: 7px 11px;
 
-          color: var(--accent-light);
-
-          background: var(--surface);
-
-          border:
-            1px solid var(--border);
-
           border-radius: 8px;
+
+          color: #007fa8;
+          background: #f0fbfe;
+          border: 1px solid #c9edf5;
 
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 1.2px;
+        }
+
+        .dark .hero-badge {
+          color: #63d8f5;
+          background: #0d2530;
+          border-color: #1d4655;
         }
 
         .antimate-company-badge {
@@ -1186,22 +1231,25 @@ function Login() {
           gap: 7px;
 
           margin-bottom: 25px;
-          padding: 6px 10px;
-
-          background: transparent;
-
-          border:
-            1px solid var(--border);
+          padding: 7px 11px;
 
           border-radius: 8px;
+
+          background: #f7f8fa;
+          border: 1px solid #e5e8ed;
 
           font-size: 10px;
           font-weight: 800;
           opacity: .75;
         }
 
+        .dark .antimate-company-badge {
+          background: #101a28;
+          border-color: #253346;
+        }
+
         .antimate-company-badge svg {
-          color: var(--accent-light);
+          color: #00a8d6;
         }
 
         .hero-content h1 {
@@ -1210,13 +1258,17 @@ function Login() {
           font-size:
             clamp(42px, 6vw, 76px);
 
-          line-height: 1.03;
+          line-height: 1.02;
           letter-spacing: -4px;
-          color: var(--text);
+          color: inherit;
         }
 
         .hero-content h1 span {
-          color: var(--accent);
+          color: #2563eb;
+        }
+
+        .dark .hero-content h1 span {
+          color: #60a5fa;
         }
 
         .animated-words {
@@ -1229,27 +1281,28 @@ function Login() {
         .animated-words span {
           padding: 7px 10px;
 
-          border:
-            1px solid var(--border);
-
           border-radius: 8px;
 
-          background: var(--surface);
-
-          color: var(--soft-text);
+          background: #f7f8fa;
+          border: 1px solid #e5e8ed;
 
           font-size: 10px;
           font-weight: 750;
+          opacity: .72;
+        }
+
+        .dark .animated-words span {
+          background: #101a28;
+          border-color: #253346;
         }
 
         .hero-description {
           max-width: 650px;
           margin: 24px 0 0;
 
-          color: var(--soft-text);
-
           font-size: 17px;
           line-height: 1.8;
+          opacity: .68;
         }
 
         .hero-buttons {
@@ -1279,18 +1332,19 @@ function Login() {
         }
 
         .primary-button {
-          border: 0;
-          color: #fff;
+          border: 1px solid #2563eb;
+          color: #ffffff;
           background: #2563eb;
         }
 
         .secondary-button {
-          color: var(--text);
+          color: inherit;
+          border: 1px solid #d7dce3;
+          background: transparent;
+        }
 
-          border:
-            1px solid var(--border);
-
-          background: var(--surface);
+        .dark .secondary-button {
+          border-color: #334155;
         }
 
         .hero-trust {
@@ -1305,14 +1359,13 @@ function Login() {
           align-items: center;
           gap: 7px;
 
-          color: var(--soft-text);
-
           font-size: 11px;
           font-weight: 700;
+          opacity: .62;
         }
 
         .hero-trust svg {
-          color: var(--accent-light);
+          color: #00a8d6;
         }
 
         .hero-visual {
@@ -1332,16 +1385,19 @@ function Login() {
 
           overflow: hidden;
 
-          border-radius: 18px;
+          border-radius: 22px;
 
           border:
-            1px solid var(--border);
+            1px solid
+            #dce2e8;
 
           box-shadow:
-            0 24px 55px
+            0 25px 55px
             rgba(0,0,0,.12);
+        }
 
-          transform: rotate(1deg);
+        .dark .farm-image {
+          border-color: #263648;
         }
 
         .farm-image img {
@@ -1358,19 +1414,24 @@ function Login() {
           align-items: center;
           gap: 10px;
 
-          padding: 12px 14px;
+          padding: 13px 15px;
+
+          border-radius: 12px;
+
+          background: #ffffff;
 
           border:
-            1px solid var(--border);
-
-          border-radius: 11px;
-
-          background:
-            var(--surface-strong);
+            1px solid
+            #dfe4ea;
 
           box-shadow:
-            0 14px 32px
-            rgba(0,0,0,.13);
+            0 12px 30px
+            rgba(0,0,0,.12);
+        }
+
+        .dark .floating-card {
+          background: #101b2a;
+          border-color: #29394b;
         }
 
         .card-temperature {
@@ -1385,24 +1446,29 @@ function Login() {
 
         .floating-icon,
         .ai-icon {
-          width: 36px;
-          height: 36px;
+          width: 38px;
+          height: 38px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          border-radius: 9px;
+          border-radius: 10px;
 
-          color: var(--accent-light);
+          color: #008fb7;
+          background: #eefafd;
+        }
 
-          background: var(--surface);
+        .dark .floating-icon,
+        .dark .ai-icon {
+          color: #5dd8f5;
+          background: #0c2934;
         }
 
         .floating-card span {
           display: block;
           font-size: 9px;
-          color: var(--muted);
+          opacity: .55;
         }
 
         .floating-card strong {
@@ -1412,43 +1478,35 @@ function Login() {
         }
 
         /* ======================================================
-           SHARED SECTIONS
+           FEATURES
         ====================================================== */
 
-        .features-section,
-        .antimate-public-section,
-        .vision-section {
+        .features-section {
           max-width: 1250px;
           margin: 0 auto;
-          padding: 100px 7%;
+          padding: 90px 7%;
         }
 
         .section-heading {
           max-width: 700px;
-          margin-bottom: 42px;
+          margin-bottom: 40px;
         }
 
-        .section-heading span,
-        .antimate-section-label,
-        .small-heading {
-          color: var(--accent-light);
+        .section-heading span {
+          color: #008fb7;
           font-size: 11px;
           font-weight: 900;
           letter-spacing: 1.7px;
         }
 
-        .section-heading h2,
-        .antimate-section-title,
-        .vision-content h2 {
-          color: var(--text);
+        .dark .section-heading span {
+          color: #5dd8f5;
         }
 
         .section-heading h2 {
           margin: 10px 0 0;
 
-          font-size:
-            clamp(30px, 4vw, 48px);
-
+          font-size: clamp(30px, 4vw, 48px);
           line-height: 1.1;
           letter-spacing: -1.8px;
         }
@@ -1456,30 +1514,43 @@ function Login() {
         .feature-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 28px;
+          gap: 18px;
         }
 
         .feature-card {
-          padding: 12px 8px 25px;
+          padding: 28px;
 
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
+
+          background: #fafbfc;
+        }
+
+        .dark .feature-card {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .feature-icon {
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          margin-bottom: 18px;
+          margin-bottom: 20px;
 
-          border-radius: 10px;
+          border-radius: 12px;
 
-          color: var(--accent-light);
-          background: var(--surface);
+          color: #008fb7;
+          background: #edfafd;
+        }
+
+        .dark .feature-icon {
+          color: #5dd8f5;
+          background: #0d2a35;
         }
 
         .feature-card h3 {
@@ -1489,46 +1560,76 @@ function Login() {
 
         .feature-card p {
           margin: 0;
-
-          color: var(--soft-text);
-
           font-size: 14px;
           line-height: 1.7;
+          opacity: .65;
         }
 
         .feature-line {
-          width: 35px;
+          width: 36px;
           height: 2px;
-          margin-top: 20px;
-          background: var(--accent);
+
+          margin-top: 22px;
+
+          background: #2563eb;
+        }
+
+        /* ======================================================
+           GENERAL SECTIONS
+        ====================================================== */
+
+        .antimate-public-section {
+          position: relative;
+          padding: 100px 7%;
+        }
+
+        .antimate-public-container {
+          position: relative;
+          max-width: 1250px;
+          margin: 0 auto;
         }
 
         .antimate-section-label {
           display: inline-flex;
           align-items: center;
           gap: 8px;
+
           margin-bottom: 13px;
+
+          color: #008fb7;
+
+          font-size: 12px;
+          font-weight: 900;
+          letter-spacing: 1.8px;
+        }
+
+        .dark .antimate-section-label {
+          color: #5dd8f5;
+        }
+
+        .antimate-section-label svg {
+          width: 16px;
+          height: 16px;
         }
 
         .antimate-section-title {
           max-width: 760px;
+
           margin: 0;
 
-          font-size:
-            clamp(30px, 4vw, 52px);
-
+          font-size: clamp(30px, 4vw, 52px);
           line-height: 1.08;
           letter-spacing: -1.8px;
         }
 
         .antimate-section-subtitle {
           max-width: 720px;
-          margin: 18px 0 0;
 
-          color: var(--soft-text);
+          margin: 18px 0 0;
 
           font-size: 16px;
           line-height: 1.75;
+          opacity: .72;
         }
 
         /* ======================================================
@@ -1537,51 +1638,45 @@ function Login() {
 
         .antimate-system-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
 
-          margin-top: 48px;
-
-          border-top:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          gap: 18px;
+          margin-top: 45px;
         }
 
         .antimate-system-card {
-          padding: 30px 28px;
+          padding: 27px;
 
-          border-right:
-            1px solid var(--border);
+          border:
+            1px solid
+            #dfe4ea;
 
-          background: transparent;
-
-          transition:
-            background .2s ease;
+          background: #ffffff;
         }
 
-        .antimate-system-card:last-child {
-          border-right: 0;
-        }
-
-        .antimate-system-card:hover {
-          background: var(--surface);
+        .dark .antimate-system-card {
+          background: #0d1724;
+          border-color: #2a3a4d;
         }
 
         .antimate-system-icon {
-          width: 46px;
-          height: 46px;
+          width: 48px;
+          height: 48px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
+          border-radius: 11px;
           margin-bottom: 20px;
 
-          border-radius: 9px;
+          color: #2563eb;
+          background: #eff4ff;
+        }
 
-          color: var(--accent-light);
-          background: var(--surface);
+        .dark .antimate-system-icon {
+          color: #72a4ff;
+          background: #13243c;
         }
 
         .antimate-system-card h3 {
@@ -1592,31 +1687,32 @@ function Login() {
         .antimate-system-card p {
           margin: 0;
 
-          color: var(--soft-text);
-
-          font-size: 14px;
           line-height: 1.7;
+          opacity: .68;
+          font-size: 14px;
         }
 
         .system-capacity {
           display: flex;
-          align-items: baseline;
-          gap: 6px;
+          align-items: center;
+          gap: 7px;
 
           margin-top: 20px;
+          padding-top: 16px;
 
-          color: var(--accent);
-          font-weight: 900;
-        }
+          border-top:
+            1px solid
+            #e7eaee;
 
-        .system-capacity strong {
-          font-size: 24px;
-        }
+          color: #008fb7;
 
-        .system-capacity span {
-          color: var(--muted);
           font-size: 11px;
-          font-weight: 700;
+          font-weight: 800;
+        }
+
+        .dark .system-capacity {
+          border-top-color: #263548;
+          color: #5dd8f5;
         }
 
         /* ======================================================
@@ -1625,28 +1721,34 @@ function Login() {
 
         .antimate-about-layout {
           display: grid;
+
           grid-template-columns: 1.1fr .9fr;
+
           gap: 65px;
           align-items: center;
         }
 
         .antimate-about-description {
-          color: var(--soft-text);
-
           font-size: 18px;
           line-height: 1.85;
-
+          opacity: .76;
           margin-top: 25px;
         }
 
         .antimate-definition {
           margin-top: 27px;
-          padding: 20px 0 20px 20px;
+          padding: 24px;
 
           border-left:
-            3px solid var(--accent);
+            3px solid
+            #2563eb;
 
-          background: var(--surface);
+          background:
+            #f6f8fb;
+        }
+
+        .dark .antimate-definition {
+          background: #0d1724;
         }
 
         .antimate-definition strong {
@@ -1654,42 +1756,50 @@ function Login() {
           margin-bottom: 8px;
 
           font-size: 14px;
-          color: var(--accent-light);
+          color: #2563eb;
+        }
+
+        .dark .antimate-definition strong {
+          color: #72a4ff;
         }
 
         .antimate-definition span {
-          color: var(--soft-text);
-
           font-size: 16px;
           line-height: 1.7;
         }
 
         .antimate-about-panel {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 0;
 
-          border-top:
-            1px solid var(--border);
-          border-left:
-            1px solid var(--border);
+          grid-template-columns: repeat(2, 1fr);
+
+          gap: 14px;
         }
 
         .antimate-about-mini {
           min-height: 150px;
+
           padding: 23px;
 
-          border-right:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
 
-          background: transparent;
+          background: #fafbfc;
+        }
+
+        .dark .antimate-about-mini {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .antimate-about-mini svg {
-          color: var(--accent-light);
+          color: #008fb7;
           margin-bottom: 15px;
+        }
+
+        .dark .antimate-about-mini svg {
+          color: #5dd8f5;
         }
 
         .antimate-about-mini h4 {
@@ -1700,10 +1810,9 @@ function Login() {
         .antimate-about-mini p {
           margin: 0;
 
-          color: var(--soft-text);
-
           font-size: 13px;
           line-height: 1.6;
+          opacity: .66;
         }
 
         /* ======================================================
@@ -1711,23 +1820,27 @@ function Login() {
         ====================================================== */
 
         .vision-section {
+          max-width: 1250px;
+          margin: 0 auto;
+
+          padding: 80px 7%;
+
           display: grid;
           grid-template-columns: .9fr 1.1fr;
+
           gap: 65px;
           align-items: center;
         }
 
         .vision-image {
           height: 390px;
+
           overflow: hidden;
 
-          border-radius: 18px;
-
-          border:
-            1px solid var(--border);
+          border-radius: 20px;
 
           box-shadow:
-            0 22px 50px
+            0 20px 55px
             rgba(0,0,0,.12);
         }
 
@@ -1741,13 +1854,22 @@ function Login() {
           display: flex;
           align-items: center;
           gap: 8px;
+
+          color: #008fb7;
+
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 1.5px;
+        }
+
+        .dark .small-heading {
+          color: #5dd8f5;
         }
 
         .vision-content h2 {
           margin: 14px 0 18px;
 
-          font-size:
-            clamp(30px, 4vw, 48px);
+          font-size: clamp(30px, 4vw, 48px);
 
           line-height: 1.08;
           letter-spacing: -1.7px;
@@ -1756,15 +1878,14 @@ function Login() {
         .vision-content > p {
           margin: 0;
 
-          color: var(--soft-text);
-
           font-size: 16px;
           line-height: 1.8;
+          opacity: .68;
         }
 
         .vision-points {
           display: grid;
-          gap: 13px;
+          gap: 11px;
           margin-top: 25px;
         }
 
@@ -1773,187 +1894,300 @@ function Login() {
           align-items: center;
           gap: 9px;
 
-          color: var(--soft-text);
-
           font-size: 13px;
           font-weight: 750;
         }
 
         .vision-points svg {
-          color: var(--accent-light);
+          color: #008fb7;
+        }
+
+        .dark .vision-points svg {
+          color: #5dd8f5;
         }
 
         /* ======================================================
-           PRICING
+           PLANS
         ====================================================== */
 
-        .pricing-block {
-          margin-top: 48px;
+        .plans-intro {
+          margin-top: 40px;
 
-          border-top:
-            1px solid var(--border);
+          padding: 17px 20px;
+
+          border:
+            1px solid
+            #dce3eb;
+
+          background: #f7f9fb;
+
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          font-size: 12px;
+          font-weight: 750;
         }
 
-        .pricing-system {
-          padding: 34px 0;
+        .dark .plans-intro {
+          background: #0d1724;
+          border-color: #2a3a4d;
+        }
+
+        .plans-intro svg {
+          color: #16a34a;
+          flex-shrink: 0;
+        }
+
+        .plan-overview {
+          margin-top: 28px;
+
+          overflow-x: auto;
+
+          border:
+            1px solid
+            #dfe4ea;
+
+          background: #ffffff;
+        }
+
+        .dark .plan-overview {
+          background: #0d1724;
+          border-color: #293a4d;
+        }
+
+        .plan-table {
+          width: 100%;
+          min-width: 900px;
+          border-collapse: collapse;
+        }
+
+        .plan-table th,
+        .plan-table td {
+          padding: 17px 16px;
 
           border-bottom:
-            1px solid var(--border);
+            1px solid
+            #e8ebef;
+
+          text-align: left;
+          vertical-align: top;
         }
 
-        .pricing-system-header {
+        .dark .plan-table th,
+        .dark .plan-table td {
+          border-bottom-color: #263548;
+        }
+
+        .plan-table th {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: .8px;
+          color: #64748b;
+          background: #f8fafc;
+        }
+
+        .dark .plan-table th {
+          background: #101c2b;
+          color: #94a3b8;
+        }
+
+        .plan-table th:first-child {
+          width: 27%;
+        }
+
+        .plan-table td {
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .plan-name {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+
+          font-weight: 850;
+          color: #172033;
+        }
+
+        .dark .plan-name {
+          color: #f1f5f9;
+        }
+
+        .plan-name svg {
+          color: #2563eb;
+        }
+
+        .dark .plan-name svg {
+          color: #72a4ff;
+        }
+
+        .plan-price {
+          margin-top: 5px;
+
+          font-size: 19px;
+          font-weight: 900;
+
+          color: #2563eb;
+        }
+
+        .dark .plan-price {
+          color: #72a4ff;
+        }
+
+        .plan-month {
+          display: block;
+
+          margin-top: 2px;
+
+          font-size: 9px;
+          opacity: .55;
+        }
+
+        .plan-description {
+          max-width: 230px;
+          opacity: .63;
+        }
+
+        .plan-feature-list {
+          list-style: none;
+
+          padding: 0;
+          margin: 0;
+
+          display: grid;
+          gap: 7px;
+        }
+
+        .plan-feature-list li {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+        }
+
+        .plan-feature-list svg {
+          flex-shrink: 0;
+          margin-top: 2px;
+          color: #16a34a;
+        }
+
+        .plan-action {
+          width: 100%;
+
+          min-height: 38px;
+
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+
+          border:
+            1px solid
+            #2563eb;
+
+          background: #2563eb;
+          color: #ffffff;
+
+          border-radius: 9px;
+
+          cursor: pointer;
+
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .plan-action:hover {
+          background: #1d4ed8;
+        }
+
+        .system-pricing {
+          margin-top: 38px;
+        }
+
+        .system-pricing-header {
           display: flex;
           align-items: flex-end;
           justify-content: space-between;
           gap: 20px;
 
-          margin-bottom: 25px;
+          margin-bottom: 12px;
         }
 
-        .pricing-system-header h3 {
-          margin: 0;
-          font-size: 23px;
-        }
-
-        .pricing-capacity {
-          color: var(--muted);
-          font-size: 12px;
-          font-weight: 700;
-        }
-
-        .pricing-options {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
-
-          border:
-            1px solid var(--border);
-        }
-
-        .pricing-option {
-          min-height: 225px;
-          padding: 25px;
-
-          border-right:
-            1px solid var(--border);
-        }
-
-        .pricing-option:last-child {
-          border-right: 0;
-        }
-
-        .pricing-option.featured {
-          background: var(--surface);
-        }
-
-        .pricing-option h4 {
+        .system-pricing-title {
           margin: 0;
 
-          color: var(--text);
-
-          font-size: 15px;
+          font-size: 21px;
+          letter-spacing: -.5px;
         }
 
-        .pricing-price {
-          margin-top: 13px;
-
-          color: var(--text);
-
-          font-size: 27px;
-          font-weight: 900;
-          letter-spacing: -1px;
-        }
-
-        .pricing-month {
-          display: block;
-          margin-top: 2px;
-
-          color: var(--muted);
-
+        .system-pricing-capacity {
           font-size: 11px;
+          color: #64748b;
         }
 
-        .pricing-description {
-          min-height: 48px;
-          margin: 16px 0;
-
-          color: var(--soft-text);
-
-          font-size: 12px;
-          line-height: 1.6;
+        .dark .system-pricing-capacity {
+          color: #94a3b8;
         }
 
-        .pricing-features {
-          display: grid;
-          gap: 8px;
-
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .pricing-features li {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-
-          color: var(--soft-text);
-
-          font-size: 11px;
-        }
-
-        .pricing-features svg {
-          color: var(--accent-light);
-          flex-shrink: 0;
-        }
-
-        .pricing-button {
+        .system-pricing-table {
           width: 100%;
-          min-height: 40px;
 
-          margin-top: 17px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 7px;
-
-          border: 0;
-          border-radius: 8px;
-
-          color: #fff;
-          background: #2563eb;
-
-          cursor: pointer;
-
-          font-size: 11px;
-          font-weight: 850;
-        }
-
-        .installation-banner {
-          margin-top: 18px;
-          padding: 15px 17px;
-
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 15px;
+          border-collapse: collapse;
 
           border:
-            1px solid var(--border);
+            1px solid
+            #dfe4ea;
 
-          background: var(--surface);
+          background: #ffffff;
         }
 
-        .installation-banner span {
-          color: var(--soft-text);
-          font-size: 12px;
-          font-weight: 700;
+        .dark .system-pricing-table {
+          background: #0d1724;
+          border-color: #293a4d;
         }
 
-        .installation-banner strong {
-          color: #16a34a;
-          font-size: 12px;
+        .system-pricing-table th,
+        .system-pricing-table td {
+          padding: 15px;
+
+          border-bottom:
+            1px solid
+            #e8ebef;
+
+          text-align: left;
+        }
+
+        .dark .system-pricing-table th,
+        .dark .system-pricing-table td {
+          border-bottom-color: #263548;
+        }
+
+        .system-pricing-table th {
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: .7px;
+
+          color: #64748b;
+
+          background: #f8fafc;
+        }
+
+        .dark .system-pricing-table th {
+          color: #94a3b8;
+          background: #101c2b;
+        }
+
+        .system-pricing-table td {
+          font-size: 13px;
+        }
+
+        .system-pricing-table td:not(:first-child) {
+          font-weight: 850;
+          color: #2563eb;
+        }
+
+        .dark .system-pricing-table td:not(:first-child) {
+          color: #72a4ff;
         }
 
         /* ======================================================
@@ -1962,40 +2196,49 @@ function Login() {
 
         .antimate-support-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
+
+          grid-template-columns:
+            repeat(3, minmax(0, 1fr));
+
+          gap: 17px;
 
           margin-top: 42px;
-
-          border-top:
-            1px solid var(--border);
-          border-left:
-            1px solid var(--border);
         }
 
         .antimate-support-card {
           padding: 25px;
 
-          border-right:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
+
+          background: #fafbfc;
+        }
+
+        .dark .antimate-support-card {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .antimate-support-icon {
-          width: 43px;
-          height: 43px;
+          width: 46px;
+          height: 46px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          border-radius: 9px;
+          border-radius: 11px;
 
-          color: var(--accent-light);
-          background: var(--surface);
+          color: #008fb7;
+          background: #edfafd;
 
           margin-bottom: 17px;
+        }
+
+        .dark .antimate-support-icon {
+          color: #5dd8f5;
+          background: #0d2a35;
         }
 
         .antimate-support-card h3 {
@@ -2005,12 +2248,12 @@ function Login() {
 
         .antimate-support-card p {
           min-height: 55px;
-          margin: 0 0 17px;
 
-          color: var(--soft-text);
+          margin: 0 0 17px;
 
           font-size: 13px;
           line-height: 1.65;
+          opacity: .65;
         }
 
         .antimate-support-button {
@@ -2021,7 +2264,7 @@ function Login() {
           border: 0;
           background: transparent;
 
-          color: var(--accent);
+          color: #2563eb;
 
           font-size: 12px;
           font-weight: 850;
@@ -2030,21 +2273,23 @@ function Login() {
           padding: 0;
         }
 
+        .dark .antimate-support-button {
+          color: #72a4ff;
+        }
+
         /* ======================================================
            CONTACT
         ====================================================== */
 
         .antimate-contact-strip {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
 
-          margin-top: 25px;
+          grid-template-columns:
+            repeat(3, 1fr);
 
-          border-top:
-            1px solid var(--border);
-          border-left:
-            1px solid var(--border);
+          gap: 15px;
+
+          margin-top: 15px;
         }
 
         .antimate-contact-item {
@@ -2052,17 +2297,27 @@ function Login() {
           align-items: center;
           gap: 14px;
 
-          padding: 19px;
+          padding: 18px;
 
-          border-right:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
+
+          background: #fafbfc;
+        }
+
+        .dark .antimate-contact-item {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .antimate-contact-item svg {
           flex-shrink: 0;
-          color: var(--accent-light);
+          color: #008fb7;
+        }
+
+        .dark .antimate-contact-item svg {
+          color: #5dd8f5;
         }
 
         .antimate-contact-item strong {
@@ -2072,8 +2327,8 @@ function Login() {
         }
 
         .antimate-contact-item span {
-          color: var(--muted);
           font-size: 12px;
+          opacity: .62;
         }
 
         /* ======================================================
@@ -2082,40 +2337,55 @@ function Login() {
 
         .antimate-team-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 0;
+
+          grid-template-columns:
+            repeat(4, minmax(0, 1fr));
+
+          gap: 15px;
 
           margin-top: 42px;
-
-          border-top:
-            1px solid var(--border);
-          border-left:
-            1px solid var(--border);
         }
 
         .antimate-team-card {
           padding: 23px 19px;
 
-          border-right:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
+
+          background: #fafbfc;
+        }
+
+        .dark .antimate-team-card {
+          background: #0d1724;
+          border-color: #263548;
+        }
+
+        .antimate-team-card.marketing-member {
+          border-top:
+            2px solid
+            #2563eb;
         }
 
         .antimate-team-avatar {
-          width: 42px;
-          height: 42px;
+          width: 45px;
+          height: 45px;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          border-radius: 9px;
+          border-radius: 50%;
 
-          color: var(--accent-light);
-          background: var(--surface);
+          color: #008fb7;
+          background: #edfafd;
 
           margin-bottom: 15px;
+        }
+
+        .dark .antimate-team-avatar {
+          color: #5dd8f5;
+          background: #0d2a35;
         }
 
         .antimate-team-card h3 {
@@ -2126,20 +2396,24 @@ function Login() {
         .antimate-team-role {
           display: block;
 
-          color: var(--accent);
+          color: #2563eb;
 
           font-size: 11px;
           font-weight: 800;
           line-height: 1.4;
         }
 
+        .dark .antimate-team-role {
+          color: #72a4ff;
+        }
+
         .antimate-team-department {
           display: block;
+
           margin-top: 8px;
 
-          color: var(--muted);
-
           font-size: 10px;
+          opacity: .52;
           line-height: 1.5;
         }
 
@@ -2149,18 +2423,26 @@ function Login() {
 
         .antimate-faq-list {
           max-width: 900px;
+
           margin: 42px auto 0;
 
           display: grid;
-          gap: 0;
-
-          border-top:
-            1px solid var(--border);
+          gap: 10px;
         }
 
         .antimate-faq-item {
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #e1e5ea;
+
+          overflow: hidden;
+
+          background: #fafbfc;
+        }
+
+        .dark .antimate-faq-item {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .antimate-faq-question {
@@ -2171,12 +2453,12 @@ function Login() {
           justify-content: space-between;
           gap: 20px;
 
-          padding: 19px 4px;
+          padding: 19px 20px;
 
           border: 0;
           background: transparent;
 
-          color: var(--text);
+          color: inherit;
 
           text-align: left;
           cursor: pointer;
@@ -2188,7 +2470,6 @@ function Login() {
         .antimate-faq-question svg {
           flex-shrink: 0;
           transition: transform .25s ease;
-          color: var(--muted);
         }
 
         .antimate-faq-item.open
@@ -2211,12 +2492,12 @@ function Login() {
 
         .antimate-faq-answer p {
           margin: 0;
-          padding: 0 4px 20px;
 
-          color: var(--soft-text);
+          padding: 0 20px 20px;
 
           font-size: 13px;
           line-height: 1.75;
+          opacity: .65;
         }
 
         /* ======================================================
@@ -2229,11 +2510,19 @@ function Login() {
           text-align: center;
 
           border-top:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+            1px solid
+            #e1e5ea;
 
-          background: var(--surface);
+          border-bottom:
+            1px solid
+            #e1e5ea;
+
+          background: #f7f9fb;
+        }
+
+        .dark .join-section {
+          background: #0d1724;
+          border-color: #263548;
         }
 
         .join-content {
@@ -2242,27 +2531,24 @@ function Login() {
         }
 
         .join-content > svg {
-          color: var(--accent-light);
+          color: #2563eb;
         }
 
         .join-content h2 {
           margin: 15px 0 10px;
 
-          color: var(--text);
-
-          font-size:
-            clamp(32px, 4vw, 52px);
+          font-size: clamp(32px, 4vw, 52px);
 
           letter-spacing: -2px;
         }
 
         .join-content p {
           margin: 0 auto 25px;
+
           max-width: 600px;
 
-          color: var(--soft-text);
-
           line-height: 1.75;
+          opacity: .68;
         }
 
         /* ======================================================
@@ -2288,14 +2574,11 @@ function Login() {
 
           text-decoration: none;
 
-          background: #0b1220;
-
-          border:
-            2px solid #2563eb;
+          background: #2563eb;
 
           box-shadow:
-            0 10px 28px
-            rgba(0,0,0,.22);
+            0 10px 25px
+            rgba(37,99,235,.28);
         }
 
         .antimate-ai-ring-login {
@@ -2307,11 +2590,13 @@ function Login() {
           justify-content: center;
 
           border-radius: 50%;
+
+          background: #0b1220;
         }
 
         .antimate-ai-inner-login {
           position: absolute;
-          inset: 4px;
+          inset: 3px;
 
           border-radius: 50%;
 
@@ -2319,13 +2604,13 @@ function Login() {
           align-items: center;
           justify-content: center;
 
-          background: #0f172a;
+          background: #101b2a;
         }
 
         .antimate-ai-text-login {
-          color: #fff;
+          color: #ffffff;
 
-          font-size: 17px;
+          font-size: 16px;
           font-weight: 900;
           letter-spacing: -.5px;
         }
@@ -2343,9 +2628,15 @@ function Login() {
           text-align: center;
 
           border-top:
-            1px solid var(--border);
+            1px solid
+            #e1e5ea;
 
-          background: var(--surface);
+          background: #ffffff;
+        }
+
+        .dark .login-footer {
+          background: #08111d;
+          border-color: #263548;
         }
 
         .footer-brand {
@@ -2362,12 +2653,12 @@ function Login() {
 
         .login-footer p {
           max-width: 850px;
-          margin: 15px auto 0;
 
-          color: var(--muted);
+          margin: 15px auto 0;
 
           font-size: 10px;
           line-height: 1.6;
+          opacity: .5;
         }
 
         .footer-info {
@@ -2378,17 +2669,15 @@ function Login() {
 
           margin-top: 12px;
 
-          color: var(--muted);
-
           font-size: 11px;
+          opacity: .6;
         }
 
         /* ======================================================
-           MODAL
+           LOGIN MODAL
         ====================================================== */
 
-        .modal-overlay,
-        .system-selection-overlay {
+        .modal-overlay {
           position: fixed;
           inset: 0;
 
@@ -2401,10 +2690,9 @@ function Login() {
           padding: 20px;
 
           background:
-            rgba(3,8,18,.72);
+            rgba(3,8,18,.68);
 
           backdrop-filter: blur(7px);
-          -webkit-backdrop-filter: blur(7px);
         }
 
         .login-modal {
@@ -2416,14 +2704,15 @@ function Login() {
 
           border-radius: 18px;
 
-          background: #fff;
+          background: #ffffff;
           color: #111827;
 
           border:
-            1px solid #e2e8f0;
+            1px solid
+            #dfe4ea;
 
           box-shadow:
-            0 30px 90px
+            0 30px 80px
             rgba(0,0,0,.28);
         }
 
@@ -2441,9 +2730,9 @@ function Login() {
           justify-content: center;
 
           border: 0;
-          border-radius: 8px;
+          border-radius: 9px;
 
-          background: #f1f5f9;
+          background: #f1f3f5;
 
           color: #111827;
           cursor: pointer;
@@ -2469,9 +2758,8 @@ function Login() {
 
           text-align: center;
 
-          color: #64748b;
-
           font-size: 13px;
+          opacity: .58;
         }
 
         .input-group {
@@ -2480,6 +2768,7 @@ function Login() {
 
         .input-group label {
           display: block;
+
           margin-bottom: 7px;
 
           font-size: 11px;
@@ -2493,21 +2782,23 @@ function Login() {
           padding: 0 13px;
 
           border:
-            1px solid #cbd5e1;
+            1px solid
+            #d7dce3;
 
           border-radius: 9px;
 
           outline: none;
 
           color: #111827;
-          background: #fff;
+          background: #ffffff;
         }
 
         .input-group input:focus {
           border-color: #2563eb;
+
           box-shadow:
             0 0 0 3px
-            rgba(37,99,235,.09);
+            rgba(37,99,235,.08);
         }
 
         .password-input {
@@ -2542,15 +2833,18 @@ function Login() {
 
         .login-error {
           margin-bottom: 14px;
+
           padding: 11px 12px;
 
           border-radius: 8px;
 
           color: #b91c1c;
-          background: #fef2f2;
+
+          background: #fff1f2;
 
           border:
-            1px solid #fecaca;
+            1px solid
+            #fecdd3;
 
           font-size: 12px;
           line-height: 1.5;
@@ -2565,10 +2859,10 @@ function Login() {
           justify-content: center;
           gap: 8px;
 
-          border: 0;
+          border: 1px solid #2563eb;
           border-radius: 9px;
 
-          color: #fff;
+          color: #ffffff;
 
           background: #2563eb;
 
@@ -2591,7 +2885,7 @@ function Login() {
             2px solid
             rgba(255,255,255,.35);
 
-          border-top-color: #fff;
+          border-top-color: #ffffff;
 
           border-radius: 50%;
 
@@ -2614,8 +2908,6 @@ function Login() {
 
           text-align: center;
 
-          color: #64748b;
-
           font-size: 12px;
         }
 
@@ -2626,30 +2918,49 @@ function Login() {
         }
 
         /* ======================================================
-           SYSTEM SELECTION
+           BR SYSTEM SELECTION
         ====================================================== */
 
+        .system-selection-overlay {
+          position: fixed;
+          inset: 0;
+
+          z-index: 100001;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          padding: 20px;
+
+          background:
+            rgba(3,8,18,.72);
+
+          backdrop-filter: blur(8px);
+        }
+
         .system-selection {
-          width: min(100%, 850px);
+          width: min(100%, 900px);
 
           padding: 34px;
 
           border-radius: 18px;
 
-          color: var(--text);
-          background: var(--surface-strong);
+          color: #111827;
+          background: #ffffff;
 
           border:
-            1px solid var(--border);
+            1px solid
+            #dfe4ea;
 
           box-shadow:
-            0 35px 100px
+            0 35px 90px
             rgba(0,0,0,.32);
         }
 
         .system-selection-header {
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 28px;
         }
 
         .system-selection-logo {
@@ -2662,9 +2973,9 @@ function Login() {
           align-items: center;
           justify-content: center;
 
-          border-radius: 12px;
+          border-radius: 13px;
 
-          background: var(--surface);
+          background: #f1f8fa;
         }
 
         .system-selection-header h2 {
@@ -2679,48 +2990,46 @@ function Login() {
 
           max-width: 520px;
 
-          color: var(--muted);
-
           font-size: 13px;
           line-height: 1.65;
+
+          opacity: .58;
         }
 
         .system-selection-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 0;
 
-          border-top:
-            1px solid var(--border);
-          border-left:
-            1px solid var(--border);
+          grid-template-columns:
+            repeat(3, 1fr);
+
+          gap: 14px;
         }
 
         .system-selection-card {
-          position: relative;
+          padding: 23px;
 
-          padding: 25px;
+          border-radius: 13px;
 
-          border: 0;
-          border-right:
-            1px solid var(--border);
-          border-bottom:
-            1px solid var(--border);
+          border:
+            1px solid
+            #dce2e8;
 
-          background: transparent;
-
-          color: var(--text);
+          background: #fafbfc;
 
           text-align: left;
 
           cursor: pointer;
 
+          color: #111827;
+
           transition:
+            border-color .2s ease,
             background .2s ease;
         }
 
         .system-selection-card:hover {
-          background: var(--surface);
+          border-color: #2563eb;
+          background: #f6f9ff;
         }
 
         .system-selection-icon {
@@ -2733,37 +3042,39 @@ function Login() {
 
           margin-bottom: 18px;
 
-          border-radius: 9px;
+          border-radius: 11px;
 
-          color: var(--accent-light);
-          background: var(--surface);
+          color: #2563eb;
+
+          background: #eff4ff;
         }
 
         .system-selection-card h3 {
           margin: 0 0 9px;
 
-          font-size: 18px;
+          font-size: 19px;
         }
 
         .system-selection-card p {
-          min-height: 68px;
+          min-height: 65px;
 
           margin: 0 0 20px;
 
-          color: var(--muted);
-
           font-size: 12px;
           line-height: 1.65;
+
+          opacity: .62;
         }
 
         .system-selection-action {
           display: flex;
+
           align-items: center;
           justify-content: space-between;
 
-          color: var(--accent);
+          color: #2563eb;
 
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 850;
         }
 
@@ -2777,7 +3088,7 @@ function Login() {
           border: 0;
           background: transparent;
 
-          color: var(--muted);
+          color: #64748b;
 
           font-size: 12px;
           font-weight: 750;
@@ -2786,12 +3097,50 @@ function Login() {
         }
 
         /* ======================================================
+           DARK MODALS
+        ====================================================== */
+
+        .dark .login-modal,
+        .dark .system-selection {
+          color: #f8fafc;
+          background: #0f172a;
+          border-color: #293a4d;
+        }
+
+        .dark .close-modal {
+          color: #f8fafc;
+          background: #172234;
+        }
+
+        .dark .input-group input {
+          color: #f8fafc;
+          background: #111c2e;
+          border-color: #2a3a4d;
+        }
+
+        .dark .system-selection-card {
+          color: #f8fafc;
+          background: #101b2a;
+          border-color: #293a4d;
+        }
+
+        .dark .system-selection-card:hover {
+          border-color: #4d7ed8;
+          background: #132238;
+        }
+
+        .dark .system-selection-icon {
+          color: #72a4ff;
+          background: #13243c;
+        }
+
+        /* ======================================================
            MOBILE
         ====================================================== */
 
         @media (max-width: 1100px) {
           .navigation {
-            gap: 11px;
+            gap: 12px;
           }
 
           .navigation > a {
@@ -2807,7 +3156,7 @@ function Login() {
           .navigation {
             position: fixed;
 
-            top: 76px;
+            top: 74px;
             left: 12px;
             right: 12px;
 
@@ -2818,17 +3167,22 @@ function Login() {
 
             padding: 15px;
 
-            border-radius: 12px;
+            border-radius: 13px;
 
-            background:
-              var(--surface-strong);
+            background: #ffffff;
 
             border:
-              1px solid var(--border);
+              1px solid
+              #dfe4ea;
 
             box-shadow:
               0 20px 50px
               rgba(0,0,0,.13);
+          }
+
+          .dark .navigation {
+            background: #08111d;
+            border-color: #293a4d;
           }
 
           .navigation.mobile-open {
@@ -2866,24 +3220,14 @@ function Login() {
             min-height: 430px;
           }
 
-          .antimate-about-layout,
-          .vision-section {
+          .antimate-about-layout {
             grid-template-columns: 1fr;
             gap: 35px;
           }
 
-          .antimate-system-grid {
+          .vision-section {
             grid-template-columns: 1fr;
-          }
-
-          .antimate-system-card {
-            border-right: 0;
-            border-bottom:
-              1px solid var(--border);
-          }
-
-          .antimate-system-card:last-child {
-            border-bottom: 0;
+            gap: 35px;
           }
 
           .antimate-support-grid {
@@ -2896,20 +3240,6 @@ function Login() {
 
           .antimate-team-grid {
             grid-template-columns: repeat(2, 1fr);
-          }
-
-          .pricing-options {
-            grid-template-columns: 1fr;
-          }
-
-          .pricing-option {
-            border-right: 0;
-            border-bottom:
-              1px solid var(--border);
-          }
-
-          .pricing-option:last-child {
-            border-bottom: 0;
           }
 
           .system-selection-grid {
@@ -2945,7 +3275,8 @@ function Login() {
 
           .hero-section {
             min-height: auto;
-            padding: 65px 5% 65px;
+            padding:
+              65px 5% 65px;
           }
 
           .hero-content h1 {
@@ -2964,7 +3295,7 @@ function Login() {
           .farm-image {
             width: 100%;
             height: 330px;
-            border-radius: 15px;
+            border-radius: 18px;
           }
 
           .card-temperature {
@@ -2985,6 +3316,7 @@ function Login() {
           }
 
           .feature-grid,
+          .antimate-system-grid,
           .antimate-support-grid,
           .antimate-team-grid {
             grid-template-columns: 1fr;
@@ -2996,16 +3328,6 @@ function Login() {
 
           .vision-image {
             height: 300px;
-          }
-
-          .pricing-system-header {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .installation-banner {
-            align-items: flex-start;
-            flex-direction: column;
           }
 
           .antimate-ai-float-login {
@@ -3022,20 +3344,11 @@ function Login() {
 
           .system-selection {
             padding: 25px 18px;
-            border-radius: 15px;
-          }
-
-          .system-selection-card p {
-            min-height: auto;
+            border-radius: 16px;
           }
 
           .system-selection-header h2 {
             font-size: 24px;
-          }
-
-          .join-section {
-            padding:
-              75px 5%;
           }
 
           .login-footer {
@@ -3045,6 +3358,20 @@ function Login() {
           .footer-info {
             flex-direction: column;
             gap: 7px;
+          }
+
+          .system-pricing {
+            overflow-x: auto;
+          }
+
+          .system-pricing-table {
+            min-width: 600px;
+          }
+
+          .system-pricing-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 6px;
           }
         }
 
@@ -3065,7 +3392,7 @@ function Login() {
         }`}
       >
         {/* ======================================================
-            FIXED NAVBAR
+            NAVBAR
         ====================================================== */}
 
         <header className="login-navbar">
@@ -3237,9 +3564,9 @@ function Login() {
               </h1>
 
               <div className="animated-words">
-                <span>Connect.</span>
+                <span>Monitor.</span>
                 <span>Understand.</span>
-                <span>Automate.</span>
+                <span>Assist.</span>
                 <span>Build the future.</span>
               </div>
 
@@ -3290,12 +3617,12 @@ function Login() {
 
               <div className="floating-card card-temperature">
                 <div className="floating-icon">
-                  <Network size={17} />
+                  <Thermometer size={17} />
                 </div>
 
                 <div>
                   <span>BR System</span>
-                  <strong>Connected</strong>
+                  <strong>Monitoring</strong>
                 </div>
               </div>
 
@@ -3306,7 +3633,7 @@ function Login() {
 
                 <div>
                   <span>ANTIMATE AI</span>
-                  <strong>Intelligence</strong>
+                  <strong>Assistance</strong>
                 </div>
               </div>
             </div>
@@ -3330,13 +3657,13 @@ function Login() {
 
             <div className="feature-grid">
               <Feature
-                icon={<Network />}
+                icon={<Activity />}
                 title={t.feature1Title}
                 text={t.feature1Text}
               />
 
               <Feature
-                icon={<Database />}
+                icon={<BarChart3 />}
                 title={t.feature2Title}
                 text={t.feature2Text}
               />
@@ -3357,54 +3684,55 @@ function Login() {
             id="systems"
             className="antimate-public-section"
           >
-            <div className="antimate-section-label">
-              <Layers size={16} />
-              ANTIMATE SYSTEMS
-            </div>
+            <div className="antimate-public-container">
+              <div className="antimate-section-label">
+                <Layers size={16} />
+                BR SYSTEMS
+              </div>
 
-            <h2 className="antimate-section-title">
-              {t.systemsTitle}
-            </h2>
+              <h2 className="antimate-section-title">
+                {t.systemsTitle}
+              </h2>
 
-            <p className="antimate-section-subtitle">
-              {t.systemsSubtitle}
-            </p>
+              <p className="antimate-section-subtitle">
+                {t.systemsSubtitle}
+              </p>
 
-            <div className="antimate-system-grid">
-              {systems.map(
-                (system, index) => {
-                  const Icon = system.icon;
+              <div className="antimate-system-grid">
+                {systems.map(
+                  (system, index) => {
+                    const Icon =
+                      system.icon;
 
-                  return (
-                    <div
-                      className="antimate-system-card"
-                      key={index}
-                    >
-                      <div className="antimate-system-icon">
-                        <Icon size={22} />
+                    return (
+                      <div
+                        className="antimate-system-card"
+                        key={index}
+                      >
+                        <div className="antimate-system-icon">
+                          <Icon size={23} />
+                        </div>
+
+                        <h3>
+                          {system.name}
+                        </h3>
+
+                        <p>
+                          {system.text}
+                        </p>
+
+                        <div className="system-capacity">
+                          <Users size={15} />
+                          <span>
+                            {t.capacity}:{" "}
+                            {system.capacity}
+                          </span>
+                        </div>
                       </div>
-
-                      <h3>
-                        {system.name}
-                      </h3>
-
-                      <p>
-                        {system.text}
-                      </p>
-
-                      <div className="system-capacity">
-                        <strong>
-                          {system.capacity}
-                        </strong>
-
-                        <span>
-                          {t.chicks}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                }
-              )}
+                    );
+                  }
+                )}
+              </div>
             </div>
           </section>
 
@@ -3416,83 +3744,85 @@ function Login() {
             id="about"
             className="antimate-public-section"
           >
-            <div className="antimate-about-layout">
-              <div>
-                <div className="antimate-section-label">
-                  <Building2 size={16} />
-                  ABOUT ANTIMATE
-                </div>
+            <div className="antimate-public-container">
+              <div className="antimate-about-layout">
+                <div>
+                  <div className="antimate-section-label">
+                    <Building2 size={16} />
+                    ABOUT ANTIMATE
+                  </div>
 
-                <h2 className="antimate-section-title">
-                  {t.aboutTitle}
-                </h2>
+                  <h2 className="antimate-section-title">
+                    {t.aboutTitle}
+                  </h2>
 
-                <p className="antimate-about-description">
-                  {t.aboutText}
-                </p>
-
-                <div className="antimate-definition">
-                  <strong>
-                    ANTIMATE
-                  </strong>
-
-                  <span>
-                    Advanced Networked
-                    Technology With
-                    Intelligent Machines
-                    And Telemetry
-                    Ecosystem.
-                  </span>
-                </div>
-              </div>
-
-              <div className="antimate-about-panel">
-                <div className="antimate-about-mini">
-                  <Target size={21} />
-
-                  <h4>
-                    {t.purposeTitle}
-                  </h4>
-
-                  <p>
-                    {t.purposeText}
+                  <p className="antimate-about-description">
+                    {t.aboutText}
                   </p>
+
+                  <div className="antimate-definition">
+                    <strong>
+                      ANTIMATE
+                    </strong>
+
+                    <span>
+                      Advanced Networked
+                      Technology With
+                      Intelligent Machines
+                      And Telemetry
+                      Ecosystem.
+                    </span>
+                  </div>
                 </div>
 
-                <div className="antimate-about-mini">
-                  <Eye size={21} />
+                <div className="antimate-about-panel">
+                  <div className="antimate-about-mini">
+                    <Target size={21} />
 
-                  <h4>
-                    {t.visionShortTitle}
-                  </h4>
+                    <h4>
+                      {t.purposeTitle}
+                    </h4>
 
-                  <p>
-                    {t.visionShortText}
-                  </p>
-                </div>
+                    <p>
+                      {t.purposeText}
+                    </p>
+                  </div>
 
-                <div className="antimate-about-mini">
-                  <Lightbulb size={21} />
+                  <div className="antimate-about-mini">
+                    <Eye size={21} />
 
-                  <h4>
-                    {t.valuesTitle}
-                  </h4>
+                    <h4>
+                      {t.visionShortTitle}
+                    </h4>
 
-                  <p>
-                    {t.value1} • {t.value2}
-                  </p>
-                </div>
+                    <p>
+                      {t.visionShortText}
+                    </p>
+                  </div>
 
-                <div className="antimate-about-mini">
-                  <ShieldCheck size={21} />
+                  <div className="antimate-about-mini">
+                    <Lightbulb size={21} />
 
-                  <h4>
-                    {t.value4}
-                  </h4>
+                    <h4>
+                      {t.value1}
+                    </h4>
 
-                  <p>
-                    {t.value3}
-                  </p>
+                    <p>
+                      {t.value2}
+                    </p>
+                  </div>
+
+                  <div className="antimate-about-mini">
+                    <ShieldCheck size={21} />
+
+                    <h4>
+                      {t.value4}
+                    </h4>
+
+                    <p>
+                      {t.value3}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3517,18 +3847,25 @@ function Login() {
               </div>
 
               <h2>
-                {t.visionTitle}
+                {t.visionShortText}
               </h2>
 
               <p>
-                {t.visionText}
+                {t.aboutText}
               </p>
 
               <div className="vision-points">
                 <div>
-                  <Radio size={18} />
+                  <Activity size={18} />
                   <span>
-                    Connected infrastructure
+                    Real-time monitoring
+                  </span>
+                </div>
+
+                <div>
+                  <BarChart3 size={18} />
+                  <span>
+                    Data-driven insights
                   </span>
                 </div>
 
@@ -3538,131 +3875,191 @@ function Login() {
                     Secure technology
                   </span>
                 </div>
-
-                <div>
-                  <Database size={18} />
-                  <span>
-                    Reliable data services
-                  </span>
-                </div>
               </div>
             </div>
           </section>
 
           {/* ====================================================
-              PRICING
+              PLANS
           ==================================================== */}
 
           <section
             id="plans"
             className="antimate-public-section"
           >
-            <div className="antimate-section-label">
-              <BarChart3 size={16} />
-              PLANS & PRICING
-            </div>
+            <div className="antimate-public-container">
+              <div className="antimate-section-label">
+                <BarChart3 size={16} />
+                PLANS & PRICING
+              </div>
 
-            <h2 className="antimate-section-title">
-              {t.plansTitle}
-            </h2>
+              <h2 className="antimate-section-title">
+                {t.plansTitle}
+              </h2>
 
-            <p className="antimate-section-subtitle">
-              {t.plansSubtitle}
-            </p>
+              <p className="antimate-section-subtitle">
+                {t.plansSubtitle}
+              </p>
 
-            <div className="pricing-block">
-              {pricingSystems.map(
-                (system, systemIndex) => (
-                  <div
-                    className="pricing-system"
-                    key={systemIndex}
-                  >
-                    <div className="pricing-system-header">
-                      <h3>
-                        {system.name}
-                      </h3>
+              <div className="plans-intro">
+                <Check size={17} />
 
-                      <span className="pricing-capacity">
-                        {t.capacity}:{" "}
-                        {system.capacity}{" "}
-                        {t.chicks}
-                      </span>
-                    </div>
+                <span>
+                  {t.installation}:{" "}
+                  {t.freeService}
+                  {" • "}
+                  {t.delivery}:{" "}
+                  {t.freeService}
+                </span>
+              </div>
 
-                    <div className="pricing-options">
-                      {system.plans.map(
-                        (plan, planIndex) => (
-                          <div
-                            key={planIndex}
-                            className={`pricing-option ${
-                              planIndex === 1
-                                ? "featured"
-                                : ""
-                            }`}
+              {/* ==================================================
+                  PLAN FEATURE OVERVIEW
+              ================================================== */}
+
+              <div className="plan-overview">
+                <table className="plan-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        Plan
+                      </th>
+
+                      <th>
+                        Features
+                      </th>
+
+                      <th>
+                        Description
+                      </th>
+
+                      <th>
+                        Service
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {plans.map(
+                      (plan) => {
+                        const Icon =
+                          plan.icon;
+
+                        return (
+                          <tr
+                            key={plan.key}
                           >
-                            <h4>
-                              {plan.name}
-                            </h4>
+                            <td>
+                              <div className="plan-name">
+                                <Icon
+                                  size={16}
+                                />
 
-                            <div className="pricing-price">
-                              {plan.price}
-                            </div>
-
-                            <span className="pricing-month">
-                              {t.month}
-                            </span>
-
-                            <p className="pricing-description">
-                              {plan.description}
-                            </p>
-
-                            <ul className="pricing-features">
-                              <li>
-                                <Check size={13} />
                                 <span>
-                                  {t.installation}
+                                  {plan.name}
                                 </span>
-                              </li>
+                              </div>
+                            </td>
 
-                              <li>
-                                <Check size={13} />
-                                <span>
-                                  {t.freeInstallation}
-                                </span>
-                              </li>
-                            </ul>
+                            <td>
+                              <ul className="plan-feature-list">
+                                {featureText[
+                                  plan.key
+                                ].map(
+                                  (
+                                    feature,
+                                    index
+                                  ) => (
+                                    <li
+                                      key={
+                                        index
+                                      }
+                                    >
+                                      <Check
+                                        size={
+                                          13
+                                        }
+                                      />
 
-                            <button
-                              className="pricing-button"
-                              onClick={() =>
-                                navigate(
-                                  "/signup"
-                                )
-                              }
-                            >
-                              {t.choosePlan}
+                                      <span>
+                                        {
+                                          feature
+                                        }
+                                      </span>
+                                    </li>
+                                  )
+                                )}
+                              </ul>
+                            </td>
 
-                              <ArrowRight
-                                size={13}
-                              />
-                            </button>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
+                            <td>
+                              <div className="plan-description">
+                                {
+                                  plan.description
+                                }
+                              </div>
+                            </td>
 
-            <div className="installation-banner">
-              <span>
-                {t.installation}
-              </span>
+                            <td>
+                              <span>
+                                Installation:
+                              </span>
+                              <br />
+                              <strong>
+                                {
+                                  t.freeService
+                                }
+                              </strong>
 
-              <strong>
-                ✓ {t.freeInstallation}
-              </strong>
+                              <br />
+
+                              <span>
+                                Delivery:
+                              </span>
+                              <br />
+                              <strong>
+                                {
+                                  t.freeService
+                                }
+                              </strong>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ==================================================
+                  SYSTEM 300 PRICING
+              ================================================== */}
+
+              <SystemPricing
+                system={systems[0]}
+                t={t}
+                navigate={navigate}
+              />
+
+              {/* ==================================================
+                  SYSTEM 750 PRICING
+              ================================================== */}
+
+              <SystemPricing
+                system={systems[1]}
+                t={t}
+                navigate={navigate}
+              />
+
+              {/* ==================================================
+                  SYSTEM 1000 PRICING
+              ================================================== */}
+
+              <SystemPricing
+                system={systems[2]}
+                t={t}
+                navigate={navigate}
+              />
             </div>
           </section>
 
@@ -3674,143 +4071,146 @@ function Login() {
             id="support"
             className="antimate-public-section"
           >
-            <div className="antimate-section-label">
-              <Headphones size={16} />
-              ANTIMATE SUPPORT
-            </div>
+            <div className="antimate-public-container">
+              <div className="antimate-section-label">
+                <Headphones size={16} />
+                ANTIMATE SUPPORT
+              </div>
 
-            <h2 className="antimate-section-title">
-              {t.supportTitle}
-            </h2>
+              <h2 className="antimate-section-title">
+                {t.supportTitle}
+              </h2>
 
-            <p className="antimate-section-subtitle">
-              {t.supportSubtitle}
-            </p>
+              <p className="antimate-section-subtitle">
+                {t.supportSubtitle}
+              </p>
 
-            <div className="antimate-support-grid">
-              {supportItems.map(
-                (item, index) => {
-                  const Icon = item.icon;
+              <div className="antimate-support-grid">
+                {supportItems.map(
+                  (item, index) => {
+                    const Icon =
+                      item.icon;
 
-                  return (
-                    <div
-                      className="antimate-support-card"
-                      key={index}
-                    >
-                      <div className="antimate-support-icon">
-                        <Icon size={21} />
-                      </div>
-
-                      <h3>
-                        {item.title}
-                      </h3>
-
-                      <p>
-                        {item.text}
-                      </p>
-
-                      <button
-                        className="antimate-support-button"
-                        onClick={
-                          item.action
-                        }
+                    return (
+                      <div
+                        className="antimate-support-card"
+                        key={index}
                       >
-                        {item.button}
+                        <div className="antimate-support-icon">
+                          <Icon size={21} />
+                        </div>
 
-                        <ArrowUpRight
-                          size={14}
-                        />
-                      </button>
-                    </div>
-                  );
-                }
-              )}
-            </div>
+                        <h3>
+                          {item.title}
+                        </h3>
 
-            <div className="antimate-contact-strip">
-              <div className="antimate-contact-item">
-                <Phone size={20} />
+                        <p>
+                          {item.text}
+                        </p>
 
-                <div>
-                  <strong>
-                    +250 798 698 431
-                  </strong>
+                        <button
+                          className="antimate-support-button"
+                          onClick={
+                            item.action
+                          }
+                        >
+                          {item.button}
 
-                  <span>
-                    {t.supportPhone}
-                  </span>
+                          <ArrowUpRight
+                            size={14}
+                          />
+                        </button>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+
+              <div className="antimate-contact-strip">
+                <div className="antimate-contact-item">
+                  <Phone size={20} />
+
+                  <div>
+                    <strong>
+                      +250 798 698 431
+                    </strong>
+
+                    <span>
+                      {t.supportPhone}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="antimate-contact-item">
+                  <Mail size={20} />
+
+                  <div>
+                    <strong>
+                      antimate.inc@gmai.com
+                    </strong>
+
+                    <span>
+                      {t.supportEmail}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="antimate-contact-item">
+                  <MapPin size={20} />
+
+                  <div>
+                    <strong>
+                      {t.contactLocation}
+                    </strong>
+
+                    <span>
+                      {t.contactOpen}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="antimate-contact-item">
-                <Mail size={20} />
+              <div className="antimate-contact-strip">
+                <div className="antimate-contact-item">
+                  <MessageCircle size={20} />
 
-                <div>
-                  <strong>
-                    antimate.inc@gmai.com
-                  </strong>
+                  <div>
+                    <strong>
+                      +250 798 698 431
+                    </strong>
 
-                  <span>
-                    {t.supportEmail}
-                  </span>
+                    <span>
+                      WhatsApp
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="antimate-contact-item">
-                <MapPin size={20} />
+                <div className="antimate-contact-item">
+                  <Globe size={20} />
 
-                <div>
-                  <strong>
-                    {t.contactLocation}
-                  </strong>
+                  <div>
+                    <strong>
+                      Web Chat Room
+                    </strong>
 
-                  <span>
-                    {t.contactOpen}
-                  </span>
+                    <span>
+                      ANTIMATE online support
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="antimate-contact-strip">
-              <div className="antimate-contact-item">
-                <MessageCircle size={20} />
+                <div className="antimate-contact-item">
+                  <CalendarDays size={20} />
 
-                <div>
-                  <strong>
-                    +250 798 698 431
-                  </strong>
+                  <div>
+                    <strong>
+                      14 April 2026
+                    </strong>
 
-                  <span>
-                    WhatsApp
-                  </span>
-                </div>
-              </div>
-
-              <div className="antimate-contact-item">
-                <Globe size={20} />
-
-                <div>
-                  <strong>
-                    Web Chat Room
-                  </strong>
-
-                  <span>
-                    ANTIMATE online support
-                  </span>
-                </div>
-              </div>
-
-              <div className="antimate-contact-item">
-                <CalendarDays size={20} />
-
-                <div>
-                  <strong>
-                    14 April 2026
-                  </strong>
-
-                  <span>
-                    {t.contactSince}
-                  </span>
+                    <span>
+                      {t.contactSince}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3821,48 +4221,55 @@ function Login() {
           ==================================================== */}
 
           <section className="antimate-public-section">
-            <div className="antimate-section-label">
-              <Users size={16} />
-              OUR TEAM
-            </div>
+            <div className="antimate-public-container">
+              <div className="antimate-section-label">
+                <Users size={16} />
+                OUR TEAM
+              </div>
 
-            <h2 className="antimate-section-title">
-              {t.teamTitle}
-            </h2>
+              <h2 className="antimate-section-title">
+                {t.teamTitle}
+              </h2>
 
-            <p className="antimate-section-subtitle">
-              {t.teamSubtitle}
-            </p>
+              <p className="antimate-section-subtitle">
+                {t.teamSubtitle}
+              </p>
 
-            <div className="antimate-team-grid">
-              {team.map(
-                (member, index) => {
-                  const Icon = member.icon;
+              <div className="antimate-team-grid">
+                {team.map(
+                  (member, index) => {
+                    const Icon =
+                      member.icon;
 
-                  return (
-                    <div
-                      className="antimate-team-card"
-                      key={index}
-                    >
-                      <div className="antimate-team-avatar">
-                        <Icon size={20} />
+                    return (
+                      <div
+                        className={`antimate-team-card ${
+                          member.marketing
+                            ? "marketing-member"
+                            : ""
+                        }`}
+                        key={index}
+                      >
+                        <div className="antimate-team-avatar">
+                          <Icon size={20} />
+                        </div>
+
+                        <h3>
+                          {member.name}
+                        </h3>
+
+                        <span className="antimate-team-role">
+                          {member.role}
+                        </span>
+
+                        <span className="antimate-team-department">
+                          {member.department}
+                        </span>
                       </div>
-
-                      <h3>
-                        {member.name}
-                      </h3>
-
-                      <span className="antimate-team-role">
-                        {member.role}
-                      </span>
-
-                      <span className="antimate-team-department">
-                        {member.department}
-                      </span>
-                    </div>
-                  );
-                }
-              )}
+                    );
+                  }
+                )}
+              </div>
             </div>
           </section>
 
@@ -3871,64 +4278,67 @@ function Login() {
           ==================================================== */}
 
           <section className="antimate-public-section">
-            <div
-              style={{
-                textAlign: "center",
-              }}
-            >
-              <div className="antimate-section-label">
-                <BookOpen size={16} />
-                FAQ
-              </div>
-
-              <h2
-                className="antimate-section-title"
+            <div className="antimate-public-container">
+              <div
                 style={{
-                  margin: "0 auto",
+                  textAlign: "center",
                 }}
               >
-                {t.faqTitle}
-              </h2>
-            </div>
+                <div className="antimate-section-label">
+                  <BookOpen size={16} />
+                  FAQ
+                </div>
 
-            <div className="antimate-faq-list">
-              {faqs.map(
-                (faq, index) => (
-                  <div
-                    key={index}
-                    className={`antimate-faq-item ${
-                      openFaq === index
-                        ? "open"
-                        : ""
-                    }`}
-                  >
-                    <button
-                      className="antimate-faq-question"
-                      onClick={() =>
-                        setOpenFaq(
-                          openFaq === index
-                            ? null
-                            : index
-                        )
-                      }
+                <h2
+                  className="antimate-section-title"
+                  style={{
+                    margin: "0 auto",
+                  }}
+                >
+                  {t.faqTitle}
+                </h2>
+              </div>
+
+              <div className="antimate-faq-list">
+                {faqs.map(
+                  (faq, index) => (
+                    <div
+                      key={index}
+                      className={`antimate-faq-item ${
+                        openFaq === index
+                          ? "open"
+                          : ""
+                      }`}
                     >
-                      <span>
-                        {faq.q}
-                      </span>
+                      <button
+                        className="antimate-faq-question"
+                        onClick={() =>
+                          setOpenFaq(
+                            openFaq ===
+                              index
+                              ? null
+                              : index
+                          )
+                        }
+                      >
+                        <span>
+                          {faq.q}
+                        </span>
 
-                      <ChevronDown
-                        size={18}
-                      />
-                    </button>
+                        <ChevronDown
+                          size={18}
+                        />
+                      </button>
 
-                    <div className="antimate-faq-answer">
-                      <p>
-                        {faq.a}
-                      </p>
+                      <div className="antimate-faq-answer">
+                        <p>
+                          {faq.a}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )
-              )}
+                  )
+                )}
+              </div>
             </div>
           </section>
 
@@ -3956,7 +4366,6 @@ function Login() {
                 }}
               >
                 {t.login}
-
                 <ArrowRight size={18} />
               </button>
             </div>
@@ -3964,7 +4373,7 @@ function Login() {
         </main>
 
         {/* ======================================================
-            ANTIMATE AI FLOATING BUTTON
+            ANTIMATE AI
         ====================================================== */}
 
         <Link
@@ -4208,15 +4617,15 @@ function Login() {
                   }
                 >
                   <div className="system-selection-icon">
-                    <Cpu size={24} />
+                    <Cpu size={25} />
                   </div>
 
                   <h3>
-                    BR System 300
+                    {t.system300Button}
                   </h3>
 
                   <p>
-                    {t.system300Text}
+                    {t.selection300}
                   </p>
 
                   <div className="system-selection-action">
@@ -4238,15 +4647,15 @@ function Login() {
                   }
                 >
                   <div className="system-selection-icon">
-                    <Activity size={24} />
+                    <Activity size={25} />
                   </div>
 
                   <h3>
-                    BR System 750
+                    {t.system750Button}
                   </h3>
 
                   <p>
-                    {t.system750Text}
+                    {t.selection750}
                   </p>
 
                   <div className="system-selection-action">
@@ -4268,15 +4677,15 @@ function Login() {
                   }
                 >
                   <div className="system-selection-icon">
-                    <BarChart3 size={24} />
+                    <Layers size={25} />
                   </div>
 
                   <h3>
-                    BR System 1000
+                    {t.system1000Button}
                   </h3>
 
                   <p>
-                    {t.system1000Text}
+                    {t.selection1000}
                   </p>
 
                   <div className="system-selection-action">
@@ -4333,6 +4742,164 @@ function Feature({
       <p>{text}</p>
 
       <div className="feature-line" />
+    </div>
+  );
+}
+
+/* ============================================================
+   DATABASE ICON
+============================================================ */
+
+function DatabaseIcon(props) {
+  return (
+    <svg
+      {...props}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <ellipse
+        cx="12"
+        cy="5"
+        rx="8"
+        ry="3"
+      />
+      <path
+        d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"
+      />
+      <path
+        d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"
+      />
+    </svg>
+  );
+}
+
+/* ============================================================
+   SYSTEM PRICING
+============================================================ */
+
+function SystemPricing({
+  system,
+  t,
+  navigate,
+}) {
+  return (
+    <div className="system-pricing">
+      <div className="system-pricing-header">
+        <h3 className="system-pricing-title">
+          {system.name}
+        </h3>
+
+        <span className="system-pricing-capacity">
+          {system.capacity}
+        </span>
+      </div>
+
+      <table className="system-pricing-table">
+        <thead>
+          <tr>
+            <th>
+              {t.free}
+            </th>
+
+            <th>
+              {t.basic}
+            </th>
+
+            <th>
+              {t.pro}
+            </th>
+
+            <th>
+              {t.premium}
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>
+              {system.prices.Free}
+            </td>
+
+            <td>
+              {system.prices.Basic}
+              <span className="plan-month">
+                {t.monthly}
+              </span>
+            </td>
+
+            <td>
+              {system.prices.Pro}
+              <span className="plan-month">
+                {t.monthly}
+              </span>
+            </td>
+
+            <td>
+              {system.prices.Premium}
+              <span className="plan-month">
+                {t.monthly}
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <button
+                className="plan-action"
+                onClick={() =>
+                  navigate("/signup")
+                }
+              >
+                {t.choosePlan}
+                <ArrowRight size={13} />
+              </button>
+            </td>
+
+            <td>
+              <button
+                className="plan-action"
+                onClick={() =>
+                  navigate("/signup")
+                }
+              >
+                {t.choosePlan}
+                <ArrowRight size={13} />
+              </button>
+            </td>
+
+            <td>
+              <button
+                className="plan-action"
+                onClick={() =>
+                  navigate("/signup")
+                }
+              >
+                {t.choosePlan}
+                <ArrowRight size={13} />
+              </button>
+            </td>
+
+            <td>
+              <button
+                className="plan-action"
+                onClick={() =>
+                  navigate("/signup")
+                }
+              >
+                {t.choosePlan}
+                <ArrowRight size={13} />
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }

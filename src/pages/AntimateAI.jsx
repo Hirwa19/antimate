@@ -23,7 +23,7 @@ NORMAL VOICE
 - Start recording
 - Click again to stop
 - 30 second maximum
-- Professional 2s start/stop sounds
+- Professional start/stop sounds
 
 LIVE VOICE
 - Hold microphone for >= 5 seconds
@@ -36,11 +36,11 @@ LIVE VOICE
 - Continuous live conversation
 
 UX
-- Auto scroll after user sends
-- Thinking text changes every 3 seconds
-- Thinking animation around 1/3 from bottom
+- Auto scroll
+- Thinking animation
 - AI voice replay
-- Theme support
+- Theme toggle
+- Light is default
 - Kinyarwanda / English
 - Native CSS only
 - O-shaped ANTIMATE logo
@@ -59,26 +59,11 @@ const ANTIMATE_TEXT_ENDPOINT =
 
 const MAX_RECORDING_SECONDS = 30;
 
-/*
-============================================================
-LIVE VOICE CONFIGURATION
-============================================================
-*/
-
 const LIVE_HOLD_TRIGGER_MS = 5000;
-
 const LIVE_SILENCE_MS = 1800;
 
-/*
-------------------------------------------------------------
-Audio analysis settings
-------------------------------------------------------------
-*/
-
 const SILENCE_RMS_THRESHOLD = 0.018;
-
 const SPEECH_CONFIRM_MS = 180;
-
 const AUDIO_ANALYSIS_INTERVAL_MS = 60;
 
 /*
@@ -123,11 +108,6 @@ const getAudioContext = () => {
 ============================================================
 PROFESSIONAL UI SOUND
 ============================================================
-
-No external audio file is required.
-
-These sounds are generated using Web Audio API.
-============================================================
 */
 
 const playProfessionalTone = ({
@@ -142,8 +122,7 @@ const playProfessionalTone = ({
       ctx.resume().catch(() => {});
     }
 
-    const now =
-      ctx.currentTime;
+    const now = ctx.currentTime;
 
     const master =
       ctx.createGain();
@@ -156,12 +135,6 @@ const playProfessionalTone = ({
     master.connect(
       ctx.destination
     );
-
-    /*
-    ==========================================================
-    SEND SOUND
-    ==========================================================
-    */
 
     if (type === "send") {
       const frequencies = [
@@ -186,7 +159,8 @@ const playProfessionalTone = ({
 
           oscillator.frequency.setValueAtTime(
             frequency,
-            now + index * 0.055
+            now +
+              index * 0.055
           );
 
           oscillator.frequency.exponentialRampToValueAtTime(
@@ -198,7 +172,8 @@ const playProfessionalTone = ({
 
           gain.gain.setValueAtTime(
             0.0001,
-            now + index * 0.055
+            now +
+              index * 0.055
           );
 
           gain.gain.exponentialRampToValueAtTime(
@@ -219,7 +194,8 @@ const playProfessionalTone = ({
           gain.connect(master);
 
           oscillator.start(
-            now + index * 0.055
+            now +
+              index * 0.055
           );
 
           oscillator.stop(
@@ -243,22 +219,11 @@ const playProfessionalTone = ({
       return;
     }
 
-    /*
-    ==========================================================
-    RECORD START
-    ==========================================================
-    
-    2 seconds.
-    
-    Soft ascending "activation" sound.
-    ==========================================================
-    */
-
     if (type === "record-start") {
       const notes = [
         {
           frequency: 220,
-          start: 0.00,
+          start: 0,
           duration: 0.55,
         },
         {
@@ -340,28 +305,17 @@ const playProfessionalTone = ({
 
       master.gain.exponentialRampToValueAtTime(
         0.0001,
-        now + 2.0
+        now + 2
       );
 
       return;
     }
 
-    /*
-    ==========================================================
-    RECORD STOP
-    ==========================================================
-    
-    2 seconds.
-    
-    Soft descending "capture complete" sound.
-    ==========================================================
-    */
-
     if (type === "record-stop") {
       const notes = [
         {
           frequency: 523.25,
-          start: 0.00,
+          start: 0,
           duration: 0.55,
         },
         {
@@ -450,7 +404,7 @@ const playProfessionalTone = ({
 
       master.gain.exponentialRampToValueAtTime(
         0.0001,
-        now + 2.0
+        now + 2
       );
     }
   } catch (error) {
@@ -463,7 +417,7 @@ const playProfessionalTone = ({
 
 /*
 ============================================================
-ANTIMATE O-SHAPED LOGO
+ANTIMATE LOGO
 ============================================================
 */
 
@@ -509,6 +463,63 @@ function VoiceWave() {
 
 /*
 ============================================================
+THEME ICON
+============================================================
+*/
+
+function ThemeIcon({
+  isDark,
+}) {
+  if (isDark) {
+    return (
+      <svg
+        width="19"
+        height="19"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.8 6.8 0 0 0 9.8 9.8Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="4"
+      />
+
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.42 1.42" />
+      <path d="m17.65 17.65 1.42 1.42" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.35 17.65-1.42 1.42" />
+      <path d="m19.07 4.93-1.42 1.42" />
+    </svg>
+  );
+}
+
+/*
+============================================================
 MAIN COMPONENT
 ============================================================
 */
@@ -519,7 +530,56 @@ export default function AntimateAI() {
     theme,
     isDark,
     text,
+    setTheme,
   } = useAppSettings();
+
+  /*
+  ============================================================
+  FORCE LIGHT AS DEFAULT
+  ============================================================
+  
+  This does NOT force light every render.
+
+  It only initializes the context to light when no theme
+  has been selected yet and the context supports setTheme.
+  ============================================================
+  */
+
+  useEffect(() => {
+    if (
+      typeof setTheme === "function" &&
+      !theme
+    ) {
+      setTheme("light");
+    }
+  }, [
+    theme,
+    setTheme,
+  ]);
+
+  /*
+  ============================================================
+  THEME TOGGLE
+  ============================================================
+  */
+
+  const toggleTheme = () => {
+    if (
+      typeof setTheme !== "function"
+    ) {
+      console.warn(
+        "setTheme() ntabwo iri muri AppSettingsContext."
+      );
+
+      return;
+    }
+
+    setTheme(
+      isDark
+        ? "light"
+        : "dark"
+    );
+  };
 
   /*
   ============================================================
@@ -599,12 +659,6 @@ export default function AntimateAI() {
   const inputRef =
     useRef(null);
 
-  /*
-  ============================================================
-  LIVE VOICE ANALYSIS REFS
-  ============================================================
-  */
-
   const audioContextRef =
     useRef(null);
 
@@ -637,24 +691,30 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  KEEP REFS SYNCHRONIZED
+  SYNCHRONIZE REFS
   ============================================================
   */
 
   useEffect(() => {
     liveModeRef.current =
       isLiveVoice;
-  }, [isLiveVoice]);
+  }, [
+    isLiveVoice,
+  ]);
 
   useEffect(() => {
     isRecordingRef.current =
       isRecording;
-  }, [isRecording]);
+  }, [
+    isRecording,
+  ]);
 
   useEffect(() => {
     isSendingRef.current =
       isSending;
-  }, [isSending]);
+  }, [
+    isSending,
+  ]);
 
   /*
   ============================================================
@@ -701,9 +761,7 @@ export default function AntimateAI() {
   useEffect(() => {
     return () => {
       stopRecordingTimer();
-
       stopHoldTimer();
-
       stopSilenceDetection();
 
       if (
@@ -750,18 +808,20 @@ export default function AntimateAI() {
 
       Object.values(
         audioRefs.current
-      ).forEach((audio) => {
-        try {
-          audio.pause();
-          audio.src = "";
-        } catch (_) {}
-      });
+      ).forEach(
+        (audio) => {
+          try {
+            audio.pause();
+            audio.src = "";
+          } catch (_) {}
+        }
+      );
     };
   }, []);
 
   /*
   ============================================================
-  THINKING PHRASES
+  THINKING
   ============================================================
   */
 
@@ -839,7 +899,9 @@ export default function AntimateAI() {
     interval
   ) => {
     if (interval) {
-      clearInterval(interval);
+      clearInterval(
+        interval
+      );
     }
 
     setThinkingText("");
@@ -970,12 +1032,6 @@ export default function AntimateAI() {
               true;
 
             stopHoldTimer();
-
-            /*
-            ----------------------------------------------------
-            Start normal recording if it has not started yet.
-            ----------------------------------------------------
-            */
 
             if (
               !isRecordingRef.current &&
@@ -1225,12 +1281,6 @@ export default function AntimateAI() {
               speechStartedAtRef.current =
                 null;
 
-              /*
-              --------------------------------------------------
-              Do not auto-send before actual speech was detected.
-              --------------------------------------------------
-              */
-
               if (
                 !hasDetectedSpeechRef.current
               ) {
@@ -1442,12 +1492,6 @@ export default function AntimateAI() {
                 }
               );
 
-            /*
-            ----------------------------------------------------
-            Professional stop sound
-            ----------------------------------------------------
-            */
-
             if (
               autoSound
             ) {
@@ -1456,12 +1500,6 @@ export default function AntimateAI() {
                   "record-stop",
               });
             }
-
-            /*
-            ----------------------------------------------------
-            SEND
-            ----------------------------------------------------
-            */
 
             await sendVoice(
               blob,
@@ -1476,7 +1514,6 @@ export default function AntimateAI() {
         recorder.onerror =
           () => {
             stopRecordingTimer();
-
             stopSilenceDetection();
 
             stream
@@ -1531,12 +1568,6 @@ export default function AntimateAI() {
           0
         );
 
-        /*
-        --------------------------------------------------------
-        Live mode
-        --------------------------------------------------------
-        */
-
         if (
           liveMode
         ) {
@@ -1559,14 +1590,6 @@ export default function AntimateAI() {
         }
 
         startRecordingTimer();
-
-        /*
-        --------------------------------------------------------
-        Play start sound.
-        
-        In live mode the sound plays when the mic opens.
-        --------------------------------------------------------
-        */
 
         if (
           autoSound
@@ -1659,7 +1682,6 @@ export default function AntimateAI() {
       reason = "manual",
     } = {}) => {
       stopRecordingTimer();
-
       stopSilenceDetection();
 
       const recorder =
@@ -1698,16 +1720,6 @@ export default function AntimateAI() {
         }
       }
 
-      /*
-      ----------------------------------------------------------
-      Live mode remains enabled.
-      
-      This is important:
-      after answer playback the microphone will automatically
-      reopen.
-      ----------------------------------------------------------
-      */
-
       if (
         reason !==
         "live-silence"
@@ -1722,15 +1734,6 @@ export default function AntimateAI() {
   ============================================================
   POINTER DOWN
   ============================================================
-  
-  This controls:
-  
-  < 5 seconds:
-      normal recording
-  
-  >= 5 seconds:
-      live voice mode
-  ============================================================
   */
 
   const handleRecordPointerDown =
@@ -1743,12 +1746,6 @@ export default function AntimateAI() {
         return;
       }
 
-      /*
-      ----------------------------------------------------------
-      Prevent duplicate pointer events.
-      ----------------------------------------------------------
-      */
-
       if (
         pointerDownRef.current
       ) {
@@ -1760,16 +1757,15 @@ export default function AntimateAI() {
 
       /*
       ----------------------------------------------------------
-      If already recording:
-      
-      Normal mode:
-          pressing again stops it.
-      
-      Live mode:
-          pressing again is ignored because live mode
-          uses automatic silence detection.
+      POINTER CAPTURE
       ----------------------------------------------------------
       */
+
+      try {
+        event.currentTarget.setPointerCapture(
+          event.pointerId
+        );
+      } catch (_) {}
 
       if (
         isRecordingRef.current
@@ -1786,27 +1782,7 @@ export default function AntimateAI() {
         return;
       }
 
-      /*
-      ----------------------------------------------------------
-      Start hold detection.
-      ----------------------------------------------------------
-      */
-
       startHoldTimer();
-
-      /*
-      ----------------------------------------------------------
-      IMPORTANT:
-      
-      We do NOT start recording immediately.
-      
-      We wait briefly so that a >=5s hold can activate
-      live mode cleanly.
-      
-      For a normal click, recording starts immediately
-      after pointer release.
-      ----------------------------------------------------------
-      */
     };
 
   /*
@@ -1818,6 +1794,12 @@ export default function AntimateAI() {
   const handleRecordPointerUp =
     async (event) => {
       event.preventDefault();
+
+      try {
+        event.currentTarget.releasePointerCapture(
+          event.pointerId
+        );
+      } catch (_) {}
 
       if (
         !pointerDownRef.current
@@ -1842,30 +1824,15 @@ export default function AntimateAI() {
       holdStartRef.current =
         null;
 
-      /*
-      ----------------------------------------------------------
-      HOLD >= 5 SEC
-      ----------------------------------------------------------
-      */
-
       if (
         wasLiveActivated ||
         heldFor >=
           LIVE_HOLD_TRIGGER_MS
       ) {
-        /*
-        --------------------------------------------------------
-        If recording was started by the hold timer, leave it
-        running.
-        --------------------------------------------------------
-        */
-
         holdActivatedRef.current =
           false;
 
-        setHoldSeconds(
-          0
-        );
+        setHoldSeconds(0);
 
         setIsLiveVoice(
           true
@@ -1874,23 +1841,10 @@ export default function AntimateAI() {
         return;
       }
 
-      /*
-      ----------------------------------------------------------
-      NORMAL CLICK
-      ----------------------------------------------------------
-      
-      A short click starts recording on release.
-      
-      If already recording, it stops.
-      ----------------------------------------------------------
-      */
-
       holdActivatedRef.current =
         false;
 
-      setHoldSeconds(
-        0
-      );
+      setHoldSeconds(0);
 
       if (
         isRecordingRef.current
@@ -1932,9 +1886,7 @@ export default function AntimateAI() {
       holdActivatedRef.current =
         false;
 
-      setHoldSeconds(
-        0
-      );
+      setHoldSeconds(0);
     };
 
   /*
@@ -2030,12 +1982,6 @@ export default function AntimateAI() {
         ]
       );
 
-      /*
-      ----------------------------------------------------------
-      Immediate scroll after user message.
-      ----------------------------------------------------------
-      */
-
       setTimeout(() => {
         scrollToBottom(
           "smooth"
@@ -2104,13 +2050,6 @@ export default function AntimateAI() {
       } else if (
         liveMode
       ) {
-        /*
-        --------------------------------------------------------
-        If backend returned text but no audio, reopen microphone
-        after the answer is displayed.
-        --------------------------------------------------------
-        */
-
         setTimeout(() => {
           startNextLiveTurn();
         }, 500);
@@ -2152,12 +2091,6 @@ export default function AntimateAI() {
           cleanText,
         voice: false,
       });
-
-      /*
-      ----------------------------------------------------------
-      Send sound stays.
-      ----------------------------------------------------------
-      */
 
       playProfessionalTone({
         type: "send",
@@ -2290,12 +2223,6 @@ export default function AntimateAI() {
         false
       );
 
-      /*
-      ----------------------------------------------------------
-      Keep live mode active during the request.
-      ----------------------------------------------------------
-      */
-
       if (
         liveMode
       ) {
@@ -2308,12 +2235,6 @@ export default function AntimateAI() {
         startThinking(
           "voice"
         );
-
-      /*
-      ----------------------------------------------------------
-      Auto-scroll immediately when recording is submitted.
-      ----------------------------------------------------------
-      */
 
       scrollToBottom(
         "smooth"
@@ -2366,24 +2287,12 @@ export default function AntimateAI() {
           );
         }
 
-        /*
-        ========================================================
-        USER TRANSCRIPT
-        ========================================================
-        */
-
         const transcript =
           data.input_kinyarwanda ||
           data.transcript ||
           data.transcription ||
           data.text ||
           "";
-
-        /*
-        ========================================================
-        AI ANSWER
-        ========================================================
-        */
 
         const answer =
           data.answer_kinyarwanda ||
@@ -2415,19 +2324,6 @@ export default function AntimateAI() {
           data.voice_url ||
           null;
 
-        /*
-        --------------------------------------------------------
-        IMPORTANT:
-        
-        In live mode:
-        
-        AI voice MUST play.
-        
-        After audio finishes:
-            startNextLiveTurn()
-        --------------------------------------------------------
-        */
-
         addAIMessage({
           text:
             answer,
@@ -2451,12 +2347,6 @@ export default function AntimateAI() {
               ? "Mbabarira, sinabashije kumva neza cyangwa kubona igisubizo. Ongera uvuge."
               : "Sorry, I could not understand you or get a response. Please try again.",
         });
-
-        /*
-        --------------------------------------------------------
-        If live mode failed, do not trap the user in recording.
-        --------------------------------------------------------
-        */
 
         if (
           liveMode
@@ -2519,15 +2409,6 @@ export default function AntimateAI() {
       speechStartedAtRef.current =
         null;
 
-      /*
-      ----------------------------------------------------------
-      Small pause between AI voice and microphone.
-      
-      This prevents the AI's final sound from being detected
-      as user speech.
-      ----------------------------------------------------------
-      */
-
       await new Promise(
         (resolve) =>
           setTimeout(
@@ -2577,12 +2458,6 @@ export default function AntimateAI() {
       }
 
       try {
-        /*
-        --------------------------------------------------------
-        Stop every other audio.
-        --------------------------------------------------------
-        */
-
         Object.entries(
           audioRefs.current
         ).forEach(
@@ -2593,20 +2468,12 @@ export default function AntimateAI() {
             ) {
               try {
                 audio.pause();
-
                 audio.currentTime =
                   0;
               } catch (_) {}
             }
           }
         );
-
-        /*
-        --------------------------------------------------------
-        If microphone somehow remained open, close it before
-        AI playback.
-        --------------------------------------------------------
-        */
 
         if (
           isRecordingRef.current
@@ -2644,16 +2511,6 @@ export default function AntimateAI() {
                 null
               );
 
-              /*
-              --------------------------------------------------
-              LIVE MODE:
-              
-              AI finished speaking.
-              
-              Open microphone automatically.
-              --------------------------------------------------
-              */
-
               if (
                 liveMode
               ) {
@@ -2668,13 +2525,6 @@ export default function AntimateAI() {
               setAudioPlayingId(
                 null
               );
-
-              /*
-              --------------------------------------------------
-              If audio failed but this is live mode, don't stop
-              the conversation completely.
-              --------------------------------------------------
-              */
 
               if (
                 liveMode
@@ -2778,7 +2628,7 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  INPUT CHANGE
+  INPUT
   ============================================================
   */
 
@@ -2803,12 +2653,6 @@ export default function AntimateAI() {
           120
         )}px`;
     };
-
-  /*
-  ============================================================
-  KEY DOWN
-  ============================================================
-  */
 
   const handleKeyDown =
     (event) => {
@@ -2853,14 +2697,14 @@ export default function AntimateAI() {
 
   /*
   ============================================================
-  THEME
+  THEME CLASS
   ============================================================
   */
 
   const themeClass =
-    theme === "light"
-      ? "theme-light"
-      : "theme-dark";
+    isDark
+      ? "theme-dark"
+      : "theme-light";
 
   /*
   ============================================================
@@ -2977,7 +2821,7 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           FIXED HEADER
+           HEADER
         ==================================================== */
 
         .antimate-header {
@@ -3207,7 +3051,12 @@ export default function AntimateAI() {
           box-shadow:
             inset
             0 0 0 1px
-            rgba(255,255,255,0.08);
+            rgba(
+              255,
+              255,
+              255,
+              0.08
+            );
 
           transition:
             background 0.25s ease,
@@ -3300,8 +3149,19 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           STATUS
+           HEADER RIGHT
         ==================================================== */
+
+        .antimate-header-right {
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          gap:
+            12px;
+        }
 
         .antimate-status {
           display:
@@ -3338,6 +3198,84 @@ export default function AntimateAI() {
             ${isDark
               ? "rgba(53,199,122,0.10)"
               : "rgba(53,199,122,0.12)"};
+        }
+
+        /* ====================================================
+           THEME BUTTON
+        ==================================================== */
+
+        .antimate-theme-button {
+          width:
+            38px;
+
+          height:
+            38px;
+
+          border:
+            1px solid
+            var(--ai-border);
+
+          border-radius:
+            11px;
+
+          display:
+            flex;
+
+          align-items:
+            center;
+
+          justify-content:
+            center;
+
+          background:
+            var(--ai-surface);
+
+          color:
+            var(--ai-text);
+
+          cursor:
+            pointer;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            border-color 0.2s ease,
+            transform 0.15s ease,
+            box-shadow 0.2s ease;
+
+          box-shadow:
+            0 3px 12px
+            ${isDark
+              ? "rgba(0,0,0,0.18)"
+              : "rgba(15,23,42,0.05)"};
+        }
+
+        .antimate-theme-button:hover {
+          transform:
+            translateY(-1px);
+
+          border-color:
+            var(--ai-text-soft);
+
+          box-shadow:
+            0 5px 16px
+            ${isDark
+              ? "rgba(0,0,0,0.24)"
+              : "rgba(15,23,42,0.08)"};
+        }
+
+        .antimate-theme-button:active {
+          transform:
+            scale(0.96);
+        }
+
+        .antimate-theme-button:focus-visible {
+          outline:
+            2px solid
+            #6366f1;
+
+          outline-offset:
+            2px;
         }
 
         /* ====================================================
@@ -3826,8 +3764,6 @@ export default function AntimateAI() {
 
         /* ====================================================
            THINKING
-           
-           Positioned around 1/3 from bottom.
         ==================================================== */
 
         .antimate-thinking {
@@ -3920,7 +3856,7 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           COMPOSER WRAPPER
+           COMPOSER
         ==================================================== */
 
         .antimate-composer-wrapper {
@@ -3952,10 +3888,6 @@ export default function AntimateAI() {
           pointer-events:
             none;
         }
-
-        /* ====================================================
-           COMPOSER
-        ==================================================== */
 
         .antimate-composer {
           pointer-events:
@@ -4100,7 +4032,7 @@ export default function AntimateAI() {
             transform 0.15s ease,
             opacity 0.15s ease,
             box-shadow 0.2s ease;
-          
+
           touch-action:
             none;
 
@@ -4180,7 +4112,7 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           LIVE MODE BUTTON
+           LIVE MODE
         ==================================================== */
 
         .antimate-action-button.live-mode {
@@ -4241,7 +4173,7 @@ export default function AntimateAI() {
         }
 
         /* ====================================================
-           HOLD INDICATOR
+           HOLD
         ==================================================== */
 
         .antimate-hold-progress {
@@ -4606,6 +4538,19 @@ export default function AntimateAI() {
               none;
           }
 
+          .antimate-header-right {
+            gap:
+              8px;
+          }
+
+          .antimate-theme-button {
+            width:
+              36px;
+
+            height:
+              36px;
+          }
+
           .antimate-chat {
             padding:
               88px 12px 145px;
@@ -4746,10 +4691,6 @@ export default function AntimateAI() {
           }
         }
 
-        /* ====================================================
-           SMALL MOBILE
-        ==================================================== */
-
         @media (max-width: 420px) {
 
           .antimate-message-content {
@@ -4799,7 +4740,7 @@ export default function AntimateAI() {
       <div
         className={`antimate-page ${themeClass}`}
         data-theme={
-          theme
+          theme || "light"
         }
         data-language={
           language
@@ -4807,7 +4748,7 @@ export default function AntimateAI() {
       >
 
         {/* ==================================================
-            FIXED HEADER
+            HEADER
         ================================================== */}
 
         <header className="antimate-header">
@@ -4826,10 +4767,7 @@ export default function AntimateAI() {
 
               <div className="antimate-subtitle">
                 {isLiveVoice
-                  ? language ===
-                    "rw"
-                    ? "Live Voice"
-                    : "Live Voice"
+                  ? "Live Voice"
                   : language ===
                     "rw"
                   ? "Umufasha w'ubwenge"
@@ -4840,21 +4778,62 @@ export default function AntimateAI() {
 
           </div>
 
-          <div className="antimate-status">
+          <div className="antimate-header-right">
 
-            <span
-              className="antimate-status-dot"
-            />
+            <div className="antimate-status">
 
-            {isLiveVoice
-              ? language ===
-                "rw"
+              <span
+                className="antimate-status-dot"
+              />
+
+              {isLiveVoice
                 ? "Live"
-                : "Live"
-              : language ===
-                "rw"
-              ? "Iri gukora"
-              : "Online"}
+                : language ===
+                  "rw"
+                ? "Iri gukora"
+                : "Online"}
+
+            </div>
+
+            {/* ==================================================
+                THEME TOGGLE
+            ================================================== */}
+
+            <button
+              type="button"
+              className="antimate-theme-button"
+              onClick={
+                toggleTheme
+              }
+              aria-label={
+                isDark
+                  ? language ===
+                    "rw"
+                    ? "Hindura ujye kuri Light theme"
+                    : "Switch to light theme"
+                  : language ===
+                    "rw"
+                  ? "Hindura ujye kuri Dark theme"
+                  : "Switch to dark theme"
+              }
+              title={
+                isDark
+                  ? language ===
+                    "rw"
+                    ? "Light theme"
+                    : "Light theme"
+                  : language ===
+                    "rw"
+                  ? "Dark theme"
+                  : "Dark theme"
+              }
+            >
+              <ThemeIcon
+                isDark={
+                  isDark
+                }
+              />
+            </button>
 
           </div>
 
@@ -5058,10 +5037,6 @@ export default function AntimateAI() {
             )
           )}
 
-          {/* ==================================================
-              THINKING
-          ================================================== */}
-
           {thinkingText && (
             <div className="antimate-thinking">
 
@@ -5088,7 +5063,7 @@ export default function AntimateAI() {
         </main>
 
         {/* ==================================================
-            LIVE MODE EXIT
+            LIVE EXIT
         ================================================== */}
 
         {isLiveVoice &&
@@ -5207,7 +5182,7 @@ export default function AntimateAI() {
         )}
 
         {/* ==================================================
-            FIXED COMPOSER
+            COMPOSER
         ================================================== */}
 
         <div className="antimate-composer-wrapper">
@@ -5248,11 +5223,8 @@ export default function AntimateAI() {
               }
             />
 
-            {/* ==================================================
-                TEXT EMPTY = VOICE
-            ================================================== */}
-
             {!inputText.trim() ? (
+
               <button
                 type="button"
                 className={`antimate-action-button ${
@@ -5273,14 +5245,6 @@ export default function AntimateAI() {
                 onPointerCancel={
                   handleRecordPointerCancel
                 }
-                onPointerLeave={() => {
-                  /*
-                  ------------------------------------------------
-                  Do not cancel while the user is holding.
-                  Pointer capture is used instead.
-                  ------------------------------------------------
-                  */
-                }}
                 onContextMenu={(
                   event
                 ) =>
@@ -5330,22 +5294,6 @@ export default function AntimateAI() {
                       rx="2"
                     />
                   </svg>
-                ) : isLiveVoice ? (
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  >
-                    <path d="M4 10v4" />
-                    <path d="M8 7v10" />
-                    <path d="M12 4v16" />
-                    <path d="M16 7v10" />
-                    <path d="M20 10v4" />
-                  </svg>
                 ) : (
                   <svg
                     width="22"
@@ -5365,10 +5313,8 @@ export default function AntimateAI() {
                 )}
 
               </button>
+
             ) : (
-              /* ==================================================
-                 TEXT = SEND
-              ================================================== */
 
               <button
                 type="button"
@@ -5404,6 +5350,7 @@ export default function AntimateAI() {
                 </svg>
 
               </button>
+
             )}
 
           </div>

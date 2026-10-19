@@ -124,24 +124,24 @@ function Login() {
       trending: "NEW",
 
       login: "Injira",
-      signup: "Tangira natwe",
+      signup: "Kora konti",
 
       eyebrow: "INTELLIGENT TECHNOLOGY ECOSYSTEM",
 
       title1: "Ikoranabuhanga",
-      title2: "rihuza abantu, data n'ubwenge.",
+      title2: "rikemura ibibazo Uhura nabyo.",
 
       description:
-        "ANTIMATE ni ecosystem y'ikoranabuhanga ihuza devices, communication, cloud, data na Artificial Intelligence kugira ngo abantu n'ibikorwa babashe gukoresha amakuru neza, gukora automation no gufata ibyemezo bifite ishingiro.",
+        "ANTIMATE Ni ikigo cyubaka ikoranabuhanga rishya  kugira ngo rikemure ibibazo abantu bahura nabyo kandi babashe gukoresha amakuru neza mugufata ibyemezo bifite ishingiro.",
 
       start: "Kora konti",
       learn: "Menya ANTIMATE",
 
-      live: "Real-time data",
-      smart: "Intelligent technology",
+      live: "Amakuru mashya",
+      smart: "Ikoranabuhanga Rishingiye kumakuru yizewe",
 
       featuresTitle:
-        "Ikoranabuhanga ryubakiye ku buryo bwuzuye",
+        "Ikoranabuhanga rihuza ibikoresho 1000+ bitanga amakuru yukuri",
 
       feature1Title: "Connect",
       feature1Text:
@@ -153,7 +153,7 @@ function Login() {
 
       feature3Title: "Intelligence",
       feature3Text:
-        "Ubwenge Karemano bufasha gusobanura Amakuru,Kuyobora no gufasha abakoresha.",
+        "Ubwenge Karemano bufasha gusobanura Amakuru, Kuyobora no gufasha abakoresha.",
 
       visionTitle:
         "Kubaka ikoranabuhanga rishobora gukorera ahantu hatandukanye",

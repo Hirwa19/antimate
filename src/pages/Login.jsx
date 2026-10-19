@@ -134,7 +134,7 @@ function Login() {
       description:
         "ANTIMATE ni ecosystem y'ikoranabuhanga ihuza devices, communication, cloud, data na Artificial Intelligence kugira ngo abantu n'ibikorwa babashe gukoresha amakuru neza, gukora automation no gufata ibyemezo bifite ishingiro.",
 
-      start: "Tangira natwe",
+      start: "Kora konti",
       learn: "Menya ANTIMATE",
 
       live: "Real-time data",
@@ -145,39 +145,39 @@ function Login() {
 
       feature1Title: "Connect",
       feature1Text:
-        "ANTIMATE ihuza systems, devices n'abakoresha kugira ngo amakuru abashe kugenda neza kandi yizewe.",
+        "ANTIMATE ihuza Ibikoresho by'ikoranabuhanga n'abakoresha kugira ngo amakuru abashe kugenda neza kandi yizewe.",
 
       feature2Title: "Understand",
       feature2Text:
-        "Data ikusanywa kandi igatunganywa kugira ngo ibe amakuru ashobora gusobanuka no gukoreshwa.",
+        "Amakuru akusanywa kandi agatunganywa kugira ngo abe ashobora gusobanuka no gukoreshwa.",
 
       feature3Title: "Intelligence",
       feature3Text:
-        "Artificial Intelligence ifasha gusobanura data, gutanga recommendations no gufasha abakoresha.",
+        "Ubwenge Karemano bufasha gusobanura Amakuru,Kuyobora no gufasha abakoresha.",
 
       visionTitle:
         "Kubaka ikoranabuhanga rishobora gukorera ahantu hatandukanye",
 
       visionText:
-        "ANTIMATE yubaka solutions zihuza devices, communication, data na Artificial Intelligence. Technology yayo ishobora gukoreshwa mu bworozi, agriculture, monitoring, automation n'izindi domains.",
+        "ANTIMATE yubaka Ikoranabuhanga rihuza Amakuru y'ukuri, n'itumanaho ryibikoresho byayo. Technology yayo ishobora gukoreshwa mubuhini n'ubworozi, Mungo, m'ubuvuzi, Iteganyagihe, Imashini zikoresha, nahandi.",
 
       systemsTitle: "ANTIMATE Systems",
       systemsSubtitle:
-        "BR Systems zacu zagenewe gukemura ibibazo bitandukanye by'abakoresha.",
+        "BR Systems zacu zagenewe gukemura ibibazo bitandukanye Aborozi binkoko zikivuka bahura nabyo.",
 
       system300: "BR System 300",
       system300Text:
-        "Solution yagenewe ibikorwa bito n'ibiciriritse bifite capacity igera ku nkoko 300.",
+        "Yagenewe imishwi zitarenze 300 zimberabyombi cyangwa Izamagi.",
 
       system750: "BR System 750",
       system750Text:
-        "Solution yagenewe ibikorwa bifite capacity igera ku nkoko 750 kandi bikenera control n'imicungire yagutse.",
+        "Yagenewe imishwi zitarenze 750 zimberabyombi cyangwa Izamagi.",
 
       system1000: "BR System 1000",
       system1000Text:
-        "Solution yagenewe ibikorwa binini bigera ku nkoko 1,000 kandi bikenera monitoring n'ubushobozi bwagutse.",
+        "Yagenewe imishwi zitarenze 300 zimberabyombi cyangwa Izamagi.",
 
-      plansTitle: "Systems & Pricing",
+      plansTitle: "Systems & Pricing/Igiciro Kukwezi",
       plansSubtitle:
         "Hitamo BR System ijyanye n'ubushobozi bw'igikorwa cyawe, hanyuma uhitemo plan ijyanye n'imikoreshereze yawe.",
 
@@ -252,13 +252,13 @@ function Login() {
 
       visionShortTitle: "Icyerekezo",
       visionShortText:
-        "Kuba ecosystem y'ikoranabuhanga ihuza communication, intelligence na automation mu buryo bushobora kwaguka.",
+        "Kuba Ihuriro y'ikoranabuhanga rihuza Ibyuma byikoranabuhanda, Ubwenge buhimbano, n'Amakuru Yizewe mu buryo bushobora kwaguka.",
 
-      valuesTitle: "Ibyo twemera",
-      value1: "Ubwizerwe",
-      value2: "Udushya",
-      value3: "Ubworoherane",
-      value4: "Umutekano w'amakuru",
+      valuesTitle: "Ibyo Tugenderaho",
+      value1: "Ikoranabuhanga Ryizewe",
+      value2: "Guhanga Udushya",
+      value3: "Gutanga Ikoranabuhanga rikemura Ibibazo Byukuri",
+      value4: "Umutekano wamakuru yabatugana",
 
       supportTitle: "Ukeneye ubufasha?",
       supportSubtitle:
@@ -303,7 +303,7 @@ function Login() {
       cio: "Chief Information Officer",
       cto: "Chief Technology Officer",
       cmo: "Chief Marketing Officer",
-      cbo: "Chief Business Officer",
+      cbo: "Chief Business/Investimant Officer",
 
       teamCEO: "HIRWA Salem",
       teamAI: "CYUSA Chrispin",
@@ -339,11 +339,11 @@ function Login() {
 
       faq5Q: "Ni gute ninjiye muri ANTIMATE?",
       faq5A:
-        "Umaze gukora login, ANTIMATE izakujyana mu environment ijyanye na account yawe n'ibikorwa ukoresha.",
+        "Umaze gukora login, ANTIMATE izaHITAMO igice cya EDGE niba uri umworozi, naho uwubaka ibikoresho byikoranabuhanga anyura kuri Link.",
 
       joinTitle: "Witeguye gutangira?",
       joinText:
-        "Injira muri ANTIMATE uhitemo solution ijyanye n'ibyo ushaka gukora.",
+        "Injira muri ANTIMATE uhitemo Device ijyanye n'ibyo ushaka gukora.",
 
       loginTitle: "Murakaza neza",
       loginSubtitle:
@@ -369,13 +369,13 @@ function Login() {
 
       edgeTitle: "ANTIMATE Home",
       edgeDescription:
-        "Jya muri environment ya ANTIMATE aho ucunga systems, devices na monitoring.",
+        "Jya aho ucunga system/Device yawe.",
 
       edgeButton: "Jya kuri Home",
 
       linkTitle: "ANTIMATE Link",
       linkDescription:
-        "Jya muri Link environment aho ucunga communication na developer services.",
+        "Jya mugice cyumu developer.",
 
       linkButton: "Jya kuri Link",
 

@@ -149,7 +149,7 @@ function Login() {
 
       feature2Title: "Understand",
       feature2Text:
-        "Amakuru akusanywa kandi agatunganywa kugira ngo abe ashobora gusobanuka no gukoreshwa.",
+        "Amakuru arakusanywa kandi agatunganywa kugira ngo abe ashobora gusobanuka no gukoreshwa.",
 
       feature3Title: "Intelligence",
       feature3Text:
@@ -159,7 +159,7 @@ function Login() {
         "Kubaka ikoranabuhanga rishobora gukorera ahantu hatandukanye",
 
       visionText:
-        "ANTIMATE yubaka Ikoranabuhanga rihuza Amakuru y'ukuri, n'itumanaho ryibikoresho byayo. Technology yayo ishobora gukoreshwa mubuhini n'ubworozi, Mungo, m'ubuvuzi, Iteganyagihe, Imashini zikoresha, nahandi.",
+        "ANTIMATE yubaka Ikoranabuhanga rihuza Amakuru y'ukuri, n'itumanaho ryibikoresho byayo. Technology yayo ishobora gukoreshwa mubuhinzi n'ubworozi, Mungo, m'ubuvuzi, Iteganyagihe, Imashini zikoresha, nahandi.",
 
       systemsTitle: "ANTIMATE Systems",
       systemsSubtitle:

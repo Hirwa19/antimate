@@ -346,10 +346,10 @@ export default function AntimateAI() {
         }
 
         .antimate-root.theme-dark {
-          --bg: #060808;
-          --sidebar: #0a0f0d;
-          --surface: #070b09;
-          --surface-secondary: #000402;
+          --bg: #000000;
+          --sidebar: #000000;
+          --surface: #000000;
+          --surface-secondary: #000000;
 
           --text: #f1f5f2;
           --text-secondary: #d0d8d2;

@@ -11,19 +11,16 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 const CHAT_URL = `${API_URL}/api/antimate/chat`;
+
 const MAX_MESSAGE_LENGTH = 12000;
 
 const createId = () =>
   globalThis.crypto?.randomUUID?.() ||
-  `chat-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  `chat-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const createMessageId = () =>
   globalThis.crypto?.randomUUID?.() ||
-  `msg-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const getToken = () => {
   try {
@@ -41,29 +38,17 @@ export default function AntimateAI() {
   const [conversationId, setConversationId] =
     useState(createId);
 
-  const [messages, setMessages] =
-    useState([]);
+  const [messages, setMessages] = useState([]);
 
-  const [input, setInput] =
-    useState("");
+  const [input, setInput] = useState("");
 
-  const [language, setLanguage] =
-    useState("rw");
+  const [language, setLanguage] = useState("rw");
 
-  const [theme, setTheme] =
-    useState("light");
+  const [busy, setBusy] = useState(false);
 
-  const [busy, setBusy] =
-    useState(false);
+  const [error, setError] = useState("");
 
-  const [error, setError] =
-    useState("");
-
-  const [details, setDetails] =
-    useState({});
-
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+  const [details, setDetails] = useState({});
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -72,7 +57,7 @@ export default function AntimateAI() {
   const signedIn = Boolean(getToken());
 
   // =====================================================
-  // SCROLL TO BOTTOM
+  // SCROLL
   // =====================================================
 
   useEffect(() => {
@@ -93,16 +78,6 @@ export default function AntimateAI() {
   }, []);
 
   // =====================================================
-  // THEME
-  // =====================================================
-
-  const toggleTheme = useCallback(() => {
-    setTheme((current) =>
-      current === "light" ? "dark" : "light"
-    );
-  }, []);
-
-  // =====================================================
   // NEW CONVERSATION
   // =====================================================
 
@@ -114,7 +89,6 @@ export default function AntimateAI() {
     setInput("");
     setError("");
     setDetails({});
-    setSidebarOpen(false);
 
     inputRef.current?.focus();
   }, [busy]);
@@ -142,7 +116,13 @@ export default function AntimateAI() {
       createdAt: new Date().toISOString(),
     };
 
-    // Show user message immediately.
+    // History excludes the new message because
+    // Gradio receives the current message separately.
+    const chatHistory = messages.map((message) => ({
+      role: message.role,
+      content: message.text,
+    }));
+
     setMessages((previous) => [
       ...previous,
       userMessage,
@@ -153,7 +133,6 @@ export default function AntimateAI() {
     setBusy(true);
 
     const controller = new AbortController();
-
     abortRef.current = controller;
 
     try {
@@ -169,13 +148,12 @@ export default function AntimateAI() {
 
       const response = await fetch(CHAT_URL, {
         method: "POST",
-
         headers,
-
         signal: controller.signal,
 
         body: JSON.stringify({
           message: cleanText,
+          history: chatHistory,
           language,
           conversation_id: conversationId,
         }),
@@ -209,7 +187,6 @@ export default function AntimateAI() {
         );
       }
 
-      // Use server-generated conversation ID if returned.
       if (data.conversation_id) {
         setConversationId(data.conversation_id);
       }
@@ -236,7 +213,7 @@ export default function AntimateAI() {
       if (requestError.name !== "AbortError") {
         setError(
           requestError.status === 401
-            ? "Ugomba kwinjira muri konti. Backend igomba kwemerera guest access kugira ngo abatari logged in bakoreshe AI."
+            ? "Ugomba kwinjira muri konti kugira ngo ukoreshe ANTIMATE AI."
             : requestError.message ||
               "Habaye ikibazo mu kohereza ubutumwa."
         );
@@ -252,10 +229,11 @@ export default function AntimateAI() {
     busy,
     language,
     conversationId,
+    messages,
   ]);
 
   // =====================================================
-  // ENTER KEY
+  // KEYBOARD
   // =====================================================
 
   const handleKeyDown = (event) => {
@@ -286,52 +264,43 @@ export default function AntimateAI() {
   // =====================================================
 
   return (
-    <div
-      className={`antimate-root theme-${theme}`}
-    >
+    <div className="antimate-root">
+
       <style>{`
 
-        @import url(
-          'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap'
-        );
-
         /* ==========================================
-           THEME VARIABLES
+           GLOBAL
         ========================================== */
 
         .antimate-root {
           --bg: #ffffff;
-          --sidebar: #f7f8f7;
           --surface: #ffffff;
-          --surface-secondary: #f1f3f2;
+          --surface-soft: #f4f6f4;
 
-          --text: #202522;
-          --text-secondary: #555e59;
-          --text-muted: #737b76;
+          --text: #202722;
+          --text-secondary: #68736c;
+          --text-muted: #89928c;
 
-          --border: #e1e6e2;
+          --border: #e5e9e6;
+
           --accent: #176b4d;
           --accent-hover: #10563d;
-          --accent-text: #ffffff;
 
-          --user-bubble: #eef1ef;
-          --assistant-text: #252b27;
+          --user-bubble: #eef2ef;
 
-          --input-bg: #ffffff;
-          --placeholder: #707872;
+          --error-bg: #fff1ee;
+          --error-border: #edc4bb;
+          --error-text: #943c30;
 
-          --error-bg: #fff0ed;
-          --error-border: #e8b8af;
-          --error-text: #8f3025;
+          width: 100%;
+          height: 100dvh;
+          min-height: 0;
 
-          --detail-bg: #f2f7f4;
-          --detail-border: #9bbda9;
-
-          --shadow:
-            0 5px 22px rgba(0, 0, 0, 0.055);
-
-          min-height: 100vh;
           display: flex;
+          flex-direction: column;
+
+          overflow: hidden;
+
           background: var(--bg);
           color: var(--text);
 
@@ -339,42 +308,6 @@ export default function AntimateAI() {
             "DM Sans",
             system-ui,
             sans-serif;
-
-          transition:
-            background 0.2s ease,
-            color 0.2s ease;
-        }
-
-        .antimate-root.theme-dark {
-          --bg: #000000;
-          --sidebar: #000000;
-          --surface: #000000;
-          --surface-secondary: #000000;
-
-          --text: #f1f5f2;
-          --text-secondary: #d0d8d2;
-          --text-muted: #a5afa8;
-
-          --border: #39433d;
-          --accent: #26865e;
-          --accent-hover: #31996d;
-          --accent-text: #ffffff;
-
-          --user-bubble: #303a34;
-          --assistant-text: #e8eee9;
-
-          --input-bg: #202623;
-          --placeholder: #a7b1aa;
-
-          --error-bg: #382320;
-          --error-border: #77453d;
-          --error-text: #ffb7aa;
-
-          --detail-bg: #242f29;
-          --detail-border: #638a72;
-
-          --shadow:
-            0 5px 22px rgba(0, 0, 0, 0.24);
         }
 
         .antimate-root *,
@@ -383,223 +316,148 @@ export default function AntimateAI() {
           box-sizing: border-box;
         }
 
-        /* ==========================================
-           SIDEBAR
-        ========================================== */
-
-        .am-sidebar {
-          width: 260px;
-          flex: 0 0 260px;
-
-          background: var(--sidebar);
-          border-right: 1px solid var(--border);
-
-          padding: 20px 14px;
-
-          display: flex;
-          flex-direction: column;
-
-          transition:
-            transform 0.2s ease,
-            background 0.2s ease;
-        }
-
-        .am-brand {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-
-          padding: 4px 8px 25px;
-
-          color: var(--text);
-
-          font: 800 16px Manrope, sans-serif;
-        }
-
-        .am-logo {
-          width: 35px;
-          height: 35px;
-
-          border-radius: 10px;
-
-          background: var(--accent);
-          color: white;
-
-          display: grid;
-          place-items: center;
-
-          font: 800 17px Manrope, sans-serif;
-        }
-
-        .am-new {
-          width: 100%;
-
-          border: 1px solid var(--border);
-          background: var(--surface);
-
-          color: var(--text);
-
-          border-radius: 10px;
-          padding: 11px;
-
-          text-align: left;
-          font: 600 13px "DM Sans", sans-serif;
-
-          cursor: pointer;
-        }
-
-        .am-new:hover {
-          background: var(--surface-secondary);
-        }
-
-        .am-new:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .am-note {
-          margin-top: auto;
-
-          border-top: 1px solid var(--border);
-
-          padding: 14px 7px 0;
-
-          color: var(--text-muted);
-
-          font-size: 11px;
-          line-height: 1.7;
+        .antimate-root button,
+        .antimate-root textarea,
+        .antimate-root select {
+          font: inherit;
         }
 
         /* ==========================================
-           MAIN
+           HEADER
         ========================================== */
-
-        .am-main {
-          min-width: 0;
-          flex: 1;
-
-          display: flex;
-          flex-direction: column;
-
-          min-height: 100vh;
-
-          background: var(--bg);
-        }
 
         .am-header {
-          height: 65px;
-          flex: 0 0 65px;
-
-          border-bottom: 1px solid var(--border);
+          height: 62px;
+          min-height: 62px;
 
           display: flex;
           align-items: center;
           justify-content: space-between;
 
-          padding: 0 27px;
-          gap: 12px;
+          padding: 0 24px;
 
-          background: var(--bg);
+          border-bottom: 1px solid var(--border);
+
+          background: var(--surface);
         }
 
-        .am-header-left,
+        .am-brand {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: -0.3px;
+        }
+
+        .am-logo {
+          width: 34px;
+          height: 34px;
+
+          display: grid;
+          place-items: center;
+
+          border-radius: 10px;
+
+          background: var(--accent);
+          color: #ffffff;
+
+          font-size: 17px;
+          font-weight: 800;
+        }
+
         .am-header-right {
           display: flex;
           align-items: center;
           gap: 12px;
         }
 
-        .am-title {
-          color: var(--text);
+        .am-status {
+          display: flex;
+          align-items: center;
+          gap: 7px;
 
-          font: 700 15px Manrope, sans-serif;
-        }
-
-        .am-muted {
           color: var(--text-muted);
-          font-size: 12px;
+          font-size: 11px;
         }
 
-        .am-menu {
-          display: none;
+        .am-status-dot {
+          width: 7px;
+          height: 7px;
 
-          border: 0;
-          background: transparent;
+          border-radius: 50%;
 
-          color: var(--text);
-
-          font-size: 20px;
-          cursor: pointer;
+          background: #269c67;
         }
 
         .am-lang {
           border: 1px solid var(--border);
-
-          border-radius: 9px;
+          border-radius: 8px;
 
           background: var(--surface);
           color: var(--text);
 
-          padding: 8px 10px;
+          padding: 7px 10px;
 
-          font: 500 12px "DM Sans", sans-serif;
-
+          font-size: 12px;
           outline: none;
-        }
-
-        .am-lang:focus-visible,
-        .am-theme:focus-visible,
-        .am-send:focus-visible,
-        .am-new:focus-visible,
-        .am-compose textarea:focus-visible {
-          outline: 2px solid var(--accent);
-          outline-offset: 3px;
-        }
-
-        .am-theme {
-          border: 1px solid var(--border);
-
-          border-radius: 9px;
-
-          background: var(--surface);
-          color: var(--text);
-
-          padding: 8px 11px;
-
-          font: 600 12px "DM Sans", sans-serif;
 
           cursor: pointer;
         }
 
-        .am-theme:hover {
-          background: var(--surface-secondary);
+        .am-lang:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 2px;
         }
 
         /* ==========================================
-           CONTENT
+           CHAT LAYOUT
         ========================================== */
 
-        .am-content {
-          width: min(100%, 850px);
+        .am-main {
+          width: 100%;
+          max-width: 1000px;
 
           margin: 0 auto;
 
           flex: 1;
+          min-height: 0;
 
           display: flex;
           flex-direction: column;
 
-          padding: 28px 26px 18px;
+          padding: 0 24px;
         }
 
         .am-feed {
           flex: 1;
-          padding-bottom: 25px;
+          min-height: 0;
+
+          overflow-y: auto;
+          overscroll-behavior: contain;
+
+          padding: 28px 5px 18px;
+
+          scrollbar-width: thin;
+          scrollbar-color: #cbd4cd transparent;
         }
 
-        .am-welcome {
-          min-height: 55vh;
+        .am-feed::-webkit-scrollbar {
+          width: 6px;
+        }
 
+        .am-feed::-webkit-scrollbar-thumb {
+          background: #cbd4cd;
+          border-radius: 10px;
+        }
+
+        /* ==========================================
+           WELCOME
+        ========================================== */
+
+        .am-welcome {
+          min-height: 100%;
           display: flex;
           flex-direction: column;
 
@@ -608,44 +466,52 @@ export default function AntimateAI() {
 
           text-align: center;
 
-          padding: 20px;
+          padding: 24px 12px;
         }
 
         .am-welcome-mark {
-          width: 56px;
-          height: 56px;
-
-          border-radius: 17px;
-
-          background: var(--accent);
-          color: white;
+          width: 62px;
+          height: 62px;
 
           display: grid;
           place-items: center;
 
-          font: 800 24px Manrope, sans-serif;
+          margin-bottom: 22px;
 
-          margin-bottom: 23px;
+          border-radius: 19px;
+
+          background: var(--accent);
+          color: #ffffff;
+
+          font-size: 26px;
+          font-weight: 800;
         }
 
         .am-welcome h1 {
-          color: var(--text);
-
-          font: 700 clamp(25px, 4vw, 34px)
-            Manrope, sans-serif;
-
           margin: 0 0 10px;
 
-          letter-spacing: -0.04em;
+          font-size: clamp(25px, 4vw, 35px);
+          font-weight: 800;
+
+          letter-spacing: -1.2px;
         }
 
         .am-welcome p {
+          max-width: 420px;
+
+          margin: 0;
+
           color: var(--text-secondary);
 
           font-size: 14px;
           line-height: 1.7;
+        }
 
-          margin: 0;
+        .am-welcome-caption {
+          margin-top: 26px;
+
+          color: var(--text-muted);
+          font-size: 11px;
         }
 
         /* ==========================================
@@ -656,7 +522,7 @@ export default function AntimateAI() {
           display: flex;
           flex-direction: column;
 
-          margin: 0 0 27px;
+          margin-bottom: 28px;
         }
 
         .am-message.user {
@@ -668,88 +534,83 @@ export default function AntimateAI() {
         }
 
         .am-role {
+          margin: 0 3px 7px;
+
           color: var(--text-muted);
 
           font-size: 11px;
           font-weight: 700;
-
-          margin: 0 2px 7px;
         }
 
         .am-bubble {
-          max-width: min(86%, 720px);
-
-          color: var(--text);
+          max-width: min(88%, 760px);
 
           font-size: 14px;
-          line-height: 1.8;
+          line-height: 1.85;
 
           white-space: pre-wrap;
           overflow-wrap: anywhere;
         }
 
         .am-message.user .am-bubble {
+          padding: 11px 15px;
+
+          border-radius: 17px 17px 5px 17px;
+
           background: var(--user-bubble);
-
           color: var(--text);
-
-          border-radius: 18px 18px 5px 18px;
-
-          padding: 12px 16px;
         }
 
         .am-message.assistant .am-bubble {
           max-width: 100%;
 
-          color: var(--assistant-text);
+          padding: 0 3px;
 
-          padding: 0 2px;
+          color: var(--text);
         }
 
         /* ==========================================
-           DETAILS
+           MESSAGE DETAILS
         ========================================== */
 
         .am-actions {
           display: flex;
-          gap: 8px;
+          flex-wrap: wrap;
+          gap: 7px;
 
           margin-top: 11px;
-          flex-wrap: wrap;
         }
 
-        .am-actions button {
+        .am-action {
           border: 1px solid var(--border);
+          border-radius: 7px;
 
           background: var(--surface);
           color: var(--text-secondary);
 
-          border-radius: 8px;
-
-          padding: 7px 10px;
+          padding: 6px 9px;
 
           font-size: 11px;
 
           cursor: pointer;
         }
 
-        .am-actions button:hover {
-          background: var(--surface-secondary);
+        .am-action:hover {
+          background: var(--surface-soft);
           color: var(--text);
         }
 
         .am-detail {
           margin-top: 9px;
 
-          padding: 12px 14px;
+          padding: 11px 13px;
 
-          border-left: 3px solid var(--detail-border);
-
-          background: var(--detail-bg);
-
+          border-left: 3px solid #9bbda9;
           border-radius: 0 8px 8px 0;
 
-          color: var(--text-secondary);
+          background: #f2f7f4;
+
+          color: #45534a;
 
           font-size: 12px;
           line-height: 1.7;
@@ -758,17 +619,16 @@ export default function AntimateAI() {
         }
 
         .am-detail pre {
+          margin: 0;
+
           white-space: pre-wrap;
           overflow-wrap: anywhere;
 
           font: inherit;
-          margin: 0;
-
-          color: var(--text-secondary);
         }
 
         /* ==========================================
-           THINKING
+           THINKING INDICATOR
         ========================================== */
 
         .am-thinking {
@@ -776,11 +636,10 @@ export default function AntimateAI() {
           align-items: center;
           gap: 9px;
 
-          color: var(--text-muted);
-
-          font-size: 13px;
-
           margin: 12px 0 22px;
+
+          color: var(--text-muted);
+          font-size: 12px;
         }
 
         .am-dots {
@@ -819,71 +678,73 @@ export default function AntimateAI() {
         ========================================== */
 
         .am-error {
-          background: var(--error-bg);
+          flex: 0 0 auto;
+
+          margin: 0 0 10px;
+
+          padding: 10px 13px;
 
           border: 1px solid var(--error-border);
+          border-radius: 9px;
 
+          background: var(--error-bg);
           color: var(--error-text);
 
-          border-radius: 10px;
-
-          padding: 11px 13px;
-
           font-size: 12px;
-          line-height: 1.6;
-
-          margin-bottom: 12px;
+          line-height: 1.5;
         }
 
         /* ==========================================
            COMPOSER
         ========================================== */
 
-        .am-compose-wrap {
-          position: sticky;
-          bottom: 0;
+        .am-compose-area {
+          flex: 0 0 auto;
+
+          padding: 12px 0 14px;
 
           background: var(--bg);
-
-          padding-top: 18px;
         }
 
         .am-compose {
+          display: flex;
+          align-items: flex-end;
+          gap: 10px;
+
+          padding: 11px 12px;
+
           border: 1px solid var(--border);
+          border-radius: 15px;
 
-          border-radius: 17px;
+          background: var(--surface);
 
-          background: var(--input-bg);
-
-          box-shadow: var(--shadow);
-
-          padding: 12px 13px 10px;
+          box-shadow:
+            0 3px 16px rgba(0, 0, 0, 0.045);
         }
 
         .am-compose textarea {
-          display: block;
+          flex: 1;
+          min-width: 0;
 
-          width: 100%;
+          min-height: 42px;
+          max-height: 140px;
+
+          resize: none;
 
           border: 0;
           outline: none;
 
-          resize: vertical;
-
-          min-height: 52px;
-          max-height: 180px;
-
-          padding: 5px 3px;
-
-          color: var(--text);
+          padding: 9px 3px;
 
           background: transparent;
+          color: var(--text);
 
-          font: 14px/1.7 "DM Sans", sans-serif;
+          font-size: 14px;
+          line-height: 1.6;
         }
 
         .am-compose textarea::placeholder {
-          color: var(--placeholder);
+          color: var(--text-muted);
           opacity: 1;
         }
 
@@ -891,36 +752,25 @@ export default function AntimateAI() {
           opacity: 0.6;
         }
 
-        .am-compose-bottom {
-          display: flex;
-
-          align-items: center;
-          justify-content: space-between;
-
-          gap: 10px;
-        }
-
-        .am-hint {
-          color: var(--text-muted);
-          font-size: 10px;
-        }
-
         .am-send {
-          width: 36px;
-          height: 36px;
+          flex: 0 0 38px;
+
+          width: 38px;
+          height: 38px;
+
+          display: grid;
+          place-items: center;
 
           border: 0;
           border-radius: 10px;
 
           background: var(--accent);
-          color: var(--accent-text);
+          color: #ffffff;
 
-          font-size: 19px;
+          font-size: 20px;
           font-weight: 700;
 
           cursor: pointer;
-
-          transition: background 0.15s ease;
         }
 
         .am-send:hover:not(:disabled) {
@@ -932,56 +782,124 @@ export default function AntimateAI() {
           cursor: not-allowed;
         }
 
+        .am-compose:focus-within {
+          border-color: #8eb4a0;
+
+          box-shadow:
+            0 0 0 2px rgba(23, 107, 77, 0.08);
+        }
+
         .am-footer {
+          padding-top: 9px;
+
           text-align: center;
 
           color: var(--text-muted);
-
           font-size: 10px;
-
-          padding: 10px 0 0;
         }
 
         /* ==========================================
            RESPONSIVE
         ========================================== */
 
-        @media (max-width: 760px) {
-          .am-sidebar {
-            position: fixed;
-
-            z-index: 20;
-
-            inset: 0 auto 0 0;
-
-            transform: translateX(-105%);
-
-            box-shadow: 12px 0 35px
-              rgba(0, 0, 0, 0.15);
-          }
-
-          .am-sidebar.open {
-            transform: translateX(0);
-          }
-
-          .am-menu {
-            display: block;
-          }
-
+        @media (max-width: 700px) {
           .am-header {
-            padding: 0 14px;
+            height: 56px;
+            min-height: 56px;
+
+            padding: 0 13px;
           }
 
-          .am-content {
-            padding: 18px 15px;
+          .am-brand {
+            gap: 8px;
+            font-size: 13px;
           }
 
-          .am-account {
+          .am-logo {
+            width: 31px;
+            height: 31px;
+            font-size: 15px;
+          }
+
+          .am-status {
             display: none;
           }
 
+          .am-main {
+            padding: 0 12px;
+          }
+
+          .am-feed {
+            padding: 19px 2px 12px;
+          }
+
+          .am-welcome {
+            padding: 15px 8px;
+          }
+
+          .am-welcome-mark {
+            width: 52px;
+            height: 52px;
+
+            border-radius: 16px;
+
+            font-size: 22px;
+          }
+
+          .am-welcome p {
+            font-size: 13px;
+          }
+
           .am-bubble {
-            max-width: 94%;
+            max-width: 95%;
+            font-size: 13px;
+          }
+
+          .am-compose-area {
+            padding: 8px 0 10px;
+          }
+
+          .am-compose {
+            padding: 8px 9px;
+            border-radius: 13px;
+          }
+
+          .am-compose textarea {
+            font-size: 13px;
+          }
+
+          .am-footer {
+            font-size: 9px;
+          }
+        }
+
+        @media (max-height: 600px) {
+          .am-header {
+            height: 50px;
+            min-height: 50px;
+          }
+
+          .am-feed {
+            padding-top: 12px;
+          }
+
+          .am-compose-area {
+            padding-top: 5px;
+            padding-bottom: 6px;
+          }
+
+          .am-welcome-mark {
+            width: 45px;
+            height: 45px;
+            margin-bottom: 12px;
+          }
+
+          .am-welcome h1 {
+            font-size: 23px;
+          }
+
+          .am-welcome-caption {
+            margin-top: 12px;
           }
         }
 
@@ -989,327 +907,292 @@ export default function AntimateAI() {
           .am-dots i {
             animation: none;
           }
-
-          .antimate-root {
-            transition: none;
-          }
         }
 
       `}</style>
 
-      {/* ============================================
-          SIDEBAR
-      ============================================ */}
+      {/* ==========================================
+          HEADER
+      ========================================== */}
 
-      <aside
-        className={`am-sidebar ${
-          sidebarOpen ? "open" : ""
-        }`}
-      >
+      <header className="am-header">
+
         <div className="am-brand">
           <div className="am-logo">A</div>
-          ANTIMATE AI
+          <span>ANTIMATE AI</span>
         </div>
 
-        <button
-          className="am-new"
-          type="button"
-          onClick={newChat}
-          disabled={busy}
-        >
-          ＋ New chat
-        </button>
+        <div className="am-header-right">
 
-        <div className="am-note">
-          {signedIn
-            ? "Konti yinjiwemo. Amateka y'ibiganiro agomba kubikwa no kugarurwa na backend/database."
-            : "Guest session: ibiganiro biri muri iyi session gusa. Iyo wongereye gufungura page, birasibwa."}
+          <div className="am-status">
+            <span className="am-status-dot" />
+            <span>
+              {busy ? "Processing" : "Ready"}
+            </span>
+          </div>
+
+          <select
+            className="am-lang"
+            value={language}
+            onChange={(event) =>
+              setLanguage(event.target.value)
+            }
+            disabled={busy}
+            aria-label="Response language"
+          >
+            <option value="rw">Kinyarwanda</option>
+            <option value="en">English</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={newChat}
+            disabled={busy}
+            title="New conversation"
+            aria-label="New conversation"
+            style={{
+              width: 34,
+              height: 34,
+              border: "1px solid var(--border)",
+              borderRadius: 9,
+              background: "var(--surface)",
+              color: "var(--text)",
+              cursor: busy ? "not-allowed" : "pointer",
+              opacity: busy ? 0.4 : 1,
+              fontSize: 18,
+            }}
+          >
+            +
+          </button>
+
         </div>
-      </aside>
 
-      {/* ============================================
-          MAIN
-      ============================================ */}
+      </header>
+
+      {/* ==========================================
+          MAIN CHAT
+      ========================================== */}
 
       <main className="am-main">
 
-        {/* HEADER */}
+        <section
+          className="am-feed"
+          aria-live="polite"
+          aria-label="Conversation"
+        >
 
-        <header className="am-header">
+          {/* WELCOME */}
 
-          <div className="am-header-left">
+          {messages.length === 0 && (
 
-            <button
-              className="am-menu"
-              type="button"
-              onClick={() =>
-                setSidebarOpen((value) => !value)
-              }
-              aria-label="Open menu"
-            >
-              ☰
-            </button>
+            <div className="am-welcome">
 
-            <span className="am-title">
-              New conversation
-            </span>
-
-            <span className="am-muted">
-              · Ready
-            </span>
-
-          </div>
-
-          <div className="am-header-right">
-
-            <select
-              className="am-lang"
-              value={language}
-              onChange={(event) =>
-                setLanguage(event.target.value)
-              }
-              disabled={busy}
-              aria-label="Response language"
-            >
-              <option value="rw">
-                Kinyarwanda
-              </option>
-
-              <option value="en">
-                English
-              </option>
-            </select>
-
-            <button
-              type="button"
-              className="am-theme"
-              onClick={toggleTheme}
-              aria-label="Change theme"
-              title="Change appearance"
-            >
-              {theme === "light"
-                ? "☾ Dark"
-                : "☀ Light"}
-            </button>
-
-            <span className="am-muted am-account">
-              {signedIn ? "Account" : "Guest"}
-            </span>
-
-          </div>
-
-        </header>
-
-        {/* CHAT CONTENT */}
-
-        <div className="am-content">
-
-          <section
-            className="am-feed"
-            aria-live="polite"
-          >
-
-            {/* WELCOME */}
-
-            {messages.length === 0 && (
-              <div className="am-welcome">
-
-                <div className="am-welcome-mark">
-                  A
-                </div>
-
-                <h1>
-                  Muraho, ndi ANTIMATE.
-                </h1>
-
-                <p>
-                  Ni iki twaganiraho uyu munsi?
-                </p>
-
-              </div>
-            )}
-
-            {/* MESSAGES */}
-
-            {messages.map((message) => (
-
-              <article
-                className={`am-message ${message.role}`}
-                key={message.id}
-              >
-
-                <div className="am-role">
-                  {message.role === "user"
-                    ? "You"
-                    : "ANTIMATE"}
-                </div>
-
-                <div className="am-bubble">
-                  {message.text}
-                </div>
-
-                {/* AI DETAILS */}
-
-                {message.role === "assistant" &&
-                  (message.reasoningSummary ||
-                    message.toolView) && (
-
-                    <div className="am-actions">
-
-                      {message.reasoningSummary && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleDetail(
-                              message.id,
-                              "reason"
-                            )
-                          }
-                        >
-                          {details[
-                            `${message.id}:reason`
-                          ]
-                            ? "Hide explanation"
-                            : "How this answer was formed"}
-                        </button>
-                      )}
-
-                      {message.toolView && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleDetail(
-                              message.id,
-                              "tools"
-                            )
-                          }
-                        >
-                          {details[
-                            `${message.id}:tools`
-                          ]
-                            ? "Hide activity"
-                            : "Tool activity"}
-                        </button>
-                      )}
-
-                    </div>
-                  )}
-
-                {message.reasoningSummary &&
-                  details[
-                    `${message.id}:reason`
-                  ] && (
-
-                    <div className="am-detail">
-                      {message.reasoningSummary}
-                    </div>
-                  )}
-
-                {message.toolView &&
-                  details[
-                    `${message.id}:tools`
-                  ] && (
-
-                    <div className="am-detail">
-                      <pre>
-                        {JSON.stringify(
-                          message.toolView,
-                          null,
-                          2
-                        )}
-                      </pre>
-                    </div>
-                  )}
-
-              </article>
-
-            ))}
-
-            {/* THINKING */}
-
-            {busy && (
-
-              <div className="am-thinking">
-
-                <span className="am-dots">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-
-                <span>
-                  ANTIMATE irimo gutegura igisubizo...
-                </span>
-
+              <div className="am-welcome-mark">
+                A
               </div>
 
-            )}
+              <h1>
+                Muraho, ndi ANTIMATE.
+              </h1>
 
-            <div ref={bottomRef} />
+              <p>
+                Ni iki twaganiraho uyu munsi?
+                <br />
+                How can I help you today?
+              </p>
 
-          </section>
+              <div className="am-welcome-caption">
+                {signedIn
+                  ? "Your authenticated session is active."
+                  : "Guest session"}
+              </div>
 
-          {/* ERROR */}
-
-          {error && (
-
-            <div
-              className="am-error"
-              role="alert"
-            >
-              {error}
             </div>
 
           )}
 
-          {/* INPUT */}
+          {/* MESSAGES */}
 
-          <div className="am-compose-wrap">
+          {messages.map((message) => (
 
-            <form
-              className="am-compose"
-              onSubmit={(event) => {
-                event.preventDefault();
-                sendMessage();
-              }}
+            <article
+              className={`am-message ${message.role}`}
+              key={message.id}
             >
 
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(event) =>
-                  setInput(event.target.value)
-                }
-                onKeyDown={handleKeyDown}
-                placeholder="Andika ubutumwa kuri ANTIMATE..."
-                rows={2}
-                maxLength={MAX_MESSAGE_LENGTH}
-                disabled={busy}
-              />
-
-              <div className="am-compose-bottom">
-
-                <span className="am-hint">
-                  Enter to send · Shift + Enter for new line
-                </span>
-
-                <button
-                  className="am-send"
-                  type="submit"
-                  disabled={!input.trim() || busy}
-                  aria-label="Send message"
-                >
-                  ↑
-                </button>
-
+              <div className="am-role">
+                {message.role === "user"
+                  ? "You"
+                  : "ANTIMATE"}
               </div>
 
-            </form>
+              <div className="am-bubble">
+                {message.text}
+              </div>
 
-            <div className="am-footer">
-              ANTIMATE may make mistakes. Verify important information.
+              {/* DETAILS */}
+
+              {message.role === "assistant" &&
+                (message.reasoningSummary ||
+                  message.toolView) && (
+
+                  <div className="am-actions">
+
+                    {message.reasoningSummary && (
+
+                      <button
+                        className="am-action"
+                        type="button"
+                        onClick={() =>
+                          toggleDetail(
+                            message.id,
+                            "reason"
+                          )
+                        }
+                      >
+                        {details[
+                          `${message.id}:reason`
+                        ]
+                          ? "Hide explanation"
+                          : "Explanation"}
+                      </button>
+
+                    )}
+
+                    {message.toolView && (
+
+                      <button
+                        className="am-action"
+                        type="button"
+                        onClick={() =>
+                          toggleDetail(
+                            message.id,
+                            "tools"
+                          )
+                        }
+                      >
+                        {details[
+                          `${message.id}:tools`
+                        ]
+                          ? "Hide activity"
+                          : "Activity"}
+                      </button>
+
+                    )}
+
+                  </div>
+
+                )}
+
+              {message.reasoningSummary &&
+                details[
+                  `${message.id}:reason`
+                ] && (
+
+                  <div className="am-detail">
+                    {message.reasoningSummary}
+                  </div>
+
+                )}
+
+              {message.toolView &&
+                details[
+                  `${message.id}:tools`
+                ] && (
+
+                  <div className="am-detail">
+                    <pre>
+                      {JSON.stringify(
+                        message.toolView,
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
+
+                )}
+
+            </article>
+
+          ))}
+
+          {/* PROCESSING INDICATOR */}
+
+          {busy && (
+
+            <div className="am-thinking">
+
+              <span className="am-dots">
+                <i />
+                <i />
+                <i />
+              </span>
+
+              <span>
+                ANTIMATE irimo gutegura igisubizo...
+              </span>
+
             </div>
 
+          )}
+
+          <div ref={bottomRef} />
+
+        </section>
+
+        {/* ERROR */}
+
+        {error && (
+
+          <div
+            className="am-error"
+            role="alert"
+          >
+            {error}
+          </div>
+
+        )}
+
+        {/* COMPOSER */}
+
+        <div className="am-compose-area">
+
+          <form
+            className="am-compose"
+            onSubmit={(event) => {
+              event.preventDefault();
+              sendMessage();
+            }}
+          >
+
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(event) =>
+                setInput(event.target.value)
+              }
+              onKeyDown={handleKeyDown}
+              placeholder="Andika ubutumwa kuri ANTIMATE..."
+              rows={1}
+              maxLength={MAX_MESSAGE_LENGTH}
+              disabled={busy}
+              aria-label="Message"
+            />
+
+            <button
+              className="am-send"
+              type="submit"
+              disabled={!input.trim() || busy}
+              aria-label="Send message"
+              title="Send message"
+            >
+              ↑
+            </button>
+
+          </form>
+
+          <div className="am-footer">
+            ANTIMATE may make mistakes. Verify important information.
           </div>
 
         </div>

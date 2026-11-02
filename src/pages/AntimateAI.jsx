@@ -1,3 +1,4 @@
+
 import React, {
   useCallback,
   useEffect,
@@ -5,43 +6,26 @@ import React, {
   useState,
 } from "react";
 
-// ============================================================
-// CONFIGURATION
-// ============================================================
-
 const API_URL = (
   import.meta.env.VITE_API_URL || ""
 ).replace(/\/+$/, "");
 
 const CHAT_URL = `${API_URL}/api/antimate/chat`;
-
 const MAX_MESSAGE_LENGTH = 12000;
 
-// ============================================================
-// HELPERS
-// ============================================================
-
-const createId = () => {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `chat-${Date.now()}-${Math.random()
+const createId = () =>
+  globalThis.crypto?.randomUUID?.() ||
+  `chat-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
-};
 
-const createMessageId = () => {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `msg-${Date.now()}-${Math.random()
+const createMessageId = () =>
+  globalThis.crypto?.randomUUID?.() ||
+  `msg-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
-};
 
-const getAuthToken = () => {
+const getToken = () => {
   try {
     return localStorage.getItem("token") || "";
   } catch {
@@ -49,178 +33,131 @@ const getAuthToken = () => {
   }
 };
 
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
-
 export default function AntimateAI() {
-  // ----------------------------------------------------------
-  // CONVERSATION STATE
-  // ----------------------------------------------------------
+  // =====================================================
+  // STATE
+  // =====================================================
 
-  const [conversationId, setConversationId] = useState(
-    createId
-  );
+  const [conversationId, setConversationId] =
+    useState(createId);
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] =
+    useState([]);
 
-  // ----------------------------------------------------------
-  // INPUT STATE
-  // ----------------------------------------------------------
+  const [input, setInput] =
+    useState("");
 
-  const [input, setInput] = useState("");
+  const [language, setLanguage] =
+    useState("rw");
 
-  const [language, setLanguage] = useState("rw");
+  const [theme, setTheme] =
+    useState("light");
 
-  // ----------------------------------------------------------
-  // UI STATE
-  // ----------------------------------------------------------
+  const [busy, setBusy] =
+    useState(false);
 
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] =
+    useState("");
 
-  const [errorMessage, setErrorMessage] = useState("");
+  const [details, setDetails] =
+    useState({});
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const [details, setDetails] = useState({});
-
-  const [connectionStatus, setConnectionStatus] = useState(
-    "ready"
-  );
-
-  // ----------------------------------------------------------
-  // REFS
-  // ----------------------------------------------------------
+  const [sidebarOpen, setSidebarOpen] =
+    useState(false);
 
   const bottomRef = useRef(null);
-
   const inputRef = useRef(null);
+  const abortRef = useRef(null);
 
-  const abortControllerRef = useRef(null);
+  const signedIn = Boolean(getToken());
 
-  // ----------------------------------------------------------
-  // AUTHENTICATION
-  // ----------------------------------------------------------
-
-  const token = getAuthToken();
-
-  const isLoggedIn = Boolean(token);
-
-  // ==========================================================
-  // SCROLL TO LATEST MESSAGE
-  // ==========================================================
+  // =====================================================
+  // SCROLL TO BOTTOM
+  // =====================================================
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
-  }, [messages, isProcessing]);
+  }, [messages, busy]);
 
-  // ==========================================================
-  // COMPONENT CLEANUP
-  // ==========================================================
+  // =====================================================
+  // CLEANUP
+  // =====================================================
 
   useEffect(() => {
     return () => {
-      abortControllerRef.current?.abort();
+      abortRef.current?.abort();
     };
   }, []);
 
-  // ==========================================================
-  // NEW CONVERSATION
-  // ==========================================================
+  // =====================================================
+  // THEME
+  // =====================================================
 
-  const createNewConversation = useCallback(() => {
-    if (isProcessing) return;
+  const toggleTheme = useCallback(() => {
+    setTheme((current) =>
+      current === "light" ? "dark" : "light"
+    );
+  }, []);
+
+  // =====================================================
+  // NEW CONVERSATION
+  // =====================================================
+
+  const newChat = useCallback(() => {
+    if (busy) return;
 
     setConversationId(createId());
-
     setMessages([]);
-
     setInput("");
-
-    setErrorMessage("");
-
+    setError("");
     setDetails({});
-
     setSidebarOpen(false);
 
     inputRef.current?.focus();
-  }, [isProcessing]);
+  }, [busy]);
 
-  // ==========================================================
-  // TOGGLE MESSAGE DETAILS
-  // ==========================================================
-
-  const toggleDetail = useCallback(
-    (messageId, type) => {
-      const key = `${messageId}:${type}`;
-
-      setDetails((previous) => ({
-        ...previous,
-        [key]: !previous[key],
-      }));
-    },
-    []
-  );
-
-  // ==========================================================
+  // =====================================================
   // SEND MESSAGE
-  // ==========================================================
+  // =====================================================
 
   const sendMessage = useCallback(async () => {
-    const cleanMessage = input.trim();
+    const cleanText = input.trim();
 
-    if (!cleanMessage) return;
+    if (!cleanText || busy) return;
 
-    if (isProcessing) return;
-
-    if (cleanMessage.length > MAX_MESSAGE_LENGTH) {
-      setErrorMessage(
+    if (cleanText.length > MAX_MESSAGE_LENGTH) {
+      setError(
         `Ubutumwa ntibugomba kurenza inyuguti ${MAX_MESSAGE_LENGTH}.`
       );
-
       return;
     }
 
-    // --------------------------------------------------------
-    // USER MESSAGE
-    // --------------------------------------------------------
-
     const userMessage = {
       id: createMessageId(),
-
       role: "user",
-
-      text: cleanMessage,
-
+      text: cleanText,
       createdAt: new Date().toISOString(),
     };
 
+    // Show user message immediately.
     setMessages((previous) => [
       ...previous,
       userMessage,
     ]);
 
     setInput("");
-
-    setErrorMessage("");
-
-    setIsProcessing(true);
-
-    // --------------------------------------------------------
-    // REQUEST CONTROLLER
-    // --------------------------------------------------------
+    setError("");
+    setBusy(true);
 
     const controller = new AbortController();
 
-    abortControllerRef.current = controller;
+    abortRef.current = controller;
 
     try {
-      // ------------------------------------------------------
-      // REQUEST HEADERS
-      // ------------------------------------------------------
+      const token = getToken();
 
       const headers = {
         "Content-Type": "application/json",
@@ -230,10 +167,6 @@ export default function AntimateAI() {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      // ------------------------------------------------------
-      // API REQUEST
-      // ------------------------------------------------------
-
       const response = await fetch(CHAT_URL, {
         method: "POST",
 
@@ -242,44 +175,32 @@ export default function AntimateAI() {
         signal: controller.signal,
 
         body: JSON.stringify({
-          message: cleanMessage,
-
+          message: cleanText,
           language,
-
           conversation_id: conversationId,
         }),
       });
 
-      // ------------------------------------------------------
-      // RESPONSE
-      // ------------------------------------------------------
-
-      const data = await response
-        .json()
-        .catch(() => ({}));
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok || data.success === false) {
-        const error = new Error(
+        const requestError = new Error(
           data.message ||
-            data.error ||
-            "ANTIMATE ntiyashoboye gusubiza."
+          data.error ||
+          "ANTIMATE ntiyashoboye gusubiza."
         );
 
-        error.status = response.status;
+        requestError.status = response.status;
 
-        throw error;
+        throw requestError;
       }
-
-      // ------------------------------------------------------
-      // EXTRACT ANSWER
-      // ------------------------------------------------------
 
       const answer = String(
         data.answer ||
-          data.answer_rw ||
-          data.answer_kinyarwanda ||
-          data.answer_english ||
-          ""
+        data.answer_rw ||
+        data.answer_kinyarwanda ||
+        data.answer_english ||
+        ""
       ).trim();
 
       if (!answer) {
@@ -288,35 +209,21 @@ export default function AntimateAI() {
         );
       }
 
-      // ------------------------------------------------------
-      // UPDATE CONVERSATION ID
-      // ------------------------------------------------------
-
+      // Use server-generated conversation ID if returned.
       if (data.conversation_id) {
         setConversationId(data.conversation_id);
       }
 
-      // ------------------------------------------------------
-      // ASSISTANT MESSAGE
-      // ------------------------------------------------------
-
       const assistantMessage = {
         id: createMessageId(),
-
         role: "assistant",
-
         text: answer,
-
-        language: data.language || language,
-
         status: data.status || "completed",
-
+        language: data.language || language,
         reasoningSummary:
           data.reasoning_summary || null,
-
         toolView:
           data.tool_view || null,
-
         createdAt: new Date().toISOString(),
       };
 
@@ -325,223 +232,291 @@ export default function AntimateAI() {
         assistantMessage,
       ]);
 
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        console.error(
-          "ANTIMATE CHAT ERROR:",
-          error
-        );
-
-        if (error.status === 401) {
-          setErrorMessage(
-            "Backend yanze request. Ugomba kwinjira muri konti. Guest access igomba kwemerwa na backend."
-          );
-        } else {
-          setErrorMessage(
-            error.message ||
+    } catch (requestError) {
+      if (requestError.name !== "AbortError") {
+        setError(
+          requestError.status === 401
+            ? "Ugomba kwinjira muri konti. Backend igomba kwemerera guest access kugira ngo abatari logged in bakoreshe AI."
+            : requestError.message ||
               "Habaye ikibazo mu kohereza ubutumwa."
-          );
-        }
+        );
       }
     } finally {
-      setIsProcessing(false);
-
-      abortControllerRef.current = null;
+      setBusy(false);
+      abortRef.current = null;
 
       inputRef.current?.focus();
     }
   }, [
     input,
-    isProcessing,
-    token,
+    busy,
     language,
     conversationId,
   ]);
 
-  // ==========================================================
-  // KEYBOARD HANDLING
-  // ==========================================================
+  // =====================================================
+  // ENTER KEY
+  // =====================================================
 
-  const handleInputKeyDown = (event) => {
+  const handleKeyDown = (event) => {
     if (
       event.key === "Enter" &&
       !event.shiftKey
     ) {
       event.preventDefault();
-
       sendMessage();
     }
   };
 
-  // ==========================================================
+  // =====================================================
+  // MESSAGE DETAILS
+  // =====================================================
+
+  const toggleDetail = (id, key) => {
+    const detailKey = `${id}:${key}`;
+
+    setDetails((previous) => ({
+      ...previous,
+      [detailKey]: !previous[detailKey],
+    }));
+  };
+
+  // =====================================================
   // UI
-  // ==========================================================
+  // =====================================================
 
   return (
-    <div className="am-root">
-
+    <div
+      className={`antimate-root theme-${theme}`}
+    >
       <style>{`
 
         @import url(
           'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap'
         );
 
-        * {
+        /* ==========================================
+           THEME VARIABLES
+        ========================================== */
+
+        .antimate-root {
+          --bg: #ffffff;
+          --sidebar: #f7f8f7;
+          --surface: #ffffff;
+          --surface-secondary: #f1f3f2;
+
+          --text: #202522;
+          --text-secondary: #555e59;
+          --text-muted: #737b76;
+
+          --border: #e1e6e2;
+          --accent: #176b4d;
+          --accent-hover: #10563d;
+          --accent-text: #ffffff;
+
+          --user-bubble: #eef1ef;
+          --assistant-text: #252b27;
+
+          --input-bg: #ffffff;
+          --placeholder: #707872;
+
+          --error-bg: #fff0ed;
+          --error-border: #e8b8af;
+          --error-text: #8f3025;
+
+          --detail-bg: #f2f7f4;
+          --detail-border: #9bbda9;
+
+          --shadow:
+            0 5px 22px rgba(0, 0, 0, 0.055);
+
+          min-height: 100vh;
+          display: flex;
+          background: var(--bg);
+          color: var(--text);
+
+          font-family:
+            "DM Sans",
+            system-ui,
+            sans-serif;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease;
+        }
+
+        .antimate-root.theme-dark {
+          --bg: #151817;
+          --sidebar: #1c211f;
+          --surface: #202623;
+          --surface-secondary: #292f2c;
+
+          --text: #f1f5f2;
+          --text-secondary: #d0d8d2;
+          --text-muted: #a5afa8;
+
+          --border: #39433d;
+          --accent: #26865e;
+          --accent-hover: #31996d;
+          --accent-text: #ffffff;
+
+          --user-bubble: #303a34;
+          --assistant-text: #e8eee9;
+
+          --input-bg: #202623;
+          --placeholder: #a7b1aa;
+
+          --error-bg: #382320;
+          --error-border: #77453d;
+          --error-text: #ffb7aa;
+
+          --detail-bg: #242f29;
+          --detail-border: #638a72;
+
+          --shadow:
+            0 5px 22px rgba(0, 0, 0, 0.24);
+        }
+
+        .antimate-root *,
+        .antimate-root *::before,
+        .antimate-root *::after {
           box-sizing: border-box;
         }
 
-        .am-root {
-          --ink: #252525;
-          --muted: #777;
-          --line: #e7e7e7;
+        /* ==========================================
+           SIDEBAR
+        ========================================== */
 
-          min-height: 100vh;
-
-          display: flex;
-
-          background: #ffffff;
-
-          color: var(--ink);
-
-          font-family: "DM Sans", sans-serif;
-        }
-
-        /* SIDEBAR */
-
-        .am-side {
+        .am-sidebar {
           width: 260px;
-
           flex: 0 0 260px;
 
-          background: #f7f7f7;
-
-          border-right: 1px solid var(--line);
+          background: var(--sidebar);
+          border-right: 1px solid var(--border);
 
           padding: 20px 14px;
 
           display: flex;
-
           flex-direction: column;
+
+          transition:
+            transform 0.2s ease,
+            background 0.2s ease;
         }
 
         .am-brand {
           display: flex;
-
           align-items: center;
-
           gap: 10px;
 
           padding: 4px 8px 25px;
+
+          color: var(--text);
 
           font: 800 16px Manrope, sans-serif;
         }
 
         .am-logo {
-          width: 34px;
-
-          height: 34px;
+          width: 35px;
+          height: 35px;
 
           border-radius: 10px;
 
-          background: #173d32;
-
+          background: var(--accent);
           color: white;
 
           display: grid;
-
           place-items: center;
+
+          font: 800 17px Manrope, sans-serif;
         }
 
         .am-new {
-          border: 1px solid #d8dedb;
+          width: 100%;
 
-          background: white;
+          border: 1px solid var(--border);
+          background: var(--surface);
+
+          color: var(--text);
 
           border-radius: 10px;
-
           padding: 11px;
 
           text-align: left;
-
-          font-weight: 600;
+          font: 600 13px "DM Sans", sans-serif;
 
           cursor: pointer;
         }
 
         .am-new:hover {
-          background: #f0f4f1;
+          background: var(--surface-secondary);
         }
 
         .am-new:disabled {
-          opacity: .5;
-
+          opacity: 0.5;
           cursor: not-allowed;
         }
 
         .am-note {
           margin-top: auto;
 
-          border-top: 1px solid var(--line);
+          border-top: 1px solid var(--border);
 
           padding: 14px 7px 0;
 
-          color: var(--muted);
+          color: var(--text-muted);
 
           font-size: 11px;
-
-          line-height: 1.6;
+          line-height: 1.7;
         }
 
-        /* MAIN */
+        /* ==========================================
+           MAIN
+        ========================================== */
 
         .am-main {
           min-width: 0;
-
           flex: 1;
 
           display: flex;
-
           flex-direction: column;
 
           min-height: 100vh;
+
+          background: var(--bg);
         }
 
-        /* HEADER */
+        .am-header {
+          height: 65px;
+          flex: 0 0 65px;
 
-        .am-head {
-          height: 64px;
-
-          flex: 0 0 64px;
-
-          border-bottom: 1px solid var(--line);
+          border-bottom: 1px solid var(--border);
 
           display: flex;
-
           align-items: center;
-
           justify-content: space-between;
 
-          padding: 0 28px;
-
+          padding: 0 27px;
           gap: 12px;
+
+          background: var(--bg);
         }
 
-        .am-head-left,
-        .am-head-right {
+        .am-header-left,
+        .am-header-right {
           display: flex;
-
           align-items: center;
-
           gap: 12px;
         }
 
         .am-title {
+          color: var(--text);
+
           font: 700 15px Manrope, sans-serif;
         }
 
         .am-muted {
-          color: var(--muted);
-
+          color: var(--text-muted);
           font-size: 12px;
         }
 
@@ -549,25 +524,60 @@ export default function AntimateAI() {
           display: none;
 
           border: 0;
-
           background: transparent;
 
-          font-size: 20px;
+          color: var(--text);
 
+          font-size: 20px;
           cursor: pointer;
         }
 
         .am-lang {
-          border: 1px solid var(--line);
+          border: 1px solid var(--border);
 
           border-radius: 9px;
 
-          background: white;
+          background: var(--surface);
+          color: var(--text);
 
           padding: 8px 10px;
+
+          font: 500 12px "DM Sans", sans-serif;
+
+          outline: none;
         }
 
-        /* CHAT CONTENT */
+        .am-lang:focus-visible,
+        .am-theme:focus-visible,
+        .am-send:focus-visible,
+        .am-new:focus-visible,
+        .am-compose textarea:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 3px;
+        }
+
+        .am-theme {
+          border: 1px solid var(--border);
+
+          border-radius: 9px;
+
+          background: var(--surface);
+          color: var(--text);
+
+          padding: 8px 11px;
+
+          font: 600 12px "DM Sans", sans-serif;
+
+          cursor: pointer;
+        }
+
+        .am-theme:hover {
+          background: var(--surface-secondary);
+        }
+
+        /* ==========================================
+           CONTENT
+        ========================================== */
 
         .am-content {
           width: min(100%, 850px);
@@ -577,7 +587,6 @@ export default function AntimateAI() {
           flex: 1;
 
           display: flex;
-
           flex-direction: column;
 
           padding: 28px 26px 18px;
@@ -585,85 +594,83 @@ export default function AntimateAI() {
 
         .am-feed {
           flex: 1;
-
           padding-bottom: 25px;
         }
-
-        /* WELCOME */
 
         .am-welcome {
           min-height: 55vh;
 
           display: flex;
-
           flex-direction: column;
 
           justify-content: center;
-
           align-items: center;
 
           text-align: center;
+
+          padding: 20px;
         }
 
         .am-welcome-mark {
-          width: 55px;
-
-          height: 55px;
+          width: 56px;
+          height: 56px;
 
           border-radius: 17px;
 
-          background: #173d32;
-
+          background: var(--accent);
           color: white;
 
           display: grid;
-
           place-items: center;
 
-          font: 800 24px Manrope;
+          font: 800 24px Manrope, sans-serif;
 
           margin-bottom: 23px;
         }
 
         .am-welcome h1 {
-          font: 700 clamp(25px, 4vw, 34px) Manrope;
+          color: var(--text);
+
+          font: 700 clamp(25px, 4vw, 34px)
+            Manrope, sans-serif;
 
           margin: 0 0 10px;
 
-          letter-spacing: -.04em;
+          letter-spacing: -0.04em;
         }
 
         .am-welcome p {
-          color: var(--muted);
+          color: var(--text-secondary);
 
           font-size: 14px;
+          line-height: 1.7;
 
           margin: 0;
         }
 
-        /* MESSAGES */
+        /* ==========================================
+           MESSAGES
+        ========================================== */
 
-        .am-msg {
+        .am-message {
           display: flex;
-
           flex-direction: column;
 
-          margin: 0 0 26px;
+          margin: 0 0 27px;
         }
 
-        .am-msg.user {
+        .am-message.user {
           align-items: flex-end;
         }
 
-        .am-msg.assistant {
+        .am-message.assistant {
           align-items: stretch;
         }
 
         .am-role {
+          color: var(--text-muted);
+
           font-size: 11px;
-
-          color: #777;
-
           font-weight: 700;
 
           margin: 0 2px 7px;
@@ -672,95 +679,104 @@ export default function AntimateAI() {
         .am-bubble {
           max-width: min(86%, 720px);
 
-          font-size: 14px;
+          color: var(--text);
 
-          line-height: 1.75;
+          font-size: 14px;
+          line-height: 1.8;
 
           white-space: pre-wrap;
-
           overflow-wrap: anywhere;
         }
 
-        .am-msg.user .am-bubble {
-          background: #f1f2f2;
+        .am-message.user .am-bubble {
+          background: var(--user-bubble);
+
+          color: var(--text);
 
           border-radius: 18px 18px 5px 18px;
 
           padding: 12px 16px;
         }
 
-        .am-msg.assistant .am-bubble {
+        .am-message.assistant .am-bubble {
           max-width: 100%;
+
+          color: var(--assistant-text);
 
           padding: 0 2px;
         }
 
-        /* MESSAGE DETAILS */
+        /* ==========================================
+           DETAILS
+        ========================================== */
 
         .am-actions {
           display: flex;
-
           gap: 8px;
 
-          margin-top: 10px;
-
+          margin-top: 11px;
           flex-wrap: wrap;
         }
 
         .am-actions button {
-          border: 1px solid var(--line);
+          border: 1px solid var(--border);
 
-          background: white;
+          background: var(--surface);
+          color: var(--text-secondary);
 
           border-radius: 8px;
 
-          padding: 6px 9px;
+          padding: 7px 10px;
 
           font-size: 11px;
-
-          color: #666;
 
           cursor: pointer;
         }
 
+        .am-actions button:hover {
+          background: var(--surface-secondary);
+          color: var(--text);
+        }
+
         .am-detail {
-          margin-top: 8px;
+          margin-top: 9px;
 
-          padding: 11px 13px;
+          padding: 12px 14px;
 
-          border-left: 2px solid #b9d6c7;
+          border-left: 3px solid var(--detail-border);
 
-          background: #f7faf8;
+          background: var(--detail-bg);
 
           border-radius: 0 8px 8px 0;
 
-          color: #555;
+          color: var(--text-secondary);
 
           font-size: 12px;
+          line-height: 1.7;
 
-          line-height: 1.6;
+          overflow-wrap: anywhere;
         }
 
         .am-detail pre {
           white-space: pre-wrap;
-
           overflow-wrap: anywhere;
 
           font: inherit;
-
           margin: 0;
+
+          color: var(--text-secondary);
         }
 
-        /* THINKING INDICATOR */
+        /* ==========================================
+           THINKING
+        ========================================== */
 
         .am-thinking {
           display: flex;
-
           align-items: center;
-
           gap: 9px;
 
-          color: #777;
+          color: var(--text-muted);
 
           font-size: 13px;
 
@@ -769,80 +785,77 @@ export default function AntimateAI() {
 
         .am-dots {
           display: flex;
-
           gap: 4px;
         }
 
         .am-dots i {
           width: 5px;
-
           height: 5px;
 
           border-radius: 50%;
 
-          background: #777;
+          background: var(--accent);
 
           animation: am-pulse 1s infinite;
         }
 
         .am-dots i:nth-child(2) {
-          animation-delay: .15s;
+          animation-delay: 0.15s;
         }
 
         .am-dots i:nth-child(3) {
-          animation-delay: .3s;
+          animation-delay: 0.3s;
         }
 
         @keyframes am-pulse {
           50% {
-            opacity: .25;
-
+            opacity: 0.3;
             transform: translateY(-3px);
           }
         }
 
-        /* ERROR */
+        /* ==========================================
+           ERROR
+        ========================================== */
 
         .am-error {
-          background: #fff3f1;
+          background: var(--error-bg);
 
-          border: 1px solid #f0d0ca;
+          border: 1px solid var(--error-border);
 
-          color: #963d31;
+          color: var(--error-text);
 
           border-radius: 10px;
 
-          padding: 10px 12px;
+          padding: 11px 13px;
 
           font-size: 12px;
+          line-height: 1.6;
 
           margin-bottom: 12px;
         }
 
-        /* COMPOSER */
+        /* ==========================================
+           COMPOSER
+        ========================================== */
 
         .am-compose-wrap {
           position: sticky;
-
           bottom: 0;
 
-          background: linear-gradient(
-            180deg,
-            rgba(255,255,255,0),
-            #fff 20%
-          );
+          background: var(--bg);
 
           padding-top: 18px;
         }
 
         .am-compose {
-          border: 1px solid #dcdedf;
+          border: 1px solid var(--border);
 
           border-radius: 17px;
 
-          background: white;
+          background: var(--input-bg);
 
-          box-shadow: 0 5px 22px #0000000d;
+          box-shadow: var(--shadow);
 
           padding: 12px 13px 10px;
         }
@@ -853,99 +866,101 @@ export default function AntimateAI() {
           width: 100%;
 
           border: 0;
-
-          outline: 0;
+          outline: none;
 
           resize: vertical;
 
           min-height: 52px;
-
           max-height: 180px;
 
           padding: 5px 3px;
 
-          font: 14px/1.6 "DM Sans";
-
-          color: #222;
+          color: var(--text);
 
           background: transparent;
+
+          font: 14px/1.7 "DM Sans", sans-serif;
         }
 
         .am-compose textarea::placeholder {
-          color: #999;
+          color: var(--placeholder);
+          opacity: 1;
         }
 
         .am-compose textarea:disabled {
-          opacity: .6;
+          opacity: 0.6;
         }
 
         .am-compose-bottom {
           display: flex;
 
           align-items: center;
-
           justify-content: space-between;
+
+          gap: 10px;
         }
 
         .am-hint {
-          color: #999;
-
+          color: var(--text-muted);
           font-size: 10px;
         }
 
         .am-send {
-          width: 35px;
-
-          height: 35px;
+          width: 36px;
+          height: 36px;
 
           border: 0;
-
           border-radius: 10px;
 
-          background: #173d32;
+          background: var(--accent);
+          color: var(--accent-text);
 
-          color: white;
-
-          font-size: 18px;
+          font-size: 19px;
+          font-weight: 700;
 
           cursor: pointer;
+
+          transition: background 0.15s ease;
+        }
+
+        .am-send:hover:not(:disabled) {
+          background: var(--accent-hover);
         }
 
         .am-send:disabled {
-          opacity: .35;
-
+          opacity: 0.4;
           cursor: not-allowed;
         }
 
         .am-footer {
           text-align: center;
 
-          color: #aaa;
+          color: var(--text-muted);
 
           font-size: 10px;
 
           padding: 10px 0 0;
         }
 
-        /* RESPONSIVE */
+        /* ==========================================
+           RESPONSIVE
+        ========================================== */
 
         @media (max-width: 760px) {
-
-          .am-side {
+          .am-sidebar {
             position: fixed;
 
-            z-index: 5;
+            z-index: 20;
 
             inset: 0 auto 0 0;
 
             transform: translateX(-105%);
 
-            box-shadow: 12px 0 35px #00000014;
-
-            transition: transform .2s ease;
+            box-shadow: 12px 0 35px
+              rgba(0, 0, 0, 0.15);
           }
 
-          .am-side.open {
+          .am-sidebar.open {
             transform: translateX(0);
           }
 
@@ -953,12 +968,16 @@ export default function AntimateAI() {
             display: block;
           }
 
-          .am-head {
+          .am-header {
             padding: 0 14px;
           }
 
           .am-content {
             padding: 18px 15px;
+          }
+
+          .am-account {
+            display: none;
           }
 
           .am-bubble {
@@ -970,60 +989,55 @@ export default function AntimateAI() {
           .am-dots i {
             animation: none;
           }
+
+          .antimate-root {
+            transition: none;
+          }
         }
 
       `}</style>
 
-      {/* ====================================================
+      {/* ============================================
           SIDEBAR
-      ==================================================== */}
+      ============================================ */}
 
       <aside
-        className={`am-side ${
+        className={`am-sidebar ${
           sidebarOpen ? "open" : ""
         }`}
       >
-
         <div className="am-brand">
-
-          <div className="am-logo">
-            A
-          </div>
-
+          <div className="am-logo">A</div>
           ANTIMATE AI
-
         </div>
 
         <button
           className="am-new"
           type="button"
-          onClick={createNewConversation}
-          disabled={isProcessing}
+          onClick={newChat}
+          disabled={busy}
         >
           ＋ New chat
         </button>
 
         <div className="am-note">
-
-          {isLoggedIn
+          {signedIn
             ? "Konti yinjiwemo. Amateka y'ibiganiro agomba kubikwa no kugarurwa na backend/database."
-            : "Guest session: ibiganiro biri muri iyi session gusa. Iyo page yongeye gufungurwa, birasibangana."}
-
+            : "Guest session: ibiganiro biri muri iyi session gusa. Iyo wongereye gufungura page, birasibwa."}
         </div>
-
       </aside>
 
-      {/* ====================================================
+      {/* ============================================
           MAIN
-      ==================================================== */}
+      ============================================ */}
 
       <main className="am-main">
 
         {/* HEADER */}
 
-        <header className="am-head">
+        <header className="am-header">
 
-          <div className="am-head-left">
+          <div className="am-header-left">
 
             <button
               className="am-menu"
@@ -1031,7 +1045,7 @@ export default function AntimateAI() {
               onClick={() =>
                 setSidebarOpen((value) => !value)
               }
-              aria-label="Menu"
+              aria-label="Open menu"
             >
               ☰
             </button>
@@ -1041,12 +1055,12 @@ export default function AntimateAI() {
             </span>
 
             <span className="am-muted">
-              · {connectionStatus}
+              · Ready
             </span>
 
           </div>
 
-          <div className="am-head-right">
+          <div className="am-header-right">
 
             <select
               className="am-lang"
@@ -1054,10 +1068,9 @@ export default function AntimateAI() {
               onChange={(event) =>
                 setLanguage(event.target.value)
               }
-              disabled={isProcessing}
+              disabled={busy}
               aria-label="Response language"
             >
-
               <option value="rw">
                 Kinyarwanda
               </option>
@@ -1065,11 +1078,22 @@ export default function AntimateAI() {
               <option value="en">
                 English
               </option>
-
             </select>
 
-            <span className="am-muted">
-              {isLoggedIn ? "Account" : "Guest"}
+            <button
+              type="button"
+              className="am-theme"
+              onClick={toggleTheme}
+              aria-label="Change theme"
+              title="Change appearance"
+            >
+              {theme === "light"
+                ? "☾ Dark"
+                : "☀ Light"}
+            </button>
+
+            <span className="am-muted am-account">
+              {signedIn ? "Account" : "Guest"}
             </span>
 
           </div>
@@ -1085,10 +1109,9 @@ export default function AntimateAI() {
             aria-live="polite"
           >
 
-            {/* EMPTY STATE */}
+            {/* WELCOME */}
 
             {messages.length === 0 && (
-
               <div className="am-welcome">
 
                 <div className="am-welcome-mark">
@@ -1104,7 +1127,6 @@ export default function AntimateAI() {
                 </p>
 
               </div>
-
             )}
 
             {/* MESSAGES */}
@@ -1112,7 +1134,7 @@ export default function AntimateAI() {
             {messages.map((message) => (
 
               <article
-                className={`am-msg ${message.role}`}
+                className={`am-message ${message.role}`}
                 key={message.id}
               >
 
@@ -1126,7 +1148,7 @@ export default function AntimateAI() {
                   {message.text}
                 </div>
 
-                {/* ASSISTANT DETAILS */}
+                {/* AI DETAILS */}
 
                 {message.role === "assistant" &&
                   (message.reasoningSummary ||
@@ -1135,7 +1157,6 @@ export default function AntimateAI() {
                     <div className="am-actions">
 
                       {message.reasoningSummary && (
-
                         <button
                           type="button"
                           onClick={() =>
@@ -1151,11 +1172,9 @@ export default function AntimateAI() {
                             ? "Hide explanation"
                             : "How this answer was formed"}
                         </button>
-
                       )}
 
                       {message.toolView && (
-
                         <button
                           type="button"
                           onClick={() =>
@@ -1171,14 +1190,10 @@ export default function AntimateAI() {
                             ? "Hide activity"
                             : "Tool activity"}
                         </button>
-
                       )}
 
                     </div>
-
                   )}
-
-                {/* REASONING SUMMARY */}
 
                 {message.reasoningSummary &&
                   details[
@@ -1188,10 +1203,7 @@ export default function AntimateAI() {
                     <div className="am-detail">
                       {message.reasoningSummary}
                     </div>
-
                   )}
-
-                {/* TOOL VIEW */}
 
                 {message.toolView &&
                   details[
@@ -1199,7 +1211,6 @@ export default function AntimateAI() {
                   ] && (
 
                     <div className="am-detail">
-
                       <pre>
                         {JSON.stringify(
                           message.toolView,
@@ -1207,9 +1218,7 @@ export default function AntimateAI() {
                           2
                         )}
                       </pre>
-
                     </div>
-
                   )}
 
               </article>
@@ -1218,7 +1227,7 @@ export default function AntimateAI() {
 
             {/* THINKING */}
 
-            {isProcessing && (
+            {busy && (
 
               <div className="am-thinking">
 
@@ -1228,7 +1237,9 @@ export default function AntimateAI() {
                   <i />
                 </span>
 
-                ANTIMATE irimo gutegura igisubizo...
+                <span>
+                  ANTIMATE irimo gutegura igisubizo...
+                </span>
 
               </div>
 
@@ -1240,13 +1251,13 @@ export default function AntimateAI() {
 
           {/* ERROR */}
 
-          {errorMessage && (
+          {error && (
 
             <div
               className="am-error"
               role="alert"
             >
-              {errorMessage}
+              {error}
             </div>
 
           )}
@@ -1259,7 +1270,6 @@ export default function AntimateAI() {
               className="am-compose"
               onSubmit={(event) => {
                 event.preventDefault();
-
                 sendMessage();
               }}
             >
@@ -1270,11 +1280,11 @@ export default function AntimateAI() {
                 onChange={(event) =>
                   setInput(event.target.value)
                 }
-                onKeyDown={handleInputKeyDown}
+                onKeyDown={handleKeyDown}
                 placeholder="Andika ubutumwa kuri ANTIMATE..."
                 rows={2}
                 maxLength={MAX_MESSAGE_LENGTH}
-                disabled={isProcessing}
+                disabled={busy}
               />
 
               <div className="am-compose-bottom">
@@ -1286,10 +1296,7 @@ export default function AntimateAI() {
                 <button
                   className="am-send"
                   type="submit"
-                  disabled={
-                    !input.trim() ||
-                    isProcessing
-                  }
+                  disabled={!input.trim() || busy}
                   aria-label="Send message"
                 >
                   ↑

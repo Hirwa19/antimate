@@ -1,217 +1,781 @@
-
 /* =========================================================
-   THINKING MODE CONTROL
+   ANTIMATE AI — Native CSS
+   File: AntimateAI.css
 ========================================================= */
 
-.antimate-thinking-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 11px;
-  border: 1px solid var(--antimate-border, #dedede);
-  border-radius: 9px;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-secondary: #f0f2f5;
+  --text: #17191d;
+  --muted: #737983;
+  --border: #e3e6eb;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --danger: #dc2626;
+  --success: #16a34a;
+
+  --sidebar-width: 260px;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
 }
 
-.antimate-thinking-toggle:hover:not(:disabled) {
-  background: var(--antimate-hover, #f2f2f2);
-}
-
-.antimate-thinking-toggle.active {
-  border-color: var(--antimate-accent, #555);
-}
-
-.antimate-thinking-toggle:disabled {
-  opacity: 0.55;
+button:disabled {
   cursor: not-allowed;
-}
-
-.antimate-toggle-state {
-  font-size: 10px;
-  font-weight: 700;
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 /* =========================================================
-   LIVE STATUS
+   MAIN LAYOUT
 ========================================================= */
 
-.antimate-live-status,
-.antimate-agent-status {
+.antimate-ai {
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  min-height: 500px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.antimate-ai.dark {
+  --bg: #111318;
+  --surface: #191c23;
+  --surface-secondary: #242832;
+  --text: #f1f3f6;
+  --muted: #9ba2ad;
+  --border: #303540;
+  --accent: #5b8cff;
+  --accent-hover: #7aa1ff;
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.antimate-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--sidebar-width);
+  height: 100%;
+  padding: 18px 14px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: transform 0.25s ease;
+  z-index: 20;
+}
+
+.antimate-brand {
   display: flex;
   align-items: center;
+  gap: 10px;
+  padding: 5px 8px 22px;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
+}
+
+.antimate-brand span {
+  color: var(--accent);
+}
+
+.antimate-sidebar-actions {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  font-size: 12px;
-  color: var(--antimate-muted, #777);
 }
 
-.antimate-live-status {
-  margin: 0 auto 10px;
-  max-width: 760px;
+.antimate-new-chat,
+.antimate-sidebar-button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   width: 100%;
-  padding: 0 8px;
+  min-height: 43px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.2s ease;
 }
 
-.antimate-agent-status {
-  margin-bottom: 9px;
-  text-transform: capitalize;
+.antimate-new-chat {
+  background: var(--surface-secondary);
+  border-color: var(--border);
+  font-weight: 600;
 }
 
-.antimate-status-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--antimate-accent, #777);
-  animation: antimate-status-pulse 1.2s infinite;
+.antimate-new-chat:hover,
+.antimate-sidebar-button:hover {
+  background: var(--surface-secondary);
 }
 
-@keyframes antimate-status-pulse {
-  0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.85);
-  }
+.antimate-sidebar-bottom {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
 
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
+.antimate-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 8px 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.antimate-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+}
+
+.antimate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 65px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 5;
+}
+
+.antimate-header-left,
+.antimate-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.antimate-header-title {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.antimate-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.antimate-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+}
+
+.antimate-icon-button:hover {
+  background: var(--surface-secondary);
+  border-color: var(--border);
+}
+
+.antimate-select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* =========================================================
+   CHAT AREA
+========================================================= */
+
+.antimate-chat {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.antimate-chat-inner {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 30px 24px 45px;
+}
+
+.antimate-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 65vh;
+  text-align: center;
+}
+
+.antimate-welcome-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 25px;
+  font-weight: 800;
+}
+
+.antimate-welcome h1 {
+  margin: 0 0 12px;
+  font-size: clamp(25px, 4vw, 36px);
+  font-weight: 750;
+  letter-spacing: -1.2px;
+}
+
+.antimate-welcome p {
+  max-width: 490px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* =========================================================
+   MESSAGES
+========================================================= */
+
+.antimate-message {
+  display: flex;
+  gap: 13px;
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+.antimate-message.user {
+  justify-content: flex-end;
+}
+
+.antimate-message.assistant {
+  justify-content: flex-start;
+}
+
+.antimate-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.antimate-message-content {
+  max-width: min(720px, 88%);
+  min-width: 0;
+}
+
+.antimate-message.user .antimate-message-content {
+  padding: 12px 16px;
+  border-radius: 15px 15px 3px 15px;
+  background: var(--surface-secondary);
+}
+
+.antimate-message.assistant .antimate-message-content {
+  flex: 1;
+  padding: 3px 0;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.antimate-message-text {
+  white-space: pre-wrap;
+  line-height: 1.75;
+}
+
+.antimate-message-text p {
+  margin: 0 0 12px;
+}
+
+.antimate-message-text pre {
+  max-width: 100%;
+  padding: 15px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.antimate-message-text code {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.antimate-message-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.antimate-message-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.antimate-message-actions button:hover {
+  border-color: var(--border);
+  background: var(--surface-secondary);
+  color: var(--text);
 }
 
 /* =========================================================
    STREAMING CURSOR
 ========================================================= */
 
-.antimate-cursor {
+.antimate-streaming-cursor::after {
   display: inline-block;
-  width: 2px;
-  height: 1.05em;
-  margin-left: 3px;
-  vertical-align: -2px;
-  background: currentColor;
-  animation: antimate-cursor-blink 0.8s steps(2, start) infinite;
+  width: 7px;
+  height: 17px;
+  margin-left: 4px;
+  background: var(--accent);
+  vertical-align: -3px;
+  content: "";
+  animation: antimate-blink 0.8s steps(2, start) infinite;
 }
 
-@keyframes antimate-cursor-blink {
+@keyframes antimate-blink {
   to {
     visibility: hidden;
   }
 }
 
 /* =========================================================
-   STOP BUTTON
+   LOADING
 ========================================================= */
 
-.antimate-stop {
+.antimate-loading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 0;
+}
+
+.antimate-loading span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: antimate-bounce 1.2s infinite ease-in-out;
+}
+
+.antimate-loading span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.antimate-loading span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes antimate-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.65);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   AGENT STATUS AND TOOL ACTIVITY
+========================================================= */
+
+.antimate-live-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.antimate-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: antimate-pulse 1.5s infinite;
+}
+
+@keyframes antimate-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.antimate-agent-status {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.antimate-tool-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.antimate-tool-activity-title {
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.antimate-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+/* =========================================================
+   COMPOSER
+========================================================= */
+
+.antimate-composer-area {
+  width: 100%;
+  padding: 12px 24px 18px;
+  background: var(--bg);
+}
+
+.antimate-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 4%);
+}
+
+.antimate-composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.antimate-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 28px;
+  max-height: 180px;
+  padding: 5px 4px;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.antimate-textarea::placeholder {
+  color: var(--muted);
+}
+
+.antimate-send-button,
+.antimate-stop-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 38px;
-  padding: 0 13px;
-  border: 1px solid var(--antimate-border, #dedede);
+  flex-shrink: 0;
+  width: 39px;
+  height: 39px;
+  border: none;
   border-radius: 10px;
-  background: var(--antimate-surface, #f4f4f4);
-  color: var(--antimate-text, #222);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
+  color: #ffffff;
+  transition: background 0.2s ease;
 }
 
-.antimate-stop:hover:not(:disabled) {
-  background: var(--antimate-hover, #e9e9e9);
+.antimate-send-button {
+  background: var(--accent);
 }
 
-.antimate-stop:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.antimate-send-button:hover {
+  background: var(--accent-hover);
 }
 
-/* =========================================================
-   CHARACTER COUNT
-========================================================= */
+.antimate-stop-button {
+  background: var(--danger);
+}
+
+.antimate-stop-button:hover {
+  filter: brightness(0.9);
+}
+
+.antimate-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 850px;
+  margin: 8px auto 0;
+  color: var(--muted);
+  font-size: 11px;
+}
 
 .antimate-character-count {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--antimate-muted, #888);
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* =========================================================
-   ERROR DISMISS BUTTON
+   THINKING TOGGLE
+========================================================= */
+
+.antimate-thinking-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.antimate-thinking-toggle.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  color: var(--accent);
+}
+
+.antimate-thinking-toggle:hover {
+  border-color: var(--accent);
+}
+
+/* =========================================================
+   ERROR MESSAGE
 ========================================================= */
 
 .antimate-error {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  max-width: 850px;
+  margin: 10px auto;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  color: var(--danger);
+  font-size: 13px;
 }
 
 .antimate-error button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
+  border: none;
   background: transparent;
   color: inherit;
-  cursor: pointer;
 }
 
 /* =========================================================
-   TOOL ACTIVITY
+   DISCLAIMER
 ========================================================= */
 
-.antimate-extra {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--antimate-border, #dedede);
-  border-radius: 9px;
-  font-size: 12px;
-}
-
-.antimate-extra summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.antimate-extra pre {
-  max-width: 100%;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+.antimate-disclaimer {
+  width: 100%;
+  max-width: 850px;
+  margin: 8px auto 0;
+  color: var(--muted);
   font-size: 11px;
+  text-align: center;
+  line-height: 1.5;
 }
 
 /* =========================================================
-   HEADER RESPONSIVENESS
+   MOBILE OVERLAY
 ========================================================= */
 
-@media (max-width: 560px) {
-  .antimate-thinking-toggle {
+.antimate-sidebar-overlay {
+  display: none;
+}
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.antimate-chat::-webkit-scrollbar {
+  width: 7px;
+}
+
+.antimate-chat::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--border);
+}
+
+.antimate-chat::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* =========================================================
+   RESPONSIVE DESIGN
+========================================================= */
+
+@media (max-width: 800px) {
+  .antimate-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(280px, 85vw);
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+
+  .antimate-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 10px 0 35px rgb(0 0 0 / 15%);
+  }
+
+  .antimate-sidebar-overlay.visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 15;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  .antimate-header {
+    min-height: 58px;
+    padding: 0 13px;
+  }
+
+  .antimate-chat-inner {
+    padding: 22px 15px 35px;
+  }
+
+  .antimate-composer-area {
+    padding: 10px 12px 13px;
+  }
+
+  .antimate-message-content {
+    max-width: 90%;
+  }
+
+  .antimate-header-title {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .antimate-header-controls {
     gap: 5px;
-    padding: 7px;
   }
 
-  .antimate-thinking-toggle > span:nth-child(2) {
-    display: none;
+  .antimate-select {
+    max-width: 90px;
+    padding: 0 6px;
+    font-size: 12px;
   }
 
-  .antimate-stop {
-    padding: 0 9px;
+  .antimate-thinking-toggle {
+    padding: 5px 7px;
+    font-size: 11px;
   }
 
-  .antimate-composer-hint {
-    display: none;
+  .antimate-message {
+    gap: 8px;
+    margin-bottom: 22px;
   }
 
-  .antimate-character-count {
-    margin-right: auto;
+  .antimate-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .antimate-message-content {
+    max-width: 92%;
+  }
+
+  .antimate-welcome {
+    min-height: 58vh;
+  }
+
+  .antimate-welcome p {
+    padding: 0 12px;
+    font-size: 14px;
   }
 }

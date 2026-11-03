@@ -1155,3 +1155,70 @@ button:disabled {
     height: 220px;
   }
 }
+/* =========================================
+   ANTIMATE CIRCULAR LOADING ANIMATION
+========================================= */
+
+.antimate-loader {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px 0 18px;
+}
+
+.antimate-loader svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: antimate-loader-rotate 1.8s linear infinite;
+}
+
+.antimate-loader-arc {
+  fill: none;
+  stroke: url(#antimate-loader-gradient);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+
+.antimate-loader .arc-one {
+  stroke-dasharray: 92 180;
+  animation: antimate-arc-one 2s ease-in-out infinite alternate;
+}
+
+.antimate-loader .arc-two {
+  stroke-dasharray: 92 180;
+  animation: antimate-arc-two 2s ease-in-out infinite alternate;
+}
+
+@keyframes antimate-loader-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes antimate-arc-one {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes antimate-arc-two {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .antimate-loader svg,
+  .antimate-loader-arc {
+    animation: none;
+  }
+}

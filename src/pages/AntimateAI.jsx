@@ -169,7 +169,7 @@ function Icon({ name, size = 20 }) {
     sun: (
       <>
         <circle cx="12" cy="12" r="4" />
-        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
+        <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l-1.42 1.42m11.3-11.3 1.42-1.42" />
       </>
     ),
 
@@ -307,7 +307,47 @@ async function readSSEStream(response, onEvent) {
 }
 
 /* =========================================================
-   5. MAIN COMPONENT
+   5. LOADING ANIMATION
+   Circular swirl: first row, third column reference
+========================================================= */
+
+function AntimateLoader() {
+  return (
+    <div
+      className="antimate-loader"
+      role="status"
+      aria-label="ANTIMATE is thinking"
+    >
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient
+            id="antimate-loader-gradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="#55d4ce" />
+            <stop offset="100%" stopColor="#647f82" />
+          </linearGradient>
+        </defs>
+
+        <path
+          className="antimate-loader-arc arc-one"
+          d="M 50 8 A 42 42 0 0 1 92 50"
+        />
+
+        <path
+          className="antimate-loader-arc arc-two"
+          d="M 50 92 A 42 42 0 0 1 8 50"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/* =========================================================
+   6. MAIN COMPONENT
 ========================================================= */
 
 export default function AntimateAI() {
@@ -317,10 +357,13 @@ export default function AntimateAI() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState("rw");
-  const [theme, setTheme] = useState("light");
 
+  // DEFAULT THEME: DARK
+  const [theme, setTheme] = useState("dark");
+
+  // DEFAULT THINKING: OFF
   const [thinkingEnabled, setThinkingEnabled] =
-    useState(true);
+    useState(false);
 
   const [busy, setBusy] = useState(false);
   const [stopRequested, setStopRequested] =
@@ -339,7 +382,7 @@ export default function AntimateAI() {
   const signedIn = Boolean(getToken());
 
   /* =======================================================
-     6. SCROLL MANAGEMENT
+     7. SCROLL MANAGEMENT
   ======================================================= */
 
   useEffect(() => {
@@ -350,7 +393,7 @@ export default function AntimateAI() {
   }, [messages, busy]);
 
   /* =======================================================
-     7. CLEANUP
+     8. CLEANUP
   ======================================================= */
 
   useEffect(() => {
@@ -360,7 +403,7 @@ export default function AntimateAI() {
   }, []);
 
   /* =======================================================
-     8. MESSAGE UPDATE HELPER
+     9. MESSAGE UPDATE HELPER
   ======================================================= */
 
   const updateAssistantMessage = useCallback(
@@ -377,7 +420,7 @@ export default function AntimateAI() {
   );
 
   /* =======================================================
-     9. NEW CONVERSATION
+     10. NEW CONVERSATION
   ======================================================= */
 
   const newChat = useCallback(() => {
@@ -396,7 +439,7 @@ export default function AntimateAI() {
   }, [busy]);
 
   /* =======================================================
-     10. THEME
+     11. THEME
   ======================================================= */
 
   const toggleTheme = useCallback(() => {
@@ -406,7 +449,7 @@ export default function AntimateAI() {
   }, []);
 
   /* =======================================================
-     11. THINKING MODE
+     12. THINKING MODE
   ======================================================= */
 
   const toggleThinking = useCallback(() => {
@@ -416,7 +459,7 @@ export default function AntimateAI() {
   }, [busy]);
 
   /* =======================================================
-     12. STREAMING MESSAGE HANDLER
+     13. STREAMING MESSAGE HANDLER
   ======================================================= */
 
   const sendMessage = useCallback(async () => {
@@ -749,6 +792,7 @@ export default function AntimateAI() {
 
           setAgentStatus("stopped");
         }
+
       } else {
         console.error(
           "[ANTIMATE AI] Frontend stream error:",
@@ -794,7 +838,7 @@ export default function AntimateAI() {
   ]);
 
   /* =======================================================
-     13. STOP GENERATION
+     14. STOP GENERATION
   ======================================================= */
 
   const stopGeneration = useCallback(async () => {
@@ -860,7 +904,7 @@ export default function AntimateAI() {
   }, [busy, conversationId]);
 
   /* =======================================================
-     14. FORM HANDLERS
+     15. FORM HANDLERS
   ======================================================= */
 
   const handleSubmit = (event) => {
@@ -880,7 +924,7 @@ export default function AntimateAI() {
   };
 
   /* =======================================================
-     15. COPY MESSAGE
+     16. COPY MESSAGE
   ======================================================= */
 
   const copyMessage = async (message) => {
@@ -905,7 +949,7 @@ export default function AntimateAI() {
   };
 
   /* =======================================================
-     16. RENDER
+     17. RENDER
   ======================================================= */
 
   return (
@@ -1165,6 +1209,12 @@ export default function AntimateAI() {
 
                               </div>
                             )}
+
+                          {/* LOADING ANIMATION */}
+
+                          {message.streaming && !message.text && (
+                            <AntimateLoader />
+                          )}
 
                           {/* LIVE ANSWER */}
 

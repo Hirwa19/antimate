@@ -1,4 +1,3 @@
-
 import React, {
   useCallback,
   useEffect,
@@ -49,11 +48,7 @@ const getAuthHeaders = () => {
 };
 
 function getErrorMessage(data, fallback) {
-  return (
-    data?.message ||
-    data?.error ||
-    fallback
-  );
+  return data?.message || data?.error || fallback;
 }
 
 function formatStatus(status) {
@@ -76,7 +71,70 @@ function formatStatus(status) {
 }
 
 /* =========================================================
-   2. ICONS
+   2. IMAGE NORMALIZER
+========================================================= */
+
+function normalizeImages(images) {
+  if (!Array.isArray(images)) return [];
+
+  const seen = new Set();
+
+  return images
+    .map((item) => {
+      if (typeof item === "string") {
+        item = {
+          image: item,
+          title: "Image result",
+          source: item,
+        };
+      }
+
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const image =
+        item.image ||
+        item.thumbnail ||
+        item.image_url ||
+        item.thumbnail_url ||
+        "";
+
+      if (
+        typeof image !== "string" ||
+        !/^https?:\/\//i.test(image)
+      ) {
+        return null;
+      }
+
+      if (seen.has(image)) return null;
+
+      seen.add(image);
+
+      const source =
+        item.source ||
+        item.url ||
+        item.page_url ||
+        image;
+
+      return {
+        image,
+        title:
+          item.title ||
+          item.name ||
+          "Image result",
+        source:
+          typeof source === "string" &&
+          /^https?:\/\//i.test(source)
+            ? source
+            : image,
+      };
+    })
+    .filter(Boolean);
+}
+
+/* =========================================================
+   3. ICONS
 ========================================================= */
 
 function Icon({ name, size = 20 }) {
@@ -155,29 +213,17 @@ function Icon({ name, size = 20 }) {
 }
 
 /* =========================================================
-   3. SSE PARSER
-
-   Backend events:
-   meta
-   status
-   update
-   complete
-   error
-   stopped
+   4. SSE PARSER
 ========================================================= */
 
 function parseSSEBlock(block) {
-  if (!block || !block.trim()) {
-    return null;
-  }
+  if (!block || !block.trim()) return null;
 
   let event = "message";
   const dataLines = [];
 
   for (const line of block.split(/\r?\n/)) {
-    if (line.startsWith(":")) {
-      continue;
-    }
+    if (line.startsWith(":")) continue;
 
     if (line.startsWith("event:")) {
       event = line.slice(6).trim();
@@ -188,9 +234,7 @@ function parseSSEBlock(block) {
     }
   }
 
-  if (!dataLines.length) {
-    return null;
-  }
+  if (!dataLines.length) return null;
 
   const rawData = dataLines.join("\n");
 
@@ -242,9 +286,7 @@ async function readSSEStream(response, onEvent) {
 
         const parsed = parseSSEBlock(block);
 
-        if (parsed) {
-          onEvent(parsed);
-        }
+        if (parsed) onEvent(parsed);
       }
     }
 
@@ -253,11 +295,8 @@ async function readSSEStream(response, onEvent) {
     if (buffer.trim()) {
       const parsed = parseSSEBlock(buffer);
 
-      if (parsed) {
-        onEvent(parsed);
-      }
+      if (parsed) onEvent(parsed);
     }
-
   } finally {
     try {
       reader.releaseLock();
@@ -268,7 +307,7 @@ async function readSSEStream(response, onEvent) {
 }
 
 /* =========================================================
-   4. MAIN COMPONENT
+   5. MAIN COMPONENT
 ========================================================= */
 
 export default function AntimateAI() {
@@ -276,43 +315,31 @@ export default function AntimateAI() {
     useState(createId);
 
   const [messages, setMessages] = useState([]);
-
   const [input, setInput] = useState("");
-
   const [language, setLanguage] = useState("rw");
-
   const [theme, setTheme] = useState("light");
 
   const [thinkingEnabled, setThinkingEnabled] =
     useState(true);
 
   const [busy, setBusy] = useState(false);
-
   const [stopRequested, setStopRequested] =
     useState(false);
 
-  const [agentStatus, setAgentStatus] =
-    useState("");
-
-  const [sidebarOpen, setSidebarOpen] =
-    useState(true);
-
+  const [agentStatus, setAgentStatus] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [error, setError] = useState("");
-
   const [copiedId, setCopiedId] = useState(null);
 
   const inputRef = useRef(null);
-
   const bottomRef = useRef(null);
-
   const abortRef = useRef(null);
-
   const stopRequestedRef = useRef(false);
 
   const signedIn = Boolean(getToken());
 
   /* =======================================================
-     5. SCROLL MANAGEMENT
+     6. SCROLL MANAGEMENT
   ======================================================= */
 
   useEffect(() => {
@@ -323,7 +350,7 @@ export default function AntimateAI() {
   }, [messages, busy]);
 
   /* =======================================================
-     6. CLEANUP
+     7. CLEANUP
   ======================================================= */
 
   useEffect(() => {
@@ -333,7 +360,7 @@ export default function AntimateAI() {
   }, []);
 
   /* =======================================================
-     7. MESSAGE UPDATE HELPER
+     8. MESSAGE UPDATE HELPER
   ======================================================= */
 
   const updateAssistantMessage = useCallback(
@@ -350,22 +377,17 @@ export default function AntimateAI() {
   );
 
   /* =======================================================
-     8. NEW CONVERSATION
+     9. NEW CONVERSATION
   ======================================================= */
 
   const newChat = useCallback(() => {
     if (busy) return;
 
     setConversationId(createId());
-
     setMessages([]);
-
     setInput("");
-
     setError("");
-
     setAgentStatus("");
-
     setStopRequested(false);
 
     stopRequestedRef.current = false;
@@ -374,7 +396,7 @@ export default function AntimateAI() {
   }, [busy]);
 
   /* =======================================================
-     9. THEME
+     10. THEME
   ======================================================= */
 
   const toggleTheme = useCallback(() => {
@@ -384,7 +406,7 @@ export default function AntimateAI() {
   }, []);
 
   /* =======================================================
-     10. THINKING MODE
+     11. THINKING MODE
   ======================================================= */
 
   const toggleThinking = useCallback(() => {
@@ -394,7 +416,7 @@ export default function AntimateAI() {
   }, [busy]);
 
   /* =======================================================
-     11. STREAMING MESSAGE HANDLER
+     12. STREAMING MESSAGE HANDLER
   ======================================================= */
 
   const sendMessage = useCallback(async () => {
@@ -408,7 +430,6 @@ export default function AntimateAI() {
           ? "Ugomba kubanza kwinjira muri konti."
           : "Please sign in before sending a message."
       );
-
       return;
     }
 
@@ -416,7 +437,6 @@ export default function AntimateAI() {
       setError(
         "Ubutumwa burenze umubare w'inyuguti wemerewe."
       );
-
       return;
     }
 
@@ -439,6 +459,7 @@ export default function AntimateAI() {
       id: assistantMessageId,
       role: "assistant",
       text: "",
+      images: [],
       reasoningSummary: null,
       toolView: null,
       status: "thinking",
@@ -452,11 +473,8 @@ export default function AntimateAI() {
     ]);
 
     setInput("");
-
     setError("");
-
     setBusy(true);
-
     setStopRequested(false);
 
     stopRequestedRef.current = false;
@@ -464,32 +482,23 @@ export default function AntimateAI() {
     setAgentStatus("thinking");
 
     const controller = new AbortController();
-
     abortRef.current = controller;
 
     let streamCompleted = false;
-
     let streamStopped = false;
-
     let streamError = null;
 
     try {
       const response = await fetch(CHAT_STREAM_URL, {
         method: "POST",
-
         headers: getAuthHeaders(),
-
         signal: controller.signal,
 
         body: JSON.stringify({
           message: cleanText,
-
           history,
-
           language,
-
           conversation_id: conversationId,
-
           thinking_enabled: thinkingEnabled,
         }),
       });
@@ -528,9 +537,7 @@ export default function AntimateAI() {
       }
 
       await readSSEStream(response, ({ event, data }) => {
-        if (!data || typeof data !== "object") {
-          return;
-        }
+        if (!data || typeof data !== "object") return;
 
         switch (event) {
           /* -----------------------------------------------
@@ -543,7 +550,6 @@ export default function AntimateAI() {
             }
 
             setAgentStatus("thinking");
-
             break;
           }
 
@@ -568,7 +574,6 @@ export default function AntimateAI() {
 
           /* -----------------------------------------------
              STREAM UPDATE
-             Backend sends the FULL answer snapshot.
           ----------------------------------------------- */
 
           case "update": {
@@ -584,6 +589,18 @@ export default function AntimateAI() {
 
             if (data.tool_view !== undefined) {
               updates.toolView = data.tool_view;
+            }
+
+            const incomingImages =
+              data.images ??
+              data.image_results ??
+              data.gallery ??
+              data.tool_result?.results ??
+              data.tool_results?.images;
+
+            if (incomingImages !== undefined) {
+              updates.images =
+                normalizeImages(incomingImages);
             }
 
             updateAssistantMessage(
@@ -617,16 +634,28 @@ export default function AntimateAI() {
               ""
             ).trim();
 
+            const finalImages =
+              data.images ??
+              data.image_results ??
+              data.gallery ??
+              data.tool_result?.results ??
+              [];
+
             updateAssistantMessage(
               assistantMessageId,
               {
                 text: answer,
+                images: normalizeImages(finalImages),
+
                 reasoningSummary:
                   data.reasoning_summary || null,
+
                 toolView:
                   data.tool_view || null,
+
                 status: "completed",
                 streaming: false,
+
                 processingMode:
                   data.processing_mode || null,
               }
@@ -637,7 +666,6 @@ export default function AntimateAI() {
             }
 
             setAgentStatus("completed");
-
             break;
           }
 
@@ -652,7 +680,6 @@ export default function AntimateAI() {
                 "ANTIMATE AI encountered an error."
               )
             );
-
             break;
           }
 
@@ -672,7 +699,6 @@ export default function AntimateAI() {
             );
 
             setAgentStatus("stopped");
-
             break;
           }
 
@@ -681,9 +707,7 @@ export default function AntimateAI() {
         }
       });
 
-      if (streamError) {
-        throw streamError;
-      }
+      if (streamError) throw streamError;
 
       if (streamStopped || stopRequestedRef.current) {
         updateAssistantMessage(
@@ -751,7 +775,6 @@ export default function AntimateAI() {
 
     } finally {
       setBusy(false);
-
       setStopRequested(false);
 
       stopRequestedRef.current = false;
@@ -771,23 +794,15 @@ export default function AntimateAI() {
   ]);
 
   /* =======================================================
-     12. STOP GENERATION
-
-     Important:
-     Call /chat/stop first.
-     Do not abort the SSE connection immediately.
-     Let the backend send its stopped event.
+     13. STOP GENERATION
   ======================================================= */
 
   const stopGeneration = useCallback(async () => {
-    if (!busy || stopRequestedRef.current) {
-      return;
-    }
+    if (!busy || stopRequestedRef.current) return;
 
     stopRequestedRef.current = true;
 
     setStopRequested(true);
-
     setAgentStatus("stopping");
 
     try {
@@ -845,12 +860,11 @@ export default function AntimateAI() {
   }, [busy, conversationId]);
 
   /* =======================================================
-     13. FORM HANDLERS
+     14. FORM HANDLERS
   ======================================================= */
 
   const handleSubmit = (event) => {
     event.preventDefault();
-
     sendMessage();
   };
 
@@ -861,13 +875,12 @@ export default function AntimateAI() {
       !event.nativeEvent.isComposing
     ) {
       event.preventDefault();
-
       sendMessage();
     }
   };
 
   /* =======================================================
-     14. COPY MESSAGE
+     15. COPY MESSAGE
   ======================================================= */
 
   const copyMessage = async (message) => {
@@ -892,7 +905,7 @@ export default function AntimateAI() {
   };
 
   /* =======================================================
-     15. RENDER
+     16. RENDER
   ======================================================= */
 
   return (
@@ -1034,8 +1047,6 @@ export default function AntimateAI() {
 
           <div className="antimate-header-right">
 
-            {/* THINKING MODE */}
-
             <button
               type="button"
               className={`antimate-thinking-toggle ${
@@ -1052,16 +1063,12 @@ export default function AntimateAI() {
             >
               <Icon name="brain" size={17} />
 
-              <span>
-                Thinking
-              </span>
+              <span>Thinking</span>
 
               <span className="antimate-toggle-state">
                 {thinkingEnabled ? "ON" : "OFF"}
               </span>
             </button>
-
-            {/* LANGUAGE */}
 
             <select
               className="antimate-language"
@@ -1149,17 +1156,20 @@ export default function AntimateAI() {
                             message.status !== "completed" &&
                             message.status !== "failed" && (
                               <div className="antimate-agent-status">
+
                                 {message.streaming && (
                                   <span className="antimate-status-dot" />
                                 )}
 
                                 {formatStatus(message.status)}
+
                               </div>
                             )}
 
                           {/* LIVE ANSWER */}
 
                           <div className="antimate-assistant-text">
+
                             {message.text || (
                               message.streaming
                                 ? " "
@@ -1173,7 +1183,46 @@ export default function AntimateAI() {
                             {message.streaming && (
                               <span className="antimate-cursor" />
                             )}
+
                           </div>
+
+                          {/* IMAGE GALLERY */}
+
+                          {message.images?.length > 0 && (
+                            <div className="antimate-image-gallery">
+
+                              {message.images.map((image, index) => (
+
+                                <a
+                                  key={`${message.id}-image-${index}`}
+                                  className="antimate-image-item"
+                                  href={image.source}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={image.title}
+                                >
+
+                                  <img
+                                    src={image.image}
+                                    alt={image.title}
+                                    loading="lazy"
+                                    onError={(event) => {
+                                      event.currentTarget.classList.add(
+                                        "image-load-failed"
+                                      );
+                                    }}
+                                  />
+
+                                  <span className="antimate-image-title">
+                                    {image.title}
+                                  </span>
+
+                                </a>
+
+                              ))}
+
+                            </div>
+                          )}
 
                           {/* TOOL ACTIVITY */}
 
@@ -1216,7 +1265,7 @@ export default function AntimateAI() {
                           {/* MESSAGE ACTIONS */}
 
                           {!message.streaming &&
-                            message.text && (
+                            (message.text || message.images?.length > 0) && (
                               <div className="antimate-message-actions">
 
                                 <button
@@ -1267,6 +1316,7 @@ export default function AntimateAI() {
 
           {error && (
             <div className="antimate-error">
+
               {error}
 
               <button
@@ -1276,19 +1326,20 @@ export default function AntimateAI() {
               >
                 <Icon name="close" size={15} />
               </button>
+
             </div>
           )}
 
-          {/* GLOBAL AGENT STATUS */}
-
           {busy && (
             <div className="antimate-live-status">
+
               <span className="antimate-status-dot" />
 
               {stopRequested
                 ? "Stopping generation..."
                 : formatStatus(agentStatus) ||
                   "ANTIMATE is working..."}
+
             </div>
           )}
 
@@ -1341,6 +1392,7 @@ export default function AntimateAI() {
                   <span>
                     {stopRequested ? "Stopping" : "Stop"}
                   </span>
+
                 </button>
 
               ) : (

@@ -1882,6 +1882,48 @@ button:disabled {
   }
 }
 
+
+/* =========================================================
+   INLINE AI IMAGES
+   ========================================================= */
+
+.antimate-inline-image {
+  display: block;
+  width: fit-content;
+  max-width: min(100%, 680px);
+  margin: 20px 0;
+  padding: 0;
+}
+
+.antimate-inline-image a {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.antimate-inline-image img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 480px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
+.antimate-inline-image figcaption {
+  margin-top: 7px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  opacity: 0.7;
+}
+
+.antimate-inline-image img.image-load-failed {
+  display: none;
+}
+
+
 /* =========================================================
    END — ANTIMATE AI NATIVE CSS
 ========================================================= */

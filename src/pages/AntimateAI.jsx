@@ -292,6 +292,66 @@ function normalizeImages(images) {
 
 
 
+
+function renderAssistantContent(text, images = [], messageId = "") {
+  const content = String(text || "");
+  const availableImages = Array.isArray(images) ? images : [];
+
+  const markerPattern = /\[\[IMAGE_(\d+)\]\]/g;
+  const rendered = [];
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = markerPattern.exec(content)) !== null) {
+    const markerStart = match.index;
+    const imageIndex = Number(match[1]) - 1;
+
+    if (markerStart > lastIndex) {
+      rendered.push(content.slice(lastIndex, markerStart));
+    }
+
+    const image = availableImages[imageIndex];
+
+    if (image && image.image) {
+      rendered.push(
+        <figure
+          className="antimate-inline-image"
+          key={`${messageId}-inline-image-${imageIndex}`}
+        >
+          <a
+            href={image.source || image.image}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={image.title || "Open image"}
+          >
+            <img
+              src={image.image}
+              alt={image.title || "ANTIMATE AI image"}
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.classList.add("image-load-failed");
+              }}
+            />
+          </a>
+
+          {image.title && (
+            <figcaption>{image.title}</figcaption>
+          )}
+        </figure>
+      );
+    }
+
+    lastIndex = markerPattern.lastIndex;
+  }
+
+  if (lastIndex < content.length) {
+    rendered.push(content.slice(lastIndex));
+  }
+
+  return rendered;
+}
+
 function Icon({ name, size = 20 }) {
 
   const paths = {
@@ -1417,7 +1477,7 @@ export default function AntimateAI() {
 
               data.tool_result?.results ??
 
-              [];
+              data.tool_results?.images;
 
 
 
@@ -1429,7 +1489,9 @@ export default function AntimateAI() {
 
                 text: answer,
 
-                images: normalizeImages(finalImages),
+                ...(finalImages !== undefined
+                  ? { images: normalizeImages(finalImages) }
+                  : {}),
 
 
 
@@ -2520,106 +2582,22 @@ export default function AntimateAI() {
 
 
                           <div className="antimate-assistant-text">
-
-
-
-                            {message.text || (
-
-                              message.streaming
-
-                                ? " "
-
-                                : message.status === "stopped"
-
-                                  ? "Generation stopped."
-
-                                  : message.status === "failed"
-
-                                    ? "Generation failed."
-
-                                    : ""
-
-                            )}
-
-
-
+                            {message.text
+                              ? renderAssistantContent(
+                                  message.text,
+                                  message.images,
+                                  message.id
+                                )
+                              : (
+                                message.streaming
+                                  ? " "
+                                  : message.status === "stopped"
+                                    ? "Generation stopped."
+                                    : message.status === "failed"
+                                      ? "Generation failed."
+                                      : ""
+                              )}
                           </div>
-
-
-
-                          {/* IMAGE GALLERY */}
-
-
-
-                          {message.images?.length > 0 && (
-
-                            <div className="antimate-image-gallery">
-
-
-
-                              {message.images.map((image, index) => (
-
-
-
-                                <a
-
-                                  key={`${message.id}-image-${index}`}
-
-                                  className="antimate-image-item"
-
-                                  href={image.source}
-
-                                  target="_blank"
-
-                                  rel="noopener noreferrer"
-
-                                  title={image.title}
-
-                                >
-
-
-
-                                  <img
-
-                                    src={image.image}
-
-                                    alt={image.title}
-
-                                    loading="lazy"
-
-                                    onError={(event) => {
-
-                                      event.currentTarget.classList.add(
-
-                                        "image-load-failed"
-
-                                      );
-
-                                    }}
-
-                                  />
-
-
-
-                                  <span className="antimate-image-title">
-
-                                    {image.title}
-
-                                  </span>
-
-
-
-                                </a>
-
-
-
-                              ))}
-
-
-
-                            </div>
-
-                          )}
 
 
 

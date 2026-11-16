@@ -673,7 +673,7 @@ export default function AntimateAI() {
 
   const [input, setInput] = useState("");
 
-  const [language, setLanguage] = useState("rw");
+  const [language, setLanguage] = useState("en");
 
   const [theme, setTheme] = useState("dark");
 

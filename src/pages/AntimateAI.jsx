@@ -1,4 +1,3 @@
-
 import React, {
   useCallback,
   useEffect,
@@ -123,6 +122,12 @@ function normalizeImages(images) {
       return {
         image,
         title: item.title || item.name || "Image result",
+        description:
+          item.description ||
+          item.caption ||
+          item.explanation ||
+          item.summary ||
+          "",
         source:
           typeof source === "string" &&
           /^https?:\/\//i.test(source)
@@ -157,26 +162,32 @@ function normalizeAssistantMarkdown(text) {
 }
 
 /* =========================================================
-   INLINE IMAGE RENDERER
+   IMAGE / EXPLANATION PAIRING
+   Splits assistant content into ordered segments:
+   - plain text strings
+   - image+explanation blocks (rendered side by side)
    ========================================================= */
-function renderAssistantContent(text, images = [], messageId = "") {
+const IMAGE_PATTERN =
+  /\[\[IMAGE_(\d+)\]\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/gi;
+
+function buildAssistantSegments(text, images = [], messageId = "") {
   const content = normalizeAssistantMarkdown(text);
   const availableImages = normalizeImages(images);
 
-  const imagePattern =
-    /\[\[IMAGE_(\d+)\]\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/gi;
-
-  const rendered = [];
+  const segments = [];
 
   let lastIndex = 0;
   let match;
   let imageCounter = 0;
 
-  while ((match = imagePattern.exec(content)) !== null) {
+  // Reset the shared regex state (it's a module-level `g` regex).
+  IMAGE_PATTERN.lastIndex = 0;
+
+  while ((match = IMAGE_PATTERN.exec(content)) !== null) {
     const matchStart = match.index;
 
     if (matchStart > lastIndex) {
-      rendered.push(content.slice(lastIndex, matchStart));
+      segments.push({ type: "text", content: content.slice(lastIndex, matchStart) });
     }
 
     let image = null;
@@ -194,6 +205,7 @@ function renderAssistantContent(text, images = [], messageId = "") {
         image: imageUrl,
         source: imageUrl,
         title: alt,
+        description: "",
       };
 
       const matchingImage = availableImages.find(
@@ -201,99 +213,185 @@ function renderAssistantContent(text, images = [], messageId = "") {
       );
 
       if (matchingImage) {
-        image = matchingImage;
+        image = { description: "", ...matchingImage };
       }
     }
 
     if (image?.image) {
       const currentImageNumber = imageCounter++;
+      const trailingText = content
+        .slice(IMAGE_PATTERN.lastIndex)
+        .match(/^\s*\n?([^\n![]{1,400})/);
+      const explanation =
+        image.description ||
+        (trailingText ? trailingText[1].trim() : "") ||
+        image.title ||
+        "";
 
-      rendered.push(
-        <figure
-          className="antimate-inline-image"
-          key={`${messageId}-image-${currentImageNumber}`}
-        >
-          <a
-            href={image.source || image.image}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={image.title || "Open image"}
-          >
-            <img
-              src={image.image}
-              alt={image.title || alt || "ANTIMATE AI image"}
-              loading="lazy"
-              onError={(event) => {
-                event.currentTarget.classList.add("image-load-failed");
-              }}
-            />
-          </a>
-
-          {image.title && (
-            <figcaption>{image.title}</figcaption>
-          )}
-        </figure>
-      );
+      segments.push({
+        type: "image",
+        image,
+        alt,
+        explanation,
+        key: `${messageId}-image-${currentImageNumber}`,
+      });
     }
 
-    lastIndex = imagePattern.lastIndex;
+    lastIndex = IMAGE_PATTERN.lastIndex;
   }
 
   if (lastIndex < content.length) {
-    rendered.push(content.slice(lastIndex));
+    segments.push({ type: "text", content: content.slice(lastIndex) });
   }
 
-  return rendered;
+  return segments;
+}
+
+/* =========================================================
+   INLINE IMAGE RENDERER (with lightbox)
+   ========================================================= */
+function InlineImage({ image, alt, explanation, onOpen }) {
+  return (
+    <div className="antimate-image-explanation">
+      <figure className="antimate-inline-image">
+        <button
+          type="button"
+          className="antimate-inline-image-btn"
+          onClick={() => onOpen(image)}
+          aria-label={`Open image: ${image.title || alt || "image"}`}
+          title={image.title || "Open image"}
+        >
+          <img
+            src={image.image}
+            alt={image.title || alt || "ANTIMATE AI image"}
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.classList.add("image-load-failed");
+            }}
+          />
+        </button>
+
+        {image.title && <figcaption>{image.title}</figcaption>}
+      </figure>
+
+      {explanation && (
+        <div className="antimate-image-description">{explanation}</div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   IMAGE LIGHTBOX
+   ========================================================= */
+function ImageLightbox({ image, onClose }) {
+  useEffect(() => {
+    if (!image) return undefined;
+
+    const handleKey = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKey);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [image, onClose]);
+
+  if (!image?.image) return null;
+
+  return (
+    <div
+      className="antimate-image-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image preview"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        className="antimate-image-lightbox-close"
+        onClick={(event) => {
+          event.stopPropagation();
+          onClose();
+        }}
+        aria-label="Close image preview"
+      >
+        ×
+      </button>
+
+      <img
+        src={image.image}
+        alt={image.title || "ANTIMATE AI image"}
+        onClick={(event) => event.stopPropagation()}
+      />
+    </div>
+  );
 }
 
 /* =========================================================
    INCREMENTAL TEXT
    ========================================================= */
-function IncrementalText({ text, images, messageId, streaming }) {
+function IncrementalText({ text, images, messageId, streaming, onOpenImage }) {
   const segments = useMemo(
-    () => renderAssistantContent(text, images, messageId),
+    () => buildAssistantSegments(text, images, messageId),
     [text, images, messageId]
   );
 
-  const totalWords = useMemo(
+  const totalUnits = useMemo(
     () =>
       segments.reduce((count, segment) => {
-        if (typeof segment === "string") {
-          return count + segment.split(/(\s+)/).filter(Boolean).length;
+        if (segment.type === "text") {
+          return count + segment.content.split(/(\s+)/).filter(Boolean).length;
         }
         return count + 1;
       }, 0),
     [segments]
   );
 
-  const [revealed, setRevealed] = useState(totalWords);
+  const [revealed, setRevealed] = useState(totalUnits);
 
   useEffect(() => {
     if (!streaming) {
-      setRevealed(totalWords);
+      setRevealed(totalUnits);
       return undefined;
     }
 
-    if (revealed >= totalWords) return undefined;
+    if (revealed >= totalUnits) return undefined;
 
     const timer = window.setInterval(() => {
-      setRevealed((current) => Math.min(current + 4, totalWords));
+      setRevealed((current) => Math.min(current + 4, totalUnits));
     }, 36);
 
     return () => window.clearInterval(timer);
-  }, [revealed, totalWords, streaming]);
+  }, [revealed, totalUnits, streaming]);
 
   let budget = revealed;
 
   return (
     <div className={`antimate-assistant-text ${streaming ? "streaming" : ""}`}>
       {segments.map((segment, index) => {
-        if (typeof segment !== "string") {
+        if (segment.type === "image") {
           if (budget > 0) budget -= 1;
-          return budget >= 0 ? segment : null;
+          if (budget < 0) return null;
+
+          return (
+            <InlineImage
+              key={segment.key}
+              image={segment.image}
+              alt={segment.alt}
+              explanation={segment.explanation}
+              onOpen={onOpenImage}
+            />
+          );
         }
 
-        const tokens = segment.split(/(\s+)/);
+        const tokens = segment.content.split(/(\s+)/);
         const visible = [];
 
         for (const token of tokens) {
@@ -581,6 +679,8 @@ export default function AntimateAI() {
   const [renamingConversationId, setRenamingConversationId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
 
+  const [lightboxImage, setLightboxImage] = useState(null);
+
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
   const abortRef = useRef(null);
@@ -844,6 +944,17 @@ export default function AntimateAI() {
     },
     []
   );
+
+  /* =========================================================
+     IMAGE LIGHTBOX OPEN
+     ========================================================= */
+  const openImageLightbox = useCallback((image) => {
+    setLightboxImage(image);
+  }, []);
+
+  const closeImageLightbox = useCallback(() => {
+    setLightboxImage(null);
+  }, []);
 
   /* =========================================================
      CONVERSATION ACTIONS
@@ -1935,10 +2046,11 @@ export default function AntimateAI() {
                             images={message.images}
                             messageId={message.id}
                             streaming={Boolean(message.streaming)}
+                            onOpenImage={openImageLightbox}
                           />
 
                           {message.reasoningSummary && (
-                            <details className="antimate-details">
+                            <details className="antimate-details antimate-reasoning">
                               <summary>Thinking summary</summary>
                               <p>{message.reasoningSummary}</p>
                             </details>
@@ -2190,6 +2302,8 @@ export default function AntimateAI() {
           </footer>
         </main>
       </div>
+
+      <ImageLightbox image={lightboxImage} onClose={closeImageLightbox} />
     </div>
   );
 }

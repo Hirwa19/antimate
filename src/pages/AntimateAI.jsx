@@ -63,28 +63,18 @@ function formatStatus(status) {
 
 /* =========================================================
    CONVERSATION STORAGE
-
-   Guest:
-   - No localStorage history.
-   - Current chat exists only in React state.
-
-   Signed-in:
-   - Conversation history is stored locally.
    ========================================================= */
 function getConversationStorageKey() {
   const token = getToken();
-
   return `antimate_chat_history_v1_${token.slice(-16)}`;
 }
 
 function readConversationHistory() {
-  // Guest conversations must never be restored from storage.
   if (!getToken()) return [];
 
   try {
     const stored = localStorage.getItem(getConversationStorageKey());
     const parsed = stored ? JSON.parse(stored) : [];
-
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -113,8 +103,8 @@ function normalizeImages(images) {
 
       const image =
         item.image ||
-        item.thumbnail ||
         item.image_url ||
+        item.thumbnail ||
         item.thumbnail_url ||
         "";
 
@@ -124,13 +114,18 @@ function normalizeImages(images) {
 
       seen.add(image);
 
-      const source = item.source || item.url || item.page_url || image;
+      const source =
+        item.source ||
+        item.url ||
+        item.page_url ||
+        image;
 
       return {
         image,
         title: item.title || item.name || "Image result",
         source:
-          typeof source === "string" && /^https?:\/\//i.test(source)
+          typeof source === "string" &&
+          /^https?:\/\//i.test(source)
             ? source
             : image,
       };
@@ -139,33 +134,84 @@ function normalizeImages(images) {
 }
 
 /* =========================================================
+   IMAGE MARKDOWN NORMALIZATION
+   ========================================================= */
+function normalizeAssistantMarkdown(text) {
+  let content = String(text || "");
+
+  // Repair nested malformed Markdown:
+  // ![Lion]([https://image.jpg](https://image.jpg))
+  content = content.replace(
+    /!\[([^\]]*)\]\s*\\?\(\s*\[(https?:\/\/[^\]]+)\]\((https?:\/\/[^)]+)\)\s*\)/gi,
+    (_, alt, firstUrl) => `![${alt}](${firstUrl.trim()})`
+  );
+
+  // Repair escaped parentheses:
+  // ![Lion]\(https://image.jpg\)
+  content = content.replace(
+    /!\[([^\]]*)\]\s*\\\((https?:\/\/[^\s)]+)\\?\)/gi,
+    (_, alt, url) => `![${alt}](${url})`
+  );
+
+  return content;
+}
+
+/* =========================================================
    INLINE IMAGE RENDERER
    ========================================================= */
 function renderAssistantContent(text, images = [], messageId = "") {
-  const content = String(text || "");
-  const availableImages = Array.isArray(images) ? images : [];
+  const content = normalizeAssistantMarkdown(text);
+  const availableImages = normalizeImages(images);
 
-  const markerPattern = /\[\[IMAGE_(\d+)\]\]/g;
+  const imagePattern =
+    /\[\[IMAGE_(\d+)\]\]|!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+"[^"]*")?\)/gi;
+
   const rendered = [];
 
   let lastIndex = 0;
   let match;
+  let imageCounter = 0;
 
-  while ((match = markerPattern.exec(content)) !== null) {
-    const markerStart = match.index;
-    const imageIndex = Number(match[1]) - 1;
+  while ((match = imagePattern.exec(content)) !== null) {
+    const matchStart = match.index;
 
-    if (markerStart > lastIndex) {
-      rendered.push(content.slice(lastIndex, markerStart));
+    if (matchStart > lastIndex) {
+      rendered.push(content.slice(lastIndex, matchStart));
     }
 
-    const image = availableImages[imageIndex];
+    let image = null;
+    let alt = "";
+
+    if (match[1]) {
+      const imageIndex = Number(match[1]) - 1;
+      image = availableImages[imageIndex] || null;
+    } else {
+      alt = match[2] || "ANTIMATE AI image";
+
+      const imageUrl = match[3];
+
+      image = {
+        image: imageUrl,
+        source: imageUrl,
+        title: alt,
+      };
+
+      const matchingImage = availableImages.find(
+        (item) => item.image === imageUrl
+      );
+
+      if (matchingImage) {
+        image = matchingImage;
+      }
+    }
 
     if (image?.image) {
+      const currentImageNumber = imageCounter++;
+
       rendered.push(
         <figure
           className="antimate-inline-image"
-          key={`${messageId}-inline-image-${imageIndex}`}
+          key={`${messageId}-image-${currentImageNumber}`}
         >
           <a
             href={image.source || image.image}
@@ -175,20 +221,22 @@ function renderAssistantContent(text, images = [], messageId = "") {
           >
             <img
               src={image.image}
-              alt={image.title || "ANTIMATE AI image"}
+              alt={image.title || alt || "ANTIMATE AI image"}
               loading="lazy"
-              onError={(event) =>
-                event.currentTarget.classList.add("image-load-failed")
-              }
+              onError={(event) => {
+                event.currentTarget.classList.add("image-load-failed");
+              }}
             />
           </a>
 
-          {image.title && <figcaption>{image.title}</figcaption>}
+          {image.title && (
+            <figcaption>{image.title}</figcaption>
+          )}
         </figure>
       );
     }
 
-    lastIndex = markerPattern.lastIndex;
+    lastIndex = imagePattern.lastIndex;
   }
 
   if (lastIndex < content.length) {
@@ -201,12 +249,7 @@ function renderAssistantContent(text, images = [], messageId = "") {
 /* =========================================================
    INCREMENTAL TEXT
    ========================================================= */
-function IncrementalText({
-  text,
-  images,
-  messageId,
-  streaming,
-}) {
+function IncrementalText({ text, images, messageId, streaming }) {
   const segments = useMemo(
     () => renderAssistantContent(text, images, messageId),
     [text, images, messageId]
@@ -218,7 +261,6 @@ function IncrementalText({
         if (typeof segment === "string") {
           return count + segment.split(/(\s+)/).filter(Boolean).length;
         }
-
         return count + 1;
       }, 0),
     [segments]
@@ -286,6 +328,7 @@ function Icon({ name, size = 20 }) {
     plus: <path d="M12 5v14M5 12h14" />,
     send: <path d="M12 19V5M5 12l7-7 7 7" />,
     close: <path d="m18 6-12 12M6 6l12 12" />,
+    stop: <rect x="6" y="6" width="12" height="12" rx="2" />,
 
     copy: (
       <>
@@ -495,7 +538,6 @@ async function readSSEStream(response, onEvent) {
 
     if (buffer.trim()) {
       const parsed = parseSSEBlock(buffer);
-
       if (parsed) onEvent(parsed);
     }
   } finally {
@@ -545,7 +587,6 @@ export default function AntimateAI() {
   const stopRequestedRef = useRef(false);
   const recognitionRef = useRef(null);
 
-  // The backend must independently verify this token.
   const signedIn = Boolean(getToken());
 
   /* =========================================================
@@ -561,13 +602,10 @@ export default function AntimateAI() {
 
   /* =========================================================
      PERSIST SIGNED-IN HISTORY ONLY
-
-     Guest history is never written to localStorage.
      ========================================================= */
   useEffect(() => {
     try {
       if (!getToken()) {
-        // Remove any old guest history created by previous versions.
         localStorage.removeItem("antimate_chat_history_v1_guest");
         return;
       }
@@ -586,13 +624,9 @@ export default function AntimateAI() {
 
   /* =========================================================
      SYNC ACTIVE CONVERSATION
-
-     Only signed-in users get saved conversation records.
-     Guest messages stay in React state only.
      ========================================================= */
   useEffect(() => {
-    if (!getToken()) return;
-    if (!messages.length) return;
+    if (!getToken() || !messages.length) return;
 
     const firstUserMessage = messages.find(
       (item) => item.role === "user"
@@ -639,7 +673,6 @@ export default function AntimateAI() {
     }
 
     setElapsed(0);
-
     const started = Date.now();
 
     const timer = window.setInterval(() => {
@@ -747,7 +780,10 @@ export default function AntimateAI() {
         setError(
           "Microphone access denied. Please allow it in your browser."
         );
-      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+      } else if (
+        event.error !== "no-speech" &&
+        event.error !== "aborted"
+      ) {
         setError(`Speech recognition error: ${event.error}`);
       }
 
@@ -817,7 +853,6 @@ export default function AntimateAI() {
       if (busy || !signedIn || !conversation) return;
 
       setConversationId(conversation.id);
-
       setMessages(
         Array.isArray(conversation.messages)
           ? conversation.messages
@@ -873,7 +908,6 @@ export default function AntimateAI() {
       if (!signedIn) return;
 
       const title = renameDraft.trim().slice(0, 80);
-
       if (!title) return;
 
       setSavedConversations((previous) =>
@@ -937,9 +971,7 @@ export default function AntimateAI() {
   }, []);
 
   const toggleThinking = useCallback(() => {
-    // Thinking mode is reserved for authenticated accounts.
     if (busy || !signedIn) return;
-
     setThinkingEnabled((current) => !current);
   }, [busy, signedIn]);
 
@@ -958,7 +990,6 @@ export default function AntimateAI() {
         if (index === -1) return previous;
 
         const target = previous[index];
-
         if (target.role !== "user") return previous;
 
         const next = previous.slice();
@@ -967,7 +998,6 @@ export default function AntimateAI() {
           next[index + 1]?.role === "assistant" ? 2 : 1;
 
         next.splice(index, removeCount);
-
         return next;
       });
 
@@ -975,9 +1005,7 @@ export default function AntimateAI() {
         (message) => message.id === messageId
       );
 
-      if (target?.text) {
-        setInput(target.text);
-      }
+      if (target?.text) setInput(target.text);
 
       inputRef.current?.focus();
     },
@@ -1139,14 +1167,6 @@ export default function AntimateAI() {
 
   /* =========================================================
      SEND MESSAGE
-
-     Guest:
-     - No token required on the frontend.
-     - Sends the same chat request without Authorization.
-     - Backend must identify the request as Guest.
-
-     Signed-in:
-     - Sends the Bearer token when available.
      ========================================================= */
   const sendMessage = useCallback(async () => {
     const cleanText = input.trim();
@@ -1207,7 +1227,6 @@ export default function AntimateAI() {
     stopRequestedRef.current = false;
 
     const controller = new AbortController();
-
     abortRef.current = controller;
 
     let streamCompleted = false;
@@ -1224,8 +1243,6 @@ export default function AntimateAI() {
           history,
           language,
           conversation_id: conversationId,
-
-          // Guest requests cannot enable Thinking mode.
           thinking_enabled: signedIn ? thinkingEnabled : false,
         }),
       });
@@ -1241,7 +1258,6 @@ export default function AntimateAI() {
         );
 
         requestError.status = response.status;
-
         throw requestError;
       }
 
@@ -1267,7 +1283,6 @@ export default function AntimateAI() {
             if (data.conversation_id) {
               setConversationId(data.conversation_id);
             }
-
             break;
           }
 
@@ -1279,7 +1294,6 @@ export default function AntimateAI() {
             updateAssistantMessage(assistantMessageId, {
               status,
             });
-
             break;
           }
 
@@ -1317,7 +1331,6 @@ export default function AntimateAI() {
             if (data.conversation_id) {
               setConversationId(data.conversation_id);
             }
-
             break;
           }
 
@@ -1360,7 +1373,6 @@ export default function AntimateAI() {
             if (data.conversation_id) {
               setConversationId(data.conversation_id);
             }
-
             break;
           }
 
@@ -1371,7 +1383,6 @@ export default function AntimateAI() {
                 "ANTIMATE AI encountered an error."
               )
             );
-
             break;
           }
 
@@ -1382,7 +1393,6 @@ export default function AntimateAI() {
               status: "stopped",
               streaming: false,
             });
-
             break;
           }
 
@@ -1391,9 +1401,7 @@ export default function AntimateAI() {
         }
       });
 
-      if (streamError) {
-        throw streamError;
-      }
+      if (streamError) throw streamError;
 
       if (streamStopped || stopRequestedRef.current) {
         updateAssistantMessage(assistantMessageId, {
@@ -1568,7 +1576,6 @@ export default function AntimateAI() {
      ========================================================= */
   return (
     <div className={`antimate-app ${theme}`}>
-      {/* ================= TOP BAR ================= */}
       <header className="antimate-topbar">
         <div className="antimate-topbar-left">
           <div className="antimate-logo" aria-label="ANTIMATE">
@@ -1613,9 +1620,7 @@ export default function AntimateAI() {
         </div>
       </header>
 
-      {/* ================= BODY ================= */}
       <div className="antimate-body">
-        {/* ---------- SIDEBAR ---------- */}
         <aside
           className={`antimate-sidebar ${
             sidebarOpen ? "open" : "closed"
@@ -1764,7 +1769,6 @@ export default function AntimateAI() {
             )}
           </div>
 
-          {/* ---------- PROFILE ---------- */}
           <div className="antimate-sidebar-foot">
             <div className="antimate-user">
               <span className="antimate-user-avatar">
@@ -1794,9 +1798,7 @@ export default function AntimateAI() {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
-                      setOpenProfileMenu(false);
-                    }}
+                    onClick={() => setOpenProfileMenu(false)}
                   >
                     <Icon name="settings" size={15} />
                     Settings
@@ -1858,7 +1860,6 @@ export default function AntimateAI() {
           </div>
         </aside>
 
-        {/* ---------- MAIN ---------- */}
         <main className="antimate-main">
           <section className="antimate-scroll">
             {messages.length === 0 ? (
@@ -2045,7 +2046,6 @@ export default function AntimateAI() {
             )}
           </section>
 
-          {/* ---------- COMPOSER ---------- */}
           <footer className="antimate-composer-wrap">
             {error && (
               <div className="antimate-error">

@@ -892,3 +892,42 @@
   }
   .antimate-caret { animation: none; }
 }
+
+/* =========================================================
+   ANTIMATE INLINE IMAGES
+   ========================================================= */
+
+.antimate-inline-image {
+  display: block;
+  width: fit-content;
+  max-width: min(100%, 680px);
+  margin: 18px 0;
+  overflow: hidden;
+}
+
+.antimate-inline-image a {
+  display: block;
+  text-decoration: none;
+}
+
+.antimate-inline-image img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 520px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--antimate-surface, #202124);
+}
+
+.antimate-inline-image img.image-load-failed {
+  display: none;
+}
+
+.antimate-inline-image figcaption {
+  margin-top: 7px;
+  font-size: 12px;
+  opacity: 0.7;
+  line-height: 1.5;
+}

@@ -1,5 +1,5 @@
 /* =========================================================
-   ANTIMATE AI — v3 (static top bar, borderless, peripheral)
+   ANTIMATE AI — v4 (static top bar, borderless, TTS/STT)
    ========================================================= */
 :root {
   --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -52,7 +52,7 @@
 }
 
 /* =========================================================
-   TOP BAR (static)
+   TOP BAR
    ========================================================= */
 .antimate-topbar {
   display: flex;
@@ -127,7 +127,7 @@
 }
 
 /* =========================================================
-   BODY (sidebar + main)
+   BODY
    ========================================================= */
 .antimate-body {
   flex: 1;
@@ -136,7 +136,7 @@
 }
 
 /* =========================================================
-   SIDEBAR — borderless
+   SIDEBAR
    ========================================================= */
 .antimate-sidebar {
   display: flex;
@@ -482,7 +482,6 @@
   gap: 8px;
 }
 
-/* status top-right with elapsed */
 .antimate-answer-meta {
   display: flex;
   justify-content: flex-end;
@@ -518,7 +517,6 @@
   50% { opacity: 1; transform: scale(1.05); }
 }
 
-/* incremental text — left-to-right */
 .antimate-assistant-text {
   font-size: 15px;
   line-height: 1.7;
@@ -541,7 +539,6 @@
 
 @keyframes blink { 50% { opacity: 0; } }
 
-/* images */
 .antimate-inline-image {
   display: inline-block;
   margin: 8px 8px 8px 0;
@@ -572,7 +569,6 @@
 
 .antimate-inline-image a { display: block; text-decoration: none; }
 
-/* details */
 .antimate-details {
   font-size: 12.5px;
   color: var(--muted);
@@ -590,7 +586,6 @@
   color: var(--text);
 }
 
-/* FOOTER: tool left, actions right */
 .antimate-answer-footer {
   display: flex;
   align-items: flex-start;
@@ -759,6 +754,35 @@
 }
 
 .antimate-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* mic button */
+.antimate-mic {
+  position: relative;
+  width: 30px;
+  height: 30px;
+}
+
+.antimate-mic.listening {
+  color: var(--danger);
+  background: rgba(239, 91, 104, 0.12);
+}
+
+.antimate-mic.listening::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.antimate-mic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 .antimate-composer-meta {
   flex: 1;

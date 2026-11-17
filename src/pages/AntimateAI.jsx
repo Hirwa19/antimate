@@ -96,7 +96,7 @@ function normalizeImages(images) {
 }
 
 /* =========================================================
-   INLINE IMAGE RENDERER (unchanged)
+   INLINE IMAGE RENDERER
    ========================================================= */
 function renderAssistantContent(text, images = [], messageId = "") {
   const content = String(text || "");
@@ -151,7 +151,7 @@ function renderAssistantContent(text, images = [], messageId = "") {
 }
 
 /* =========================================================
-   INCREMENTAL TEXT — left to right word reveal
+   INCREMENTAL TEXT — left-to-right word reveal
    ========================================================= */
 function IncrementalText({ text, images, messageId, streaming }) {
   const segments = useMemo(
@@ -270,7 +270,6 @@ function Icon({ name, size = 20 }) {
         <path d="M10 11v5m4-5v5" />
       </>
     ),
-    /* NEW icons */
     share: (
       <>
         <circle cx="18" cy="5" r="3" />
@@ -321,6 +320,21 @@ function Icon({ name, size = 20 }) {
         <path d="M21 12H9" />
       </>
     ),
+    mic: (
+      <>
+        <rect x="9" y="3" width="6" height="12" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0" />
+        <path d="M12 18v3" />
+      </>
+    ),
+    "mic-off": (
+      <>
+        <rect x="9" y="3" width="6" height="12" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0" />
+        <path d="M12 18v3" />
+        <path d="m3 3 18 18" />
+      </>
+    ),
   };
 
   return (
@@ -341,7 +355,7 @@ function Icon({ name, size = 20 }) {
 }
 
 /* =========================================================
-   SSE PARSER (unchanged)
+   SSE PARSER
    ========================================================= */
 function parseSSEBlock(block) {
   if (!block || !block.trim()) return null;
@@ -429,6 +443,7 @@ export default function AntimateAI() {
   const [copiedId, setCopiedId] = useState(null);
   const [likedIds, setLikedIds] = useState(() => new Set());
   const [speakingId, setSpeakingId] = useState(null);
+  const [listening, setListening] = useState(false);
 
   const [openConversationMenu, setOpenConversationMenu] = useState(null);
   const [openProfileMenu, setOpenProfileMenu] = useState(false);
@@ -439,8 +454,15 @@ export default function AntimateAI() {
   const bottomRef = useRef(null);
   const abortRef = useRef(null);
   const stopRequestedRef = useRef(false);
+  const recognitionRef = useRef(null);
 
   const signedIn = Boolean(getToken());
+
+  /* ---- STT feature detection ---- */
+  const sttSupported = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  }, []);
 
   /* ---- persist history ---- */
   useEffect(() => {
@@ -501,12 +523,17 @@ export default function AntimateAI() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
 
-  /* ---- cleanup ---- */
+  /* ---- cleanup (abort stream, stop TTS, stop STT) ---- */
   useEffect(
     () => () => {
       abortRef.current?.abort();
       if (typeof window !== "undefined" && window.speechSynthesis) {
         window.speechSynthesis.cancel();
+      }
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
       }
     },
     []
@@ -523,6 +550,74 @@ export default function AntimateAI() {
     window.addEventListener("mousedown", handleClick);
     return () => window.removeEventListener("mousedown", handleClick);
   }, [openProfileMenu]);
+
+  /* ---- STT recognizer setup ---- */
+  useEffect(() => {
+    if (!sttSupported) return undefined;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let finalText = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        if (event.results[i].isFinal) {
+          finalText += event.results[i][0].transcript;
+        }
+      }
+      if (finalText) {
+        setInput((current) => {
+          const sep = current && !current.endsWith(" ") ? " " : "";
+          return `${current}${sep}${finalText}`.slice(0, MAX_MESSAGE_LENGTH);
+        });
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setError("Microphone access denied. Please allow it in your browser.");
+      } else if (event.error === "no-speech") {
+        // benign
+      } else if (event.error !== "aborted") {
+        setError(`Speech recognition error: ${event.error}`);
+      }
+      setListening(false);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      try {
+        recognition.stop();
+      } catch {
+        /* ignore */
+      }
+      recognitionRef.current = null;
+    };
+  }, [sttSupported]);
+
+  /* ---- auto-stop TTS + STT when language != en ---- */
+  useEffect(() => {
+    if (language === "en") return;
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+    if (listening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+      setListening(false);
+    }
+  }, [language, listening]);
 
   const updateAssistantMessage = useCallback((messageId, updates) => {
     setMessages((previous) =>
@@ -625,7 +720,7 @@ export default function AntimateAI() {
     setThinkingEnabled((current) => !current);
   }, [busy]);
 
-  /* ---- edit question: remove that user message + its assistant reply, restore text ---- */
+  /* ---- edit question ---- */
   const editQuestion = useCallback(
     (messageId) => {
       if (busy) return;
@@ -635,9 +730,10 @@ export default function AntimateAI() {
         const target = previous[index];
         if (target.role !== "user") return previous;
 
-        // Remove the user message and the following assistant message (if any)
         const next = previous.slice();
-        next.splice(index, target.role === "user" && next[index + 1]?.role === "assistant" ? 2 : 1);
+        const removeCount =
+          next[index + 1]?.role === "assistant" ? 2 : 1;
+        next.splice(index, removeCount);
         return next;
       });
       const target = messages.find((m) => m.id === messageId);
@@ -647,16 +743,16 @@ export default function AntimateAI() {
     [busy, messages]
   );
 
-  /* ---- speech synthesis (TTS) ---- */
+  /* ---- TTS (EN only) ---- */
   const speakMessage = useCallback(
     (message) => {
+      if (language !== "en") return;
       if (typeof window === "undefined" || !window.speechSynthesis) {
         setError("Text-to-speech is not supported in this browser.");
         return;
       }
       const synth = window.speechSynthesis;
 
-      // Toggle off if already speaking this message
       if (speakingId === message.id) {
         synth.cancel();
         setSpeakingId(null);
@@ -665,16 +761,54 @@ export default function AntimateAI() {
 
       synth.cancel();
       const utterance = new SpeechSynthesisUtterance(message.text || "");
-      utterance.lang = language === "rw" ? "rw-RW" : "en-US";
+      utterance.lang = "en-US";
+      utterance.rate = 0.95;
       utterance.onend = () => setSpeakingId(null);
       utterance.onerror = () => setSpeakingId(null);
+
       setSpeakingId(message.id);
       synth.speak(utterance);
     },
     [language, speakingId]
   );
 
-  /* ---- like toggle ---- */
+  /* ---- STT toggle (EN only) ---- */
+  const toggleListening = useCallback(() => {
+    if (language !== "en") return;
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      setError("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    if (listening) {
+      try {
+        recognition.stop();
+      } catch {
+        /* ignore */
+      }
+      setListening(false);
+      return;
+    }
+
+    // Cancel TTS so it doesn't feed into the mic
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
+
+    try {
+      recognition.start();
+      setListening(true);
+      setError("");
+    } catch (err) {
+      if (err?.name !== "InvalidStateError") {
+        setError("Could not start speech recognition.");
+      }
+    }
+  }, [language, listening]);
+
+  /* ---- like ---- */
   const toggleLike = useCallback((messageId) => {
     setLikedIds((previous) => {
       const next = new Set(previous);
@@ -711,11 +845,21 @@ export default function AntimateAI() {
   }, []);
 
   /* =========================================================
-     SEND MESSAGE (payload + SSE unchanged)
+     SEND MESSAGE
      ========================================================= */
   const sendMessage = useCallback(async () => {
     const cleanText = input.trim();
     if (!cleanText || busy) return;
+
+    // stop any active dictation when sending
+    if (listening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        /* ignore */
+      }
+      setListening(false);
+    }
 
     if (!getToken()) {
       setError(
@@ -932,11 +1076,12 @@ export default function AntimateAI() {
     language,
     conversationId,
     thinkingEnabled,
+    listening,
     updateAssistantMessage,
   ]);
 
   /* =========================================================
-     STOP (unchanged)
+     STOP
      ========================================================= */
   const stopGeneration = useCallback(async () => {
     if (!busy || stopRequestedRef.current) return;
@@ -1179,16 +1324,45 @@ export default function AntimateAI() {
 
               {openProfileMenu && (
                 <div className="antimate-profile-menu" role="menu">
-                  <button type="button" role="menuitem" onClick={() => { setOpenProfileMenu(false); /* hook settings */ }}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenProfileMenu(false);
+                      /* hook settings */
+                    }}
+                  >
                     <Icon name="settings" size={15} /> Settings
                   </button>
-                  <button type="button" role="menuitem" onClick={() => { toggleTheme(); setOpenProfileMenu(false); }}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      toggleTheme();
+                      setOpenProfileMenu(false);
+                    }}
+                  >
                     <Icon name="appearance" size={15} /> Appearance
                   </button>
-                  <button type="button" role="menuitem" onClick={() => { setOpenProfileMenu(false); window.history.back(); }}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenProfileMenu(false);
+                      window.history.back();
+                    }}
+                  >
                     <Icon name="back" size={15} /> Back
                   </button>
-                  <button type="button" role="menuitem" className="danger" onClick={() => { setOpenProfileMenu(false); handleLogout(); }}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="danger"
+                    onClick={() => {
+                      setOpenProfileMenu(false);
+                      handleLogout();
+                    }}
+                  >
                     <Icon name="logout" size={15} /> Logout
                   </button>
                 </div>
@@ -1287,26 +1461,28 @@ export default function AntimateAI() {
                             {!message.streaming &&
                               (message.text || message.images?.length > 0) && (
                                 <div className="antimate-answer-actions">
-                                  <button
-                                    type="button"
-                                    className="antimate-ghost-btn"
-                                    onClick={() => speakMessage(message)}
-                                    aria-label="Read answer aloud"
-                                    title={
-                                      speakingId === message.id
-                                        ? "Stop reading"
-                                        : "Read answer aloud"
-                                    }
-                                  >
-                                    <Icon
-                                      name={
+                                  {language === "en" && (
+                                    <button
+                                      type="button"
+                                      className="antimate-ghost-btn"
+                                      onClick={() => speakMessage(message)}
+                                      aria-label="Read answer aloud"
+                                      title={
                                         speakingId === message.id
-                                          ? "speaker-off"
-                                          : "speaker"
+                                          ? "Stop reading"
+                                          : "Read answer aloud"
                                       }
-                                      size={15}
-                                    />
-                                  </button>
+                                    >
+                                      <Icon
+                                        name={
+                                          speakingId === message.id
+                                            ? "speaker-off"
+                                            : "speaker"
+                                        }
+                                        size={15}
+                                      />
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     className={`antimate-ghost-btn ${
@@ -1369,7 +1545,11 @@ export default function AntimateAI() {
                 onChange={(event) => setInput(event.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
-                  language === "rw" ? "Andika ubutumwa…" : "Message ANTIMATE…"
+                  language === "rw"
+                    ? "Andika ubutumwa…"
+                    : listening
+                    ? "Listening… speak now"
+                    : "Message ANTIMATE…"
                 }
                 rows={1}
                 maxLength={MAX_MESSAGE_LENGTH}
@@ -1377,6 +1557,22 @@ export default function AntimateAI() {
               />
 
               <div className="antimate-composer-row">
+                {/* STT — visible only for EN and if supported */}
+                {language === "en" && sttSupported && (
+                  <button
+                    type="button"
+                    className={`antimate-ghost-btn antimate-mic ${
+                      listening ? "listening" : ""
+                    }`}
+                    onClick={toggleListening}
+                    disabled={busy}
+                    aria-label={listening ? "Stop dictation" : "Start dictation"}
+                    title={listening ? "Stop dictation" : "Dictate"}
+                  >
+                    <Icon name={listening ? "mic-off" : "mic"} size={17} />
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className={`antimate-chip ${thinkingEnabled ? "on" : ""}`}

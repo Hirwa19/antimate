@@ -95,6 +95,9 @@ function normalizeImages(images) {
     .filter(Boolean);
 }
 
+/* =========================================================
+   INLINE IMAGE RENDERER (unchanged)
+   ========================================================= */
 function renderAssistantContent(text, images = [], messageId = "") {
   const content = String(text || "");
   const availableImages = Array.isArray(images) ? images : [];
@@ -148,7 +151,7 @@ function renderAssistantContent(text, images = [], messageId = "") {
 }
 
 /* =========================================================
-   INCREMENTAL REVEAL (left → right)
+   INCREMENTAL TEXT — left to right word reveal
    ========================================================= */
 function IncrementalText({ text, images, messageId, streaming }) {
   const segments = useMemo(
@@ -156,14 +159,16 @@ function IncrementalText({ text, images, messageId, streaming }) {
     [text, images, messageId]
   );
 
-  const totalWords = useMemo(() => {
-    return segments.reduce((count, seg) => {
-      if (typeof seg === "string") {
-        return count + seg.split(/(\s+)/).filter(Boolean).length;
-      }
-      return count + 1;
-    }, 0);
-  }, [segments]);
+  const totalWords = useMemo(
+    () =>
+      segments.reduce((count, seg) => {
+        if (typeof seg === "string") {
+          return count + seg.split(/(\s+)/).filter(Boolean).length;
+        }
+        return count + 1;
+      }, 0),
+    [segments]
+  );
 
   const [revealed, setRevealed] = useState(totalWords);
 
@@ -175,8 +180,8 @@ function IncrementalText({ text, images, messageId, streaming }) {
     if (revealed >= totalWords) return undefined;
 
     const tick = window.setInterval(() => {
-      setRevealed((current) => Math.min(current + 3, totalWords));
-    }, 40);
+      setRevealed((current) => Math.min(current + 4, totalWords));
+    }, 36);
 
     return () => window.clearInterval(tick);
   }, [revealed, totalWords, streaming]);
@@ -265,6 +270,7 @@ function Icon({ name, size = 20 }) {
         <path d="M10 11v5m4-5v5" />
       </>
     ),
+    /* NEW icons */
     share: (
       <>
         <circle cx="18" cy="5" r="3" />
@@ -280,14 +286,20 @@ function Icon({ name, size = 20 }) {
         <path d="M18.5 5.5a9 9 0 0 1 0 13" />
       </>
     ),
-    retry: (
+    "speaker-off": (
       <>
-        <path d="M21 12a9 9 0 1 1-3-6.7" />
-        <path d="M21 4v5h-5" />
+        <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+        <path d="m16 9 5 5m0-5-5 5" />
       </>
     ),
     like: (
-      <path d="M7 10v10H4V10h3Zm0 0 5-7a2 2 0 0 1 3.6 1.3L15 9h4.2a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 17.8 20H7" />
+      <path d="M7 10v10H3V10h4Zm4 10h6.3a2 2 0 0 0 2-1.6l1.4-6A2 2 0 0 0 18.7 10H14V6a2 2 0 0 0-2-2l-1 6v10Z" />
+    ),
+    "like-filled": (
+      <path
+        d="M7 10v10H3V10h4Zm4 10h6.3a2 2 0 0 0 2-1.6l1.4-6A2 2 0 0 0 18.7 10H14V6a2 2 0 0 0-2-2l-1 6v10Z"
+        fill="currentColor"
+      />
     ),
     settings: (
       <>
@@ -298,15 +310,10 @@ function Icon({ name, size = 20 }) {
     appearance: (
       <>
         <circle cx="12" cy="12" r="9" />
-        <path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" />
+        <path d="M12 3a9 9 0 0 0 0 18 4.5 4.5 0 0 1 0-9 4.5 4.5 0 0 0 0-9Z" />
       </>
     ),
-    back: (
-      <>
-        <path d="M19 12H5" />
-        <path d="m12 19-7-7 7-7" />
-      </>
-    ),
+    back: <path d="M19 12H5m7-7-7 7 7 7" />,
     logout: (
       <>
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -415,20 +422,18 @@ export default function AntimateAI() {
 
   const [busy, setBusy] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const [likedIds, setLikedIds] = useState(() => new Set());
   const [speakingId, setSpeakingId] = useState(null);
-  const [editingUserId, setEditingUserId] = useState(null);
-  const [editDraft, setEditDraft] = useState("");
 
   const [openConversationMenu, setOpenConversationMenu] = useState(null);
+  const [openProfileMenu, setOpenProfileMenu] = useState(false);
   const [renamingConversationId, setRenamingConversationId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
@@ -449,7 +454,7 @@ export default function AntimateAI() {
     }
   }, [savedConversations]);
 
-  /* ---- sync active conversation ---- */
+  /* ---- sync active conversation into saved list ---- */
   useEffect(() => {
     if (!messages.length) return;
     const firstUserMessage = messages.find((item) => item.role === "user");
@@ -477,17 +482,17 @@ export default function AntimateAI() {
     });
   }, [conversationId, messages]);
 
-  /* ---- elapsed seconds counter (from 0) ---- */
+  /* ---- elapsed seconds counter ---- */
   useEffect(() => {
     if (!busy) {
-      setElapsedSeconds(0);
+      setElapsed(0);
       return undefined;
     }
-    setElapsedSeconds(0);
-    const startedAt = Date.now();
+    setElapsed(0);
+    const started = Date.now();
     const timer = window.setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
+      setElapsed(Math.floor((Date.now() - started) / 1000));
+    }, 250);
     return () => window.clearInterval(timer);
   }, [busy]);
 
@@ -497,7 +502,27 @@ export default function AntimateAI() {
   }, [messages, busy]);
 
   /* ---- cleanup ---- */
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    },
+    []
+  );
+
+  /* ---- close profile menu on outside click ---- */
+  useEffect(() => {
+    if (!openProfileMenu) return undefined;
+    const handleClick = (event) => {
+      if (!event.target.closest?.(".antimate-profile-wrap")) {
+        setOpenProfileMenu(false);
+      }
+    };
+    window.addEventListener("mousedown", handleClick);
+    return () => window.removeEventListener("mousedown", handleClick);
+  }, [openProfileMenu]);
 
   const updateAssistantMessage = useCallback((messageId, updates) => {
     setMessages((previous) =>
@@ -600,274 +625,94 @@ export default function AntimateAI() {
     setThinkingEnabled((current) => !current);
   }, [busy]);
 
-  /* ---- current conversation name ---- */
-  const currentConversationName = useMemo(() => {
-    const found = savedConversations.find((c) => c.id === conversationId);
-    return found?.title || (messages.length ? "Conversation" : "New conversation");
-  }, [savedConversations, conversationId, messages.length]);
+  /* ---- edit question: remove that user message + its assistant reply, restore text ---- */
+  const editQuestion = useCallback(
+    (messageId) => {
+      if (busy) return;
+      setMessages((previous) => {
+        const index = previous.findIndex((m) => m.id === messageId);
+        if (index === -1) return previous;
+        const target = previous[index];
+        if (target.role !== "user") return previous;
 
-  /* ---- share ---- */
-  const shareConversation = useCallback(async () => {
-    try {
-      const text = messages
-        .map((m) => (m.role === "user" ? `You: ${m.text}` : `ANTIMATE: ${m.text}`))
-        .join("\n\n");
-      if (navigator.share) {
-        await navigator.share({ title: currentConversationName, text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        setError("");
-      }
-    } catch (shareError) {
-      if (shareError?.name !== "AbortError") {
-        console.warn("[ANTIMATE AI] Share failed:", shareError);
-      }
-    }
-  }, [messages, currentConversationName]);
+        // Remove the user message and the following assistant message (if any)
+        const next = previous.slice();
+        next.splice(index, target.role === "user" && next[index + 1]?.role === "assistant" ? 2 : 1);
+        return next;
+      });
+      const target = messages.find((m) => m.id === messageId);
+      if (target?.text) setInput(target.text);
+      inputRef.current?.focus();
+    },
+    [busy, messages]
+  );
 
-  /* ---- TTS ---- */
-  const toggleSpeak = useCallback(
+  /* ---- speech synthesis (TTS) ---- */
+  const speakMessage = useCallback(
     (message) => {
-      if (typeof window === "undefined" || !window.speechSynthesis) return;
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        setError("Text-to-speech is not supported in this browser.");
+        return;
+      }
+      const synth = window.speechSynthesis;
+
+      // Toggle off if already speaking this message
       if (speakingId === message.id) {
-        window.speechSynthesis.cancel();
+        synth.cancel();
         setSpeakingId(null);
         return;
       }
-      window.speechSynthesis.cancel();
+
+      synth.cancel();
       const utterance = new SpeechSynthesisUtterance(message.text || "");
+      utterance.lang = language === "rw" ? "rw-RW" : "en-US";
       utterance.onend = () => setSpeakingId(null);
       utterance.onerror = () => setSpeakingId(null);
-      window.speechSynthesis.speak(utterance);
       setSpeakingId(message.id);
+      synth.speak(utterance);
     },
-    [speakingId]
+    [language, speakingId]
   );
 
-  useEffect(() => {
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
-
-  /* ---- like ---- */
-  const toggleLike = useCallback((id) => {
-    setLikedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  /* ---- like toggle ---- */
+  const toggleLike = useCallback((messageId) => {
+    setLikedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(messageId)) next.delete(messageId);
+      else next.add(messageId);
       return next;
     });
+  }, []);
+
+  /* ---- share ---- */
+  const shareConversation = useCallback(async () => {
+    const current = savedConversations.find((c) => c.id === conversationId);
+    const text = current?.title || "ANTIMATE conversation";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "ANTIMATE", text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text} — ${window.location.href}`);
+        setCopiedId("share");
+        setTimeout(() => setCopiedId((c) => (c === "share" ? null : c)), 1500);
+      }
+    } catch {
+      /* user cancelled share */
+    }
+  }, [conversationId, savedConversations]);
+
+  const handleLogout = useCallback(() => {
+    try {
+      localStorage.removeItem("token");
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/login";
   }, []);
 
   /* =========================================================
      SEND MESSAGE (payload + SSE unchanged)
      ========================================================= */
-  const runStream = useCallback(
-    async ({ text, history, conversation, replaceAssistantId = null, replaceUserId = null }) => {
-      const assistantMessageId = replaceAssistantId || createId();
-      const assistantMessage = {
-        id: assistantMessageId,
-        role: "assistant",
-        text: "",
-        images: [],
-        reasoningSummary: null,
-        toolView: null,
-        status: "thinking",
-        streaming: true,
-      };
-
-      setMessages((previous) => {
-        if (replaceUserId) {
-          return previous.map((m) =>
-            m.id === replaceUserId ? { ...m, text } : m
-          ).concat(assistantMessage);
-        }
-        return [
-          ...previous,
-          { id: createId(), role: "user", text },
-          assistantMessage,
-        ];
-      });
-
-      setError("");
-      setBusy(true);
-      setStopRequested(false);
-      stopRequestedRef.current = false;
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      let streamCompleted = false;
-      let streamStopped = false;
-      let streamError = null;
-
-      try {
-        const response = await fetch(CHAT_STREAM_URL, {
-          method: "POST",
-          headers: getAuthHeaders(),
-          signal: controller.signal,
-          body: JSON.stringify({
-            message: text,
-            history,
-            language,
-            conversation_id: conversation,
-            thinking_enabled: thinkingEnabled,
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          const requestError = new Error(
-            getErrorMessage(data, `ANTIMATE request failed (${response.status}).`)
-          );
-          requestError.status = response.status;
-          throw requestError;
-        }
-
-        const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("text/event-stream")) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(getErrorMessage(data, "Backend did not return an SSE stream."));
-        }
-
-        await readSSEStream(response, ({ event, data }) => {
-          if (!data || typeof data !== "object") return;
-
-          switch (event) {
-            case "meta":
-              if (data.conversation_id) setConversationId(data.conversation_id);
-              break;
-
-            case "status": {
-              const status = formatStatus(data.status || data.message);
-              updateAssistantMessage(assistantMessageId, { status });
-              break;
-            }
-
-            case "update": {
-              const updates = { status: formatStatus(data.agent_status || "generating") };
-              if (typeof data.answer === "string") updates.text = data.answer;
-              if (data.tool_view !== undefined) updates.toolView = data.tool_view;
-
-              const incomingImages =
-                data.images ??
-                data.image_results ??
-                data.gallery ??
-                data.tool_result?.results ??
-                data.tool_results?.images;
-
-              if (incomingImages !== undefined) {
-                updates.images = normalizeImages(incomingImages);
-              }
-
-              updateAssistantMessage(assistantMessageId, updates);
-              if (data.conversation_id) setConversationId(data.conversation_id);
-              break;
-            }
-
-            case "complete": {
-              streamCompleted = true;
-              const answer = String(
-                data.answer ||
-                  data.answer_rw ||
-                  data.answer_kinyarwanda ||
-                  data.answer_english ||
-                  ""
-              ).trim();
-
-              const finalImages =
-                data.images ??
-                data.image_results ??
-                data.gallery ??
-                data.tool_result?.results ??
-                data.tool_results?.images;
-
-              updateAssistantMessage(assistantMessageId, {
-                text: answer,
-                ...(finalImages !== undefined
-                  ? { images: normalizeImages(finalImages) }
-                  : {}),
-                reasoningSummary: data.reasoning_summary || null,
-                toolView: data.tool_view || null,
-                status: "completed",
-                streaming: false,
-                processingMode: data.processing_mode || null,
-              });
-
-              if (data.conversation_id) setConversationId(data.conversation_id);
-              break;
-            }
-
-            case "error":
-              streamError = new Error(
-                getErrorMessage(data, "ANTIMATE AI encountered an error.")
-              );
-              break;
-
-            case "stopped":
-              streamStopped = true;
-              updateAssistantMessage(assistantMessageId, {
-                status: "stopped",
-                streaming: false,
-              });
-              break;
-
-            default:
-              break;
-          }
-        });
-
-        if (streamError) throw streamError;
-
-        if (streamStopped || stopRequestedRef.current) {
-          updateAssistantMessage(assistantMessageId, {
-            status: "stopped",
-            streaming: false,
-          });
-        } else if (!streamCompleted) {
-          throw new Error("ANTIMATE stream ended without a complete event.");
-        }
-
-        if (streamCompleted) {
-          updateAssistantMessage(assistantMessageId, {
-            streaming: false,
-            status: "completed",
-          });
-        }
-      } catch (requestError) {
-        if (requestError.name === "AbortError") {
-          if (stopRequestedRef.current) {
-            updateAssistantMessage(assistantMessageId, {
-              status: "stopped",
-              streaming: false,
-            });
-          }
-        } else {
-          console.error("[ANTIMATE AI] Frontend stream error:", requestError);
-          setError(
-            requestError.status === 401
-              ? "Ugomba kubanza kwinjira muri konti."
-              : requestError.message || "Habaye ikibazo mu guhuza na ANTIMATE AI."
-          );
-          updateAssistantMessage(assistantMessageId, {
-            status: "failed",
-            streaming: false,
-          });
-        }
-      } finally {
-        setBusy(false);
-        setStopRequested(false);
-        stopRequestedRef.current = false;
-        abortRef.current = null;
-        inputRef.current?.focus();
-      }
-    },
-    [language, thinkingEnabled, updateAssistantMessage]
-  );
-
   const sendMessage = useCallback(async () => {
     const cleanText = input.trim();
     if (!cleanText || busy) return;
@@ -890,67 +735,205 @@ export default function AntimateAI() {
       .filter((item) => item.text)
       .map((item) => ({ role: item.role, content: item.text }));
 
+    const userMessage = { id: createId(), role: "user", text: cleanText };
+    const assistantMessageId = createId();
+    const assistantMessage = {
+      id: assistantMessageId,
+      role: "assistant",
+      text: "",
+      images: [],
+      reasoningSummary: null,
+      toolView: null,
+      status: "thinking",
+      streaming: true,
+    };
+
+    setMessages((previous) => [...previous, userMessage, assistantMessage]);
     setInput("");
-    await runStream({ text: cleanText, history, conversation: conversationId });
-  }, [input, busy, messages, language, conversationId, runStream]);
+    setError("");
+    setBusy(true);
+    setStopRequested(false);
+    stopRequestedRef.current = false;
 
-  /* ---- retry an assistant answer ---- */
-  const retryAnswer = useCallback(
-    async (assistantMessage) => {
-      if (busy) return;
-      const idx = messages.findIndex((m) => m.id === assistantMessage.id);
-      if (idx < 1) return;
-      const userMsg = [...messages.slice(0, idx)].reverse().find((m) => m.role === "user");
-      if (!userMsg) return;
-      const history = messages
-        .slice(0, idx - 1)
-        .filter((m) => m.text)
-        .map((m) => ({ role: m.role, content: m.text }));
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      await runStream({
-        text: userMsg.text,
-        history,
-        conversation: conversationId,
+    let streamCompleted = false;
+    let streamStopped = false;
+    let streamError = null;
+
+    try {
+      const response = await fetch(CHAT_STREAM_URL, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        signal: controller.signal,
+        body: JSON.stringify({
+          message: cleanText,
+          history,
+          language,
+          conversation_id: conversationId,
+          thinking_enabled: thinkingEnabled,
+        }),
       });
-    },
-    [busy, messages, conversationId, runStream]
-  );
 
-  /* ---- edit a user question ---- */
-  const beginEditUserMessage = useCallback((message) => {
-    if (busy) return;
-    setEditingUserId(message.id);
-    setEditDraft(message.text || "");
-  }, [busy]);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const requestError = new Error(
+          getErrorMessage(data, `ANTIMATE request failed (${response.status}).`)
+        );
+        requestError.status = response.status;
+        throw requestError;
+      }
 
-  const cancelEditUserMessage = useCallback(() => {
-    setEditingUserId(null);
-    setEditDraft("");
-  }, []);
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("text/event-stream")) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(getErrorMessage(data, "Backend did not return an SSE stream."));
+      }
 
-  const commitEditUserMessage = useCallback(async () => {
-    const cleanText = editDraft.trim();
-    if (!cleanText || busy) return;
-    const userMessageId = editingUserId;
-    setEditingUserId(null);
-    setEditDraft("");
-    const idx = messages.findIndex((m) => m.id === userMessageId);
-    if (idx < 0) return;
-    const history = messages
-      .slice(0, idx)
-      .filter((m) => m.text)
-      .map((m) => ({ role: m.role, content: m.text }));
+      await readSSEStream(response, ({ event, data }) => {
+        if (!data || typeof data !== "object") return;
 
-    // Drop subsequent messages and re-stream from the edited question.
-    setMessages((previous) => previous.slice(0, idx));
+        switch (event) {
+          case "meta": {
+            if (data.conversation_id) setConversationId(data.conversation_id);
+            break;
+          }
 
-    await runStream({
-      text: cleanText,
-      history,
-      conversation: conversationId,
-      replaceUserId: userMessageId,
-    });
-  }, [editDraft, busy, editingUserId, messages, conversationId, runStream]);
+          case "status": {
+            const status = formatStatus(data.status || data.message);
+            updateAssistantMessage(assistantMessageId, { status });
+            break;
+          }
+
+          case "update": {
+            const updates = { status: formatStatus(data.agent_status || "generating") };
+            if (typeof data.answer === "string") updates.text = data.answer;
+            if (data.tool_view !== undefined) updates.toolView = data.tool_view;
+
+            const incomingImages =
+              data.images ??
+              data.image_results ??
+              data.gallery ??
+              data.tool_result?.results ??
+              data.tool_results?.images;
+
+            if (incomingImages !== undefined) {
+              updates.images = normalizeImages(incomingImages);
+            }
+
+            updateAssistantMessage(assistantMessageId, updates);
+            if (data.conversation_id) setConversationId(data.conversation_id);
+            break;
+          }
+
+          case "complete": {
+            streamCompleted = true;
+            const answer = String(
+              data.answer ||
+                data.answer_rw ||
+                data.answer_kinyarwanda ||
+                data.answer_english ||
+                ""
+            ).trim();
+
+            const finalImages =
+              data.images ??
+              data.image_results ??
+              data.gallery ??
+              data.tool_result?.results ??
+              data.tool_results?.images;
+
+            updateAssistantMessage(assistantMessageId, {
+              text: answer,
+              ...(finalImages !== undefined
+                ? { images: normalizeImages(finalImages) }
+                : {}),
+              reasoningSummary: data.reasoning_summary || null,
+              toolView: data.tool_view || null,
+              status: "completed",
+              streaming: false,
+              processingMode: data.processing_mode || null,
+            });
+
+            if (data.conversation_id) setConversationId(data.conversation_id);
+            break;
+          }
+
+          case "error": {
+            streamError = new Error(
+              getErrorMessage(data, "ANTIMATE AI encountered an error.")
+            );
+            break;
+          }
+
+          case "stopped": {
+            streamStopped = true;
+            updateAssistantMessage(assistantMessageId, {
+              status: "stopped",
+              streaming: false,
+            });
+            break;
+          }
+
+          default:
+            break;
+        }
+      });
+
+      if (streamError) throw streamError;
+
+      if (streamStopped || stopRequestedRef.current) {
+        updateAssistantMessage(assistantMessageId, {
+          status: "stopped",
+          streaming: false,
+        });
+      } else if (!streamCompleted) {
+        throw new Error("ANTIMATE stream ended without a complete event.");
+      }
+
+      if (streamCompleted) {
+        updateAssistantMessage(assistantMessageId, {
+          streaming: false,
+          status: "completed",
+        });
+      }
+    } catch (requestError) {
+      if (requestError.name === "AbortError") {
+        if (stopRequestedRef.current) {
+          updateAssistantMessage(assistantMessageId, {
+            status: "stopped",
+            streaming: false,
+          });
+        }
+      } else {
+        console.error("[ANTIMATE AI] Frontend stream error:", requestError);
+        setError(
+          requestError.status === 401
+            ? "Ugomba kubanza kwinjira muri konti."
+            : requestError.message || "Habaye ikibazo mu guhuza na ANTIMATE AI."
+        );
+        updateAssistantMessage(assistantMessageId, {
+          status: "failed",
+          streaming: false,
+        });
+      }
+    } finally {
+      setBusy(false);
+      setStopRequested(false);
+      stopRequestedRef.current = false;
+      abortRef.current = null;
+      inputRef.current?.focus();
+    }
+  }, [
+    input,
+    busy,
+    messages,
+    language,
+    conversationId,
+    thinkingEnabled,
+    updateAssistantMessage,
+  ]);
 
   /* =========================================================
      STOP (unchanged)
@@ -1008,33 +991,6 @@ export default function AntimateAI() {
     }
   };
 
-  /* ---- profile menu actions ---- */
-  const handleSettings = () => {
-    setProfileMenuOpen(false);
-    // Hook into your settings route/modal here.
-    window.dispatchEvent(new CustomEvent("antimate:open-settings"));
-  };
-
-  const handleAppearance = () => {
-    setProfileMenuOpen(false);
-    toggleTheme();
-  };
-
-  const handleBack = () => {
-    setProfileMenuOpen(false);
-    if (window.history.length > 1) window.history.back();
-  };
-
-  const handleLogout = () => {
-    setProfileMenuOpen(false);
-    try {
-      localStorage.removeItem("token");
-    } catch {
-      /* ignore */
-    }
-    window.location.reload();
-  };
-
   const sortedConversations = useMemo(
     () =>
       [...savedConversations].sort(
@@ -1045,479 +1001,451 @@ export default function AntimateAI() {
     [savedConversations]
   );
 
+  const activeConversationTitle =
+    savedConversations.find((c) => c.id === conversationId)?.title || "New chat";
+
   /* =========================================================
      RENDER
      ========================================================= */
   return (
     <div className={`antimate-app ${theme}`}>
-      {/* ---------- SIDEBAR ---------- */}
-      <aside className={`antimate-sidebar ${sidebarOpen ? "open" : "closed"}`}>
-        <div className="antimate-sidebar-head">
-          <span className="antimate-wordmark">ANTIMATE</span>
+      {/* ================= TOP BAR ================= */}
+      <header className="antimate-topbar">
+        <div className="antimate-topbar-left">
+          <div className="antimate-logo" aria-label="ANTIMATE">
+            <span className="antimate-logo-mark">A</span>
+            <span className="antimate-logo-text">ANTIMATE</span>
+          </div>
+          <button
+            type="button"
+            className="antimate-ghost-btn"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
+          >
+            <Icon name="menu" size={18} />
+          </button>
         </div>
 
-        <button
-          type="button"
-          className="antimate-new-chat"
-          onClick={newChat}
-          disabled={busy}
-        >
-          <Icon name="plus" size={16} />
-          <span>New chat</span>
-        </button>
+        <div className="antimate-topbar-center">
+          <span className="antimate-convo-name" title={activeConversationTitle}>
+            {activeConversationTitle}
+          </span>
+        </div>
 
-        <div className="antimate-convo-list">
-          {sortedConversations.length === 0 ? (
-            <div className="antimate-convo-empty">No conversations</div>
-          ) : (
-            sortedConversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`antimate-convo-row ${
-                  conversation.id === conversationId ? "active" : ""
-                } ${conversation.pinned ? "pinned" : ""}`}
-              >
-                {renamingConversationId === conversation.id ? (
-                  <form
-                    className="antimate-rename"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      commitRenameConversation(conversation.id);
-                    }}
-                  >
-                    <input
-                      autoFocus
-                      value={renameDraft}
-                      maxLength={80}
-                      onChange={(event) => setRenameDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape") setRenamingConversationId(null);
+        <div className="antimate-topbar-right">
+          <button
+            type="button"
+            className="antimate-ghost-btn antimate-share"
+            onClick={shareConversation}
+            aria-label="Share conversation"
+            title="Share"
+          >
+            <Icon name={copiedId === "share" ? "check" : "share"} size={17} />
+            <span>Share</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ================= BODY ================= */}
+      <div className="antimate-body">
+        {/* ---------- SIDEBAR ---------- */}
+        <aside className={`antimate-sidebar ${sidebarOpen ? "open" : "closed"}`}>
+          <button
+            type="button"
+            className="antimate-new-chat"
+            onClick={newChat}
+            disabled={busy}
+          >
+            <Icon name="plus" size={16} />
+            <span>New chat</span>
+          </button>
+
+          <div className="antimate-convo-list">
+            {sortedConversations.length === 0 ? (
+              <div className="antimate-convo-empty">No conversations</div>
+            ) : (
+              sortedConversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`antimate-convo-row ${
+                    conversation.id === conversationId ? "active" : ""
+                  } ${conversation.pinned ? "pinned" : ""}`}
+                >
+                  {renamingConversationId === conversation.id ? (
+                    <form
+                      className="antimate-rename"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        commitRenameConversation(conversation.id);
                       }}
-                    />
-                    <button type="submit" aria-label="Save name">
-                      <Icon name="check" size={14} />
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="antimate-convo-item"
-                      onClick={() => openConversation(conversation)}
-                      disabled={busy}
-                      title={conversation.title}
                     >
-                      {conversation.pinned && (
-                        <span className="antimate-pin">◆</span>
-                      )}
-                      <span className="antimate-convo-title">{conversation.title}</span>
-                    </button>
-
-                    <div className="antimate-convo-menu-wrap">
+                      <input
+                        autoFocus
+                        value={renameDraft}
+                        maxLength={80}
+                        onChange={(event) => setRenameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") setRenamingConversationId(null);
+                        }}
+                      />
+                      <button type="submit" aria-label="Save name">
+                        <Icon name="check" size={14} />
+                      </button>
+                    </form>
+                  ) : (
+                    <>
                       <button
                         type="button"
-                        className="antimate-convo-menu-btn"
-                        onClick={() =>
-                          setOpenConversationMenu((current) =>
-                            current === conversation.id ? null : conversation.id
-                          )
-                        }
+                        className="antimate-convo-item"
+                        onClick={() => openConversation(conversation)}
                         disabled={busy}
-                        aria-label="Conversation options"
-                        aria-expanded={openConversationMenu === conversation.id}
+                        title={conversation.title}
                       >
-                        <Icon name="more" size={16} />
+                        {conversation.pinned && <span className="antimate-pin">◆</span>}
+                        <span className="antimate-convo-title">{conversation.title}</span>
                       </button>
 
-                      {openConversationMenu === conversation.id && (
-                        <div className="antimate-convo-menu" role="menu">
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => beginRenameConversation(conversation)}
-                          >
-                            <Icon name="edit" size={15} /> Rename
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => togglePinConversation(conversation.id)}
-                          >
-                            <Icon name="pin" size={15} />{" "}
-                            {conversation.pinned ? "Unpin" : "Pin"}
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="danger"
-                            onClick={() => deleteConversation(conversation.id)}
-                          >
-                            <Icon name="trash" size={15} /> Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+                      <div className="antimate-convo-menu-wrap">
+                        <button
+                          type="button"
+                          className="antimate-convo-menu-btn"
+                          onClick={() =>
+                            setOpenConversationMenu((current) =>
+                              current === conversation.id ? null : conversation.id
+                            )
+                          }
+                          disabled={busy}
+                          aria-label="Conversation options"
+                          aria-expanded={openConversationMenu === conversation.id}
+                        >
+                          <Icon name="more" size={16} />
+                        </button>
 
-        <div className="antimate-sidebar-foot">
-          <div className="antimate-user">
-            <span className="antimate-user-dot" />
-            <span className="antimate-user-label">
-              {signedIn ? "Signed in" : "Guest"}
-            </span>
+                        {openConversationMenu === conversation.id && (
+                          <div className="antimate-convo-menu" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => beginRenameConversation(conversation)}
+                            >
+                              <Icon name="edit" size={15} /> Rename
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => togglePinConversation(conversation.id)}
+                            >
+                              <Icon name="pin" size={15} />{" "}
+                              {conversation.pinned ? "Unpin" : "Pin"}
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="danger"
+                              onClick={() => deleteConversation(conversation.id)}
+                            >
+                              <Icon name="trash" size={15} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
           </div>
-        </div>
-      </aside>
 
-      {/* ---------- MAIN ---------- */}
-      <main className="antimate-main">
-        {/* ---------- STATIC TOP BAR ---------- */}
-        <header className="antimate-topbar">
-          <div className="antimate-topbar-left">
-            <div className="antimate-logo" aria-label="ANTIMATE">
-              <span className="antimate-logo-mark">A</span>
+          {/* profile + three-dot */}
+          <div className="antimate-sidebar-foot">
+            <div className="antimate-user">
+              <span className="antimate-user-avatar">{signedIn ? "U" : "G"}</span>
+              <span className="antimate-user-label">
+                {signedIn ? "Account" : "Guest"}
+              </span>
             </div>
-            <button
-              type="button"
-              className="antimate-ghost-btn"
-              onClick={() => setSidebarOpen((v) => !v)}
-              aria-label="Toggle sidebar"
-              title="Toggle sidebar"
-            >
-              <Icon name="menu" size={18} />
-            </button>
-            <h1 className="antimate-topbar-title" title={currentConversationName}>
-              {currentConversationName}
-            </h1>
-          </div>
-
-          <div className="antimate-topbar-right">
-            <button
-              type="button"
-              className="antimate-ghost-btn"
-              onClick={shareConversation}
-              aria-label="Share conversation"
-              title="Share"
-            >
-              <Icon name="share" size={17} />
-            </button>
 
             <div className="antimate-profile-wrap">
               <button
                 type="button"
                 className="antimate-ghost-btn"
-                onClick={() => setProfileMenuOpen((v) => !v)}
-                aria-label="Profile menu"
-                aria-expanded={profileMenuOpen}
-                title="Profile"
+                onClick={() => setOpenProfileMenu((v) => !v)}
+                aria-label="Profile options"
+                aria-expanded={openProfileMenu}
               >
                 <Icon name="more" size={17} />
               </button>
-              {profileMenuOpen && (
+
+              {openProfileMenu && (
                 <div className="antimate-profile-menu" role="menu">
-                  <button type="button" role="menuitem" onClick={handleSettings}>
+                  <button type="button" role="menuitem" onClick={() => { setOpenProfileMenu(false); /* hook settings */ }}>
                     <Icon name="settings" size={15} /> Settings
                   </button>
-                  <button type="button" role="menuitem" onClick={handleAppearance}>
+                  <button type="button" role="menuitem" onClick={() => { toggleTheme(); setOpenProfileMenu(false); }}>
                     <Icon name="appearance" size={15} /> Appearance
                   </button>
-                  <button type="button" role="menuitem" onClick={handleBack}>
+                  <button type="button" role="menuitem" onClick={() => { setOpenProfileMenu(false); window.history.back(); }}>
                     <Icon name="back" size={15} /> Back
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="danger"
-                    onClick={handleLogout}
-                  >
+                  <button type="button" role="menuitem" className="danger" onClick={() => { setOpenProfileMenu(false); handleLogout(); }}>
                     <Icon name="logout" size={15} /> Logout
                   </button>
                 </div>
               )}
             </div>
           </div>
-        </header>
+        </aside>
 
-        {/* ---------- MESSAGES ---------- */}
-        <section className="antimate-scroll">
-          {messages.length === 0 ? (
-            <div className="antimate-welcome">
-              <h2 className="antimate-welcome-title">
-                {language === "rw" ? "Muraho." : "Hello."}
-              </h2>
-              <p className="antimate-welcome-sub">
-                {language === "rw"
-                  ? "Ni iki twaganiraho uyu munsi?"
-                  : "What would you like to explore today?"}
-              </p>
-            </div>
-          ) : (
-            <div className="antimate-stream">
-              {messages.map((message) => {
-                const isAssistant = message.role === "assistant";
-                const statusLabel = isAssistant
-                  ? message.status === "completed"
-                    ? ""
-                    : formatStatus(message.status)
-                  : "";
-                const isEditing = editingUserId === message.id;
+        {/* ---------- MAIN ---------- */}
+        <main className="antimate-main">
+          <section className="antimate-scroll">
+            {messages.length === 0 ? (
+              <div className="antimate-welcome">
+                <h1 className="antimate-welcome-title">
+                  {language === "rw" ? "Muraho." : "Hello."}
+                </h1>
+                <p className="antimate-welcome-sub">
+                  {language === "rw"
+                    ? "Ni iki twaganiraho uyu munsi?"
+                    : "What would you like to explore today?"}
+                </p>
+              </div>
+            ) : (
+              <div className="antimate-stream">
+                {messages.map((message) => {
+                  const isAssistant = message.role === "assistant";
+                  const statusLabel = isAssistant
+                    ? message.status === "completed"
+                      ? ""
+                      : formatStatus(message.status)
+                    : "";
+                  const showElapsed = isAssistant && message.streaming;
 
-                return (
-                  <article
-                    key={message.id}
-                    className={`antimate-turn ${message.role}`}
-                  >
-                    {message.role === "user" ? (
-                      <div className="antimate-user-row">
-                        {isEditing ? (
-                          <div className="antimate-user-edit">
-                            <textarea
-                              autoFocus
-                              value={editDraft}
-                              onChange={(e) => setEditDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Escape") cancelEditUserMessage();
-                                if (
-                                  e.key === "Enter" &&
-                                  !e.shiftKey &&
-                                  !e.nativeEvent.isComposing
-                                ) {
-                                  e.preventDefault();
-                                  commitEditUserMessage();
-                                }
-                              }}
-                              rows={2}
-                            />
-                            <div className="antimate-user-edit-actions">
-                              <button
-                                type="button"
-                                className="antimate-ghost-btn"
-                                onClick={cancelEditUserMessage}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                className="antimate-ghost-btn antimate-primary"
-                                onClick={commitEditUserMessage}
-                                disabled={!editDraft.trim()}
-                              >
-                                Send
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="antimate-user-text">{message.text}</p>
-                            <button
-                              type="button"
-                              className="antimate-ghost-btn antimate-edit-btn"
-                              onClick={() => beginEditUserMessage(message)}
-                              disabled={busy}
-                              aria-label="Edit question"
-                              title="Edit question"
-                            >
-                              <Icon name="edit" size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="antimate-answer">
-                        {/* TOP-LEFT: status + seconds; TOP-RIGHT: tools */}
-                        <div className="antimate-answer-head">
-                          <div className="antimate-answer-status">
-                            {statusLabel && (
-                              <>
-                                {message.streaming && (
-                                  <span className="antimate-dot" />
+                  return (
+                    <article
+                      key={message.id}
+                      className={`antimate-turn ${message.role}`}
+                    >
+                      {message.role === "user" ? (
+                        <div className="antimate-user-row">
+                          <p className="antimate-user-text">{message.text}</p>
+                          <button
+                            type="button"
+                            className="antimate-ghost-btn antimate-edit-q"
+                            onClick={() => editQuestion(message.id)}
+                            aria-label="Edit question"
+                            title="Edit question"
+                          >
+                            <Icon name="edit" size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="antimate-answer">
+                          {/* STATUS TOP-RIGHT with elapsed seconds */}
+                          {statusLabel && (
+                            <div className="antimate-answer-meta">
+                              <span className="antimate-answer-status">
+                                {message.streaming && <span className="antimate-dot" />}
+                                {statusLabel}
+                                {showElapsed && (
+                                  <span className="antimate-elapsed">· {elapsed}s</span>
                                 )}
-                                <span>{statusLabel}</span>
-                                <span className="antimate-seconds">
-                                  · {elapsedSeconds}s
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          <div className="antimate-answer-tools">
-                            {message.toolView && (
-                              <details className="antimate-tool-text">
-                                <summary>Tool activity</summary>
-                                <pre>
-                                  {typeof message.toolView === "string"
-                                    ? message.toolView
-                                    : JSON.stringify(message.toolView, null, 2)}
-                                </pre>
-                              </details>
-                            )}
+                              </span>
+                            </div>
+                          )}
+
+                          <IncrementalText
+                            text={message.text}
+                            images={message.images}
+                            messageId={message.id}
+                            streaming={Boolean(message.streaming)}
+                          />
+
+                          {message.reasoningSummary && (
+                            <details className="antimate-details">
+                              <summary>Thinking summary</summary>
+                              <p>{message.reasoningSummary}</p>
+                            </details>
+                          )}
+
+                          {/* FOOTER: tool activity LEFT, actions RIGHT */}
+                          <div className="antimate-answer-footer">
+                            <div className="antimate-tool-left">
+                              {message.toolView && (
+                                <details className="antimate-tool-text">
+                                  <summary>Tool activity</summary>
+                                  <pre>
+                                    {typeof message.toolView === "string"
+                                      ? message.toolView
+                                      : JSON.stringify(message.toolView, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                            </div>
+
+                            {!message.streaming &&
+                              (message.text || message.images?.length > 0) && (
+                                <div className="antimate-answer-actions">
+                                  <button
+                                    type="button"
+                                    className="antimate-ghost-btn"
+                                    onClick={() => speakMessage(message)}
+                                    aria-label="Read answer aloud"
+                                    title={
+                                      speakingId === message.id
+                                        ? "Stop reading"
+                                        : "Read answer aloud"
+                                    }
+                                  >
+                                    <Icon
+                                      name={
+                                        speakingId === message.id
+                                          ? "speaker-off"
+                                          : "speaker"
+                                      }
+                                      size={15}
+                                    />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`antimate-ghost-btn ${
+                                      likedIds.has(message.id) ? "liked" : ""
+                                    }`}
+                                    onClick={() => toggleLike(message.id)}
+                                    aria-label="Like answer"
+                                    title="Like"
+                                    aria-pressed={likedIds.has(message.id)}
+                                  >
+                                    <Icon
+                                      name={
+                                        likedIds.has(message.id)
+                                          ? "like-filled"
+                                          : "like"
+                                      }
+                                      size={15}
+                                    />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="antimate-ghost-btn"
+                                    onClick={() => copyMessage(message)}
+                                    aria-label="Copy response"
+                                    title="Copy"
+                                  >
+                                    <Icon
+                                      name={copiedId === message.id ? "check" : "copy"}
+                                      size={15}
+                                    />
+                                  </button>
+                                </div>
+                              )}
                           </div>
                         </div>
-
-                        <IncrementalText
-                          text={message.text}
-                          images={message.images}
-                          messageId={message.id}
-                          streaming={Boolean(message.streaming)}
-                        />
-
-                        {message.reasoningSummary && (
-                          <details className="antimate-details">
-                            <summary>Thinking summary</summary>
-                            <p>{message.reasoningSummary}</p>
-                          </details>
-                        )}
-
-                        {/* ACTION ICONS: TTS · Retry · Like · Copy */}
-                        {!message.streaming && (
-                          <div className="antimate-answer-actions">
-                            <button
-                              type="button"
-                              className={`antimate-ghost-btn ${
-                                speakingId === message.id ? "active" : ""
-                              }`}
-                              onClick={() => toggleSpeak(message)}
-                              aria-label="Read answer aloud"
-                              title="Read aloud"
-                            >
-                              <Icon name="speaker" size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="antimate-ghost-btn"
-                              onClick={() => retryAnswer(message)}
-                              disabled={busy}
-                              aria-label="Retry answer"
-                              title="Retry"
-                            >
-                              <Icon name="retry" size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className={`antimate-ghost-btn ${
-                                likedIds.has(message.id) ? "liked" : ""
-                              }`}
-                              onClick={() => toggleLike(message.id)}
-                              aria-label="Like answer"
-                              title="Like"
-                            >
-                              <Icon name="like" size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="antimate-ghost-btn"
-                              onClick={() => copyMessage(message)}
-                              aria-label="Copy answer"
-                              title="Copy"
-                            >
-                              <Icon
-                                name={copiedId === message.id ? "check" : "copy"}
-                                size={15}
-                              />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </section>
-
-        {/* ---------- COMPOSER ---------- */}
-        <footer className="antimate-composer-wrap">
-          {error && (
-            <div className="antimate-error">
-              <span>{error}</span>
-              <button type="button" onClick={() => setError("")} aria-label="Dismiss">
-                <Icon name="close" size={14} />
-              </button>
-            </div>
-          )}
-
-          <form className="antimate-composer" onSubmit={handleSubmit}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                language === "rw" ? "Andika ubutumwa…" : "Message ANTIMATE…"
-              }
-              rows={1}
-              maxLength={MAX_MESSAGE_LENGTH}
-              disabled={busy}
-            />
-
-            <div className="antimate-composer-row">
-              <button
-                type="button"
-                className={`antimate-chip ${thinkingEnabled ? "on" : ""}`}
-                onClick={toggleThinking}
-                disabled={busy}
-                aria-pressed={thinkingEnabled}
-                title="Thinking mode"
-              >
-                <Icon name="brain" size={15} />
-                <span>Thinking</span>
-              </button>
-
-              <div className="antimate-composer-meta">
-                <select
-                  className="antimate-select"
-                  value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
-                  disabled={busy}
-                  aria-label="Language"
-                >
-                  <option value="rw">RW</option>
-                  <option value="en">EN</option>
-                </select>
-
-                <span className="antimate-count">
-                  {input.length}/{MAX_MESSAGE_LENGTH}
-                </span>
+                      )}
+                    </article>
+                  );
+                })}
+                <div ref={bottomRef} />
               </div>
+            )}
+          </section>
 
-              {busy ? (
+          {/* ---------- COMPOSER ---------- */}
+          <footer className="antimate-composer-wrap">
+            {error && (
+              <div className="antimate-error">
+                <span>{error}</span>
+                <button type="button" onClick={() => setError("")} aria-label="Dismiss">
+                  <Icon name="close" size={14} />
+                </button>
+              </div>
+            )}
+
+            <form className="antimate-composer" onSubmit={handleSubmit}>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  language === "rw" ? "Andika ubutumwa…" : "Message ANTIMATE…"
+                }
+                rows={1}
+                maxLength={MAX_MESSAGE_LENGTH}
+                disabled={busy}
+              />
+
+              <div className="antimate-composer-row">
                 <button
                   type="button"
-                  className="antimate-send antimate-stop"
-                  onClick={stopGeneration}
-                  disabled={stopRequested}
-                  aria-label="Stop generation"
-                  title="Stop generation"
+                  className={`antimate-chip ${thinkingEnabled ? "on" : ""}`}
+                  onClick={toggleThinking}
+                  disabled={busy}
+                  aria-pressed={thinkingEnabled}
+                  title="Thinking mode"
                 >
-                  <Icon name="stop" size={17} />
+                  <Icon name="brain" size={15} />
+                  <span>Thinking</span>
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="antimate-send"
-                  disabled={!input.trim()}
-                  aria-label="Send message"
-                  title="Send message"
-                >
-                  <Icon name="send" size={17} />
-                </button>
-              )}
-            </div>
-          </form>
 
-          <p className="antimate-hint">
-            {language === "rw"
-              ? "Enter wohereza · Shift+Enter umurongo mushya"
-              : "Enter to send · Shift+Enter for a new line"}
-          </p>
-        </footer>
-      </main>
+                <div className="antimate-composer-meta">
+                  <select
+                    className="antimate-select"
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value)}
+                    disabled={busy}
+                    aria-label="Language"
+                  >
+                    <option value="rw">RW</option>
+                    <option value="en">EN</option>
+                  </select>
+
+                  {busy && (
+                    <span className="antimate-inline-status">
+                      <span className="antimate-dot" />
+                      {stopRequested ? "Stopping" : "Generating"} · {elapsed}s
+                    </span>
+                  )}
+
+                  <span className="antimate-count">
+                    {input.length}/{MAX_MESSAGE_LENGTH}
+                  </span>
+                </div>
+
+                {busy ? (
+                  <button
+                    type="button"
+                    className="antimate-send antimate-stop"
+                    onClick={stopGeneration}
+                    disabled={stopRequested}
+                    aria-label="Stop generation"
+                    title="Stop generation"
+                  >
+                    <Icon name="stop" size={17} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="antimate-send"
+                    disabled={!input.trim()}
+                    aria-label="Send message"
+                    title="Send message"
+                  >
+                    <Icon name="send" size={17} />
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <p className="antimate-hint">
+              {language === "rw"
+                ? "Enter wohereza · Shift+Enter umurongo mushya"
+                : "Enter to send · Shift+Enter for a new line"}
+            </p>
+          </footer>
+        </main>
+      </div>
     </div>
   );
 }

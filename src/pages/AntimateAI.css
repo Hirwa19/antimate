@@ -931,3 +931,43 @@
   opacity: 0.7;
   line-height: 1.5;
 }
+
+/* =========================================================
+   ANTIMATE AI — FORCE LEFT-TO-RIGHT TEXT DIRECTION
+   ========================================================= */
+
+.antimate-app,
+.antimate-app * {
+  direction: ltr;
+  unicode-bidi: normal;
+}
+
+.antimate-assistant-text,
+.antimate-text-segment,
+.antimate-user-text,
+.antimate-convo-title,
+.antimate-welcome-title,
+.antimate-welcome-sub,
+.antimate-details,
+.antimate-composer textarea {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: plaintext;
+}
+
+/* Keep user messages aligned to the right,
+   but keep their text reading left-to-right. */
+.antimate-turn.user {
+  justify-content: flex-end;
+}
+
+.antimate-user-text {
+  text-align: left;
+}
+
+/* Preserve left-to-right code and tool output. */
+.antimate-tool-text,
+.antimate-tool-text pre {
+  direction: ltr;
+  text-align: left;
+}
